@@ -1,0 +1,49 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Vector database storage (SUBJECT STRICT REQUIREMENT)
+# The persisted ChromaDB files must never be committed to Git!
+.chroma/
+.chroma_db/
+chroma_db/
+chroma/
+*.sqlite3
+
+# Local model weights and embeddings cache (SUBJECT STRICT REQUIREMENT)
+# Never commit model weights or cached embeddings!
+models/
+*.bin
+*.safetensors
+*.gguf
+.cache/
+huggingface/
+.huggingface/
+
+# IoC temporary patch files (used in Part 3 atomic apply and rollback)
+*.ioc.tmp
+*.tmp
+
+# OS & IDE metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Assistant instructions and local AI guidelines
+GEMINI.md
+
+# Local documentation and subject files
+docu/
+
+
+

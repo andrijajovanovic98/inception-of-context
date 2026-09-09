@@ -1,0 +1,16 @@
+# Part 1: Indexing and Synchronization Dependencies
+
+# Vector Database (Subject reference requirement)
+chromadb>=0.4.22
+
+# Local Embedding Model: all-MiniLM-L6-v2 (Subject reference requirement)
+sentence-transformers>=2.2.2
+
+# Filesystem Event Monitoring (Subject requirement)
+watchdog>=4.0.0
+
+# HTTP Server & Dashboard Overview (Subject reference requirement)
+fastapi>=0.109.0
+uvicorn>=0.27.0
+pydantic>=2.0.0
+
