@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inception-of-Context — Part 1: Indexing and Synchronization</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="deck-viewport">
+  <div id="deck-container">
+    
+    <!-- Top Progress Bar -->
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Slides Wrapper -->
+    <div class="slides-wrapper">
+
+      <!-- ===================================================================
+           SLIDE 1: Title Slide
+           =================================================================== -->
+      <section class="slide active" data-title="Title & Overview">
+        <div class="slide-title-hero">
+          <div class="hero-pill">
+            <span class="pulse-dot"></span>
+            <span>42 Beta-Test Project &bull; AI-Native Engineering</span>
+          </div>
+
+          <h1 class="hero-title">Inception-of-Context</h1>
+          <h3 class="hero-subtitle">Part 1: Indexing and Synchronization</h3>
+          
+          <p class="hero-desc">
+            Turning a local codebase into a synchronized, searchable vector index with semantic AST chunking, 
+            local dense embeddings, and real-time filesystem reconciliation.
+          </p>
+
+          <div class="hero-specs">
+            <div class="spec-item">
+              <span class="spec-label">Current Phase</span>
+              <span class="spec-value" style="color:var(--emerald);">Part 1 Complete</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Vector Store</span>
+              <span class="spec-value" style="color:var(--cyan);">ChromaDB Persistent</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Embedding Model</span>
+              <span class="spec-value" style="color:var(--indigo);">all-MiniLM-L6-v2</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Runtime Mode</span>
+              <span class="spec-value" style="color:var(--amber);">100% Offline / Local</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 2: Goal of Part 1
+           =================================================================== -->
+      <section class="slide" data-title="Goal of Part 1">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 1 Focus</span>
+            <div class="slide-title-group">
+              <h2>Goal of Part 1: Indexing &amp; Synchronization</h2>
+              <p>Establishing the vector backbone for code intelligence</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Subject Chapter VI.1</span>
+          </div>
+        </div>
+
+        <div class="grid-4" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                1. Code Discovery
+              </span>
+              <span class="card-badge badge-cyan">Filesystem</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Walks target codebase directory (e.g. <code>demo_app/</code>) recursively.</li>
+                <li>Applies strict exclusion filters for git, caches, and build folders.</li>
+                <li>Safely excludes the vector database folder from indexing itself.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                2. Logical Chunking
+              </span>
+              <span class="card-badge badge-emerald">AST Parser</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Splits files along semantic boundaries: functions, classes, methods.</li>
+                <li>Preserves decorators, docstrings, and line-range metadata.</li>
+                <li>Rejects arbitrary fixed-token splits that break code logic.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                3. Local Persistence
+              </span>
+              <span class="card-badge badge-amber">Offline</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Locally embeds chunks with <code>all-MiniLM-L6-v2</code>.</li>
+                <li>Persists vectors and metadata into local ChromaDB.</li>
+                <li>No cloud dependencies, zero external API token bills.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                4. Real-time Sync
+              </span>
+              <span class="card-badge badge-rose">Incremental</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Tracks file SHA-256 hashes to prevent redundant updates.</li>
+                <li>Debounces rapid disk write events via <code>watchdog</code>.</li>
+                <li>Includes polling fallback for Docker &amp; overlayfs filesystems.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 3: Current Repository Structure
+           =================================================================== -->
+      <section class="slide" data-title="Repository Layout">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Repository Audit</span>
+            <div class="slide-title-group">
+              <h2>Current Repository Structure</h2>
+              <p>Verified on-disk files — only Part 1 and demo application exist</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Strictly Grounded</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="file-tree">
+            <div><span class="tree-folder">inception-of-context/</span></div>
+            <div>&boxur;&boxh;&boxh; <span class="tree-folder">p1/</span> <span class="tree-note">&larr; Part 1 Implementation</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file-highlight">index.py</span> <span class="tree-note">(CLI entrypoint, args, runner)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file-highlight">indexer.py</span> <span class="tree-note">(CodebaseIndexer, hash sync, filters)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file-highlight">chunker.py</span> <span class="tree-note">(ASTChunker, FallbackChunker, CodeChunk)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file-highlight">db.py</span> <span class="tree-note">(VectorDB, ChromaDB PersistentClient)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file-highlight">watcher.py</span> <span class="tree-note">(CodebaseWatcher, debounce, polling)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file-highlight">dashboard.py</span> <span class="tree-note">(FastAPI server, SSE live stream)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxdl;&boxh;&boxh; <span class="tree-file">requirements.txt</span> <span class="tree-note">(chromadb, watchdog, fastapi...)</span></div>
+            <div>&boxur;&boxh;&boxh; <span class="tree-folder">demo_app/</span> <span class="tree-note">&larr; Target Codebase for Indexing</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">calculator.py</span> <span class="tree-note">(Calculator class with arithmetic methods)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">formatter.py</span> <span class="tree-note">(ResultFormatter, currency/percentage)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxdl;&boxh;&boxh; <span class="tree-file">main.py</span> <span class="tree-note">(calculate_tax, run_demo entrypoint)</span></div>
+            <div>&boxur;&boxh;&boxh; <span class="tree-folder">doku/</span> <span class="tree-note">(Subject PDF, project roadmap prompt)</span></div>
+            <div>&boxdl;&boxh;&boxh; <span class="tree-file">.gitignore</span> <span class="tree-note">(Ignores .chroma_db, weights, caches)</span></div>
+          </div>
+
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                Repository Status &amp; Scope Boundary
+              </span>
+              <span class="card-badge badge-cyan">Boundary</span>
+            </div>
+            <div class="card-content">
+              <ul style="gap: 12px;">
+                <li>
+                  <strong>Implemented Modules:</strong> All Part 1 core components (<code>chunker.py</code>, <code>db.py</code>, <code>indexer.py</code>, <code>watcher.py</code>, <code>dashboard.py</code>, <code>index.py</code>) are present and functional.
+                </li>
+                <li>
+                  <strong>Target Demo App:</strong> A modular 3-file Python target application (<code>demo_app/</code>) is included to exercise AST chunking and vector storage.
+                </li>
+                <li>
+                  <strong>Not Yet Implemented:</strong> <code>p2/</code> (Architect API / RAG) and <code>p3/</code> (Patch Loop) do NOT exist yet.
+                </li>
+                <li>
+                  <strong>Packaging Note:</strong> <code>Dockerfile</code> and <code>Makefile</code> have not yet been introduced in this early milestone.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 4: Architecture Flow
+           =================================================================== -->
+      <section class="slide" data-title="Architecture Pipeline">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Data Flow</span>
+            <div class="slide-title-group">
+              <h2>Part 1 Architecture &amp; Data Pipeline</h2>
+              <p>End-to-end flow from target disk files to vector persistence and dashboard</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Modular Design</span>
+          </div>
+        </div>
+
+        <div class="pipeline-flow" style="margin-top: 10px;">
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">Step 01</span>
+              <span class="node-title">Target Directory</span>
+              <span class="node-file">demo_app/</span>
+              <span class="node-desc">Source files to index and synchronize</span>
+            </div>
+            <span class="flow-arrow">&rarr;</span>
+            <div class="flow-node">
+              <span class="node-num">Step 02</span>
+              <span class="node-title">Filter &amp; Hash Check</span>
+              <span class="node-file">indexer.py:should_ignore_path</span>
+              <span class="node-desc">Prunes caches, git, venv, binaries; compares SHA-256</span>
+            </div>
+            <span class="flow-arrow">&rarr;</span>
+            <div class="flow-node">
+              <span class="node-num">Step 03</span>
+              <span class="node-title">Logical AST Chunking</span>
+              <span class="node-file">chunker.py:ASTChunker</span>
+              <span class="node-desc">Splits into functions, methods, classes with line numbers</span>
+            </div>
+          </div>
+
+          <div style="text-align: center; color: var(--text-dim); font-size: 16px; margin: -2px 0;">&darr;</div>
+
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">Step 04</span>
+              <span class="node-title">Dense Embeddings</span>
+              <span class="node-file">db.py:VectorDB</span>
+              <span class="node-desc"><code>all-MiniLM-L6-v2</code> computes 384d vectors offline</span>
+            </div>
+            <span class="flow-arrow">&rarr;</span>
+            <div class="flow-node">
+              <span class="node-num">Step 05</span>
+              <span class="node-title">Persistent Vector DB</span>
+              <span class="node-file">.chroma_db/</span>
+              <span class="node-desc">ChromaDB stores documents, embeddings &amp; metadata</span>
+            </div>
+            <span class="flow-arrow">&rarr;</span>
+            <div class="flow-node">
+              <span class="node-num">Step 06</span>
+              <span class="node-title">Watcher &amp; Dashboard</span>
+              <span class="node-file">watcher.py &bull; dashboard.py</span>
+              <span class="node-desc">0.5s debounced sync, polling fallback &amp; live SSE feed</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 5: Logical Chunking — Concept & Architecture
+           =================================================================== -->
+      <section class="slide" data-title="Logical Chunking Concept">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Chunking Engine</span>
+            <div class="slide-title-group">
+              <h2>Logical Code Chunking: AST vs. Fixed Size</h2>
+              <p>Why character slicing destroys code context and how AST preserves syntax</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">chunker.py</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                Fixed-Size Chunking (Rejected)
+              </span>
+              <span class="card-badge badge-rose">Naive 500 Chars</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Cuts Functions Arbitrarily:</strong> Blind character boundaries split function headers from their bodies or return statements.</li>
+                <li><strong>Destroys Syntax:</strong> Emits incomplete code fragments with unmatched parentheses and dangling indentation.</li>
+                <li><strong>Loses Parameter Signatures:</strong> The AI retriever might fetch only lines 10-15 without knowing what arguments the function takes.</li>
+                <li><strong>Subject Violation:</strong> Chapter VI.1 explicitly states that fixed-size chunking fails this part.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                ASTChunker in IoC (Implemented)
+              </span>
+              <span class="card-badge badge-emerald">Python AST</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Tree Parsing:</strong> Uses Python's built-in <code>ast.parse()</code> to discover exact syntactic nodes: functions, classes, and methods.</li>
+                <li><strong>Decorator Safety:</strong> <code>_get_start_line_with_decorators()</code> groups <code>@staticmethod</code> or decorators with their function.</li>
+                <li><strong>Symbol Hierarchy:</strong> Detects classes and treats each method as a separate, self-contained chunk (e.g. <code>Calculator.add</code>).</li>
+                <li><strong>Exact Line Ranges:</strong> Attaches 1-indexed <code>start_line</code> and <code>end_line</code> for pinpoint line accuracy.</li>
+                <li><strong>Fallback:</strong> Regex double-newline <code>FallbackChunker</code> for non-Python or syntax-broken files.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 6: Chunking in Action — Concrete Walkthrough
+           =================================================================== -->
+      <section class="slide" data-title="Chunking Walkthrough">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">AST in Action</span>
+            <div class="slide-title-group">
+              <h2>Chunking in Action: demo_app/calculator.py</h2>
+              <p>Concrete input-to-output demonstration of AST splitting in this repository</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Live Code Example</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                Raw Input: demo_app/calculator.py
+              </span>
+              <span class="card-badge badge-cyan">38 Lines on Disk</span>
+            </div>
+            <div class="code-box" style="font-size: 11px; max-height: 280px;">
+<span class="token-comm"># demo_app/calculator.py</span>
+<span class="token-num">01:</span> <span class="token-str">"""Calculator module for demo app."""</span>
+<span class="token-num">06:</span> <span class="token-kw">from</span> typing <span class="token-kw">import</span> Union
+<span class="token-num">09:</span> <span class="token-kw">class</span> <span class="token-cls">Calculator</span>:
+<span class="token-num">10:</span>     <span class="token-str">"""A simple arithmetic calculator."""</span>
+<span class="token-num">11:</span>     <span class="token-kw">def</span> <span class="token-fn">__init__</span>(self, precision: int = 2): ...
+<span class="token-num">16:</span>     <span class="token-kw">def</span> <span class="token-fn">add</span>(self, a: float, b: float) -> float:
+<span class="token-num">17:</span>         <span class="token-str">"""Return sum rounded to precision."""</span>
+<span class="token-num">18:</span>         <span class="token-kw">return</span> round(a + b, self.precision)
+<span class="token-num">20:</span>     <span class="token-kw">def</span> <span class="token-fn">subtract</span>(self, a, b): ...
+<span class="token-num">24:</span>     <span class="token-kw">def</span> <span class="token-fn">multiply</span>(self, a, b): ...
+<span class="token-num">28:</span>     <span class="token-kw">def</span> <span class="token-fn">divide</span>(self, a, b): ...
+<span class="token-num">34:</span>     <span class="token-kw">def</span> <span class="token-fn">power</span>(self, base, exp): ...
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+              Single contiguous file containing module docs, class doc, and 6 methods.
+            </div>
+          </div>
+
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                Resulting AST Chunks (Output)
+              </span>
+              <span class="card-badge badge-emerald">8 Semantic Chunks</span>
+            </div>
+            <div style="overflow-y: auto; max-height: 290px; padding-right: 4px;">
+              <div class="chunk-item-card">
+                <div class="chunk-item-title">
+                  <span>1. &lt;module&gt; (Lines 1–8)</span>
+                  <span class="badge-dim card-badge">module</span>
+                </div>
+                <div class="chunk-item-desc">Top-level docstring &amp; imports before the first class.</div>
+              </div>
+
+              <div class="chunk-item-card">
+                <div class="chunk-item-title">
+                  <span>2. Calculator (Lines 9–10)</span>
+                  <span class="badge-dim card-badge">class</span>
+                </div>
+                <div class="chunk-item-desc">Class declaration &amp; precision docstring.</div>
+              </div>
+
+              <div class="chunk-item-card" style="border-left-color: var(--emerald);">
+                <div class="chunk-item-title">
+                  <span style="color:var(--emerald);">3. Calculator.add (Lines 16–18)</span>
+                  <span class="badge-emerald card-badge">method</span>
+                </div>
+                <div class="chunk-item-desc"><code>def add(self, a, b): return round(a + b, self.precision)</code></div>
+              </div>
+
+              <div class="chunk-item-card" style="border-left-color: var(--cyan);">
+                <div class="chunk-item-title">
+                  <span style="color:var(--cyan);">4. Calculator.divide (Lines 28–32)</span>
+                  <span class="badge-cyan card-badge">method</span>
+                </div>
+                <div class="chunk-item-desc">Complete method with zero-division check &amp; error raising.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 7: Visual Vectorization — From Code to 384d Vector
+           =================================================================== -->
+      <section class="slide" data-title="Visual Vectorization">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Embedding Engine</span>
+            <div class="slide-title-group">
+              <h2>Visual Vectorization: From Code to 384d Vector</h2>
+              <p>How the neural model turns raw Python characters into geometric spatial coordinates</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">all-MiniLM-L6-v2</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                The Mathematical Transformation
+              </span>
+              <span class="card-badge badge-cyan">Transformer</span>
+            </div>
+            <div class="card-content" style="display:flex; flex-direction:column; gap:10px;">
+              <div>
+                <div style="font-size:11px; color:var(--text-dim); margin-bottom:3px; font-family:var(--font-mono);">1. INPUT: Raw Chunk Text</div>
+                <div class="code-box" style="padding:6px 10px; font-size:11px;">"def add(self, a, b): return round(a + b, self.precision)"</div>
+              </div>
+
+              <div style="text-align:center; color:var(--cyan); font-size:14px; margin:-4px 0;">&darr; <em>Tokenize &amp; 6-Layer Transformer</em></div>
+
+              <div>
+                <div style="font-size:11px; color:var(--text-dim); margin-bottom:3px; font-family:var(--font-mono);">2. OUTPUT: 384-Dimensional Dense Vector</div>
+                <div class="vector-stream">
+                  <span class="vec-dim">d0: +0.0412</span>
+                  <span class="vec-dim">d1: -0.0189</span>
+                  <span class="vec-dim">d2: +0.0831</span>
+                  <span class="vec-dim">d3: -0.0054</span>
+                  <span class="vec-dots">&bull;&bull;&bull;</span>
+                  <span class="vec-dim">d383: +0.0719</span>
+                </div>
+              </div>
+
+              <div style="font-size:11.5px; color:var(--text-muted); background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:8px 10px;">
+                <strong style="color:var(--text-main);">What is this vector?</strong> It is a spatial coordinate in 384 dimensions. Code with similar functional intent (e.g. arithmetic math) points in nearly identical directions!
+              </div>
+            </div>
+          </div>
+
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                Semantic Clustering in Vector Space
+              </span>
+              <span class="card-badge badge-emerald">Cosine Space</span>
+            </div>
+            <div class="semantic-map-box">
+              <div class="cluster-group" style="border-color: rgba(56, 189, 248, 0.4);">
+                <div class="cluster-title">
+                  <span style="color:var(--cyan);">Cluster 1: Arithmetic Operations</span>
+                  <span style="color:var(--text-dim);">Cosine distance &lt; 0.20</span>
+                </div>
+                <div class="cluster-pills">
+                  <span class="point-pill math">Calculator.add</span>
+                  <span class="point-pill math">Calculator.subtract</span>
+                  <span class="point-pill math">Calculator.multiply</span>
+                  <span class="point-pill math">Calculator.divide</span>
+                </div>
+              </div>
+
+              <div class="cluster-group" style="border-color: rgba(168, 85, 247, 0.4);">
+                <div class="cluster-title">
+                  <span style="color:#c084fc;">Cluster 2: Formatting &amp; Output</span>
+                  <span style="color:var(--text-dim);">Cosine distance &lt; 0.22</span>
+                </div>
+                <div class="cluster-pills">
+                  <span class="point-pill format">format_currency</span>
+                  <span class="point-pill format">format_percentage</span>
+                  <span class="point-pill format">ResultFormatter.to_json</span>
+                </div>
+              </div>
+
+              <div class="cluster-group" style="border-color: rgba(52, 211, 153, 0.4); margin-bottom: 0;">
+                <div class="cluster-title">
+                  <span style="color:var(--emerald);">Cluster 3: Orchestration</span>
+                  <span style="color:var(--text-dim);">Bridges math + format</span>
+                </div>
+                <div class="cluster-pills">
+                  <span class="point-pill entry">calculate_tax</span>
+                  <span class="point-pill entry">run_demo</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 8: Inside ChromaDB — Tables & HNSW Graph
+           =================================================================== -->
+      <section class="slide" data-title="Inside ChromaDB">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Database Storage</span>
+            <div class="slide-title-group">
+              <h2>Inside ChromaDB: Persistent Tables &amp; HNSW Index</h2>
+              <p>How vectors, source text, and metadata are persisted inside .chroma_db/</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">chroma.sqlite3</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                Persistent Record Schema (SQLite Table)
+              </span>
+              <span class="card-badge badge-emerald">Storage Schema</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="db-mock-table">
+                <thead>
+                  <tr>
+                    <th>Chunk ID (Key)</th>
+                    <th>Document (Snippet)</th>
+                    <th>Metadata (JSON)</th>
+                    <th>Vector</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="color:var(--cyan);"><code>calc.py:add:16</code></td>
+                    <td><code>def add(self, a, b):...</code></td>
+                    <td><code>{"symbol":"add", "lines":"16-18"}</code></td>
+                    <td><span class="badge-cyan card-badge">[384d]</span></td>
+                  </tr>
+                  <tr>
+                    <td style="color:var(--cyan);"><code>calc.py:div:28</code></td>
+                    <td><code>def divide(self, a, b):...</code></td>
+                    <td><code>{"symbol":"divide", "lines":"28-32"}</code></td>
+                    <td><span class="badge-cyan card-badge">[384d]</span></td>
+                  </tr>
+                  <tr>
+                    <td style="#c084fc;"><code>form.py:curr:10</code></td>
+                    <td><code>def format_currency:...</code></td>
+                    <td><code>{"symbol":"currency", "lines":"10-13"}</code></td>
+                    <td><span class="badge-cyan card-badge">[384d]</span></td>
+                  </tr>
+                  <tr>
+                    <td style="color:var(--emerald);"><code>main.py:tax:17</code></td>
+                    <td><code>def calculate_tax:...</code></td>
+                    <td><code>{"symbol":"calculate_tax", "lines":"17-21"}</code></td>
+                    <td><span class="badge-cyan card-badge">[384d]</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+              Every record links its unique chunk ID to its raw source text, rich JSON line metadata, and high-dimensional vector.
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                HNSW Vector Graph Index
+              </span>
+              <span class="card-badge badge-amber">Sub-millisecond</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Hierarchical Navigable Small World (HNSW):</strong> Multi-layer graph connecting high-dimensional vector nodes.</li>
+                <li><strong>Cosine Distance (<code>hnsw:space: "cosine"</code>):</strong> Measures angular divergence ($1 - \cos(\theta)$):
+                  <div style="font-family:var(--font-mono); font-size:11px; color:var(--cyan); margin:4px 0;">
+                    &bull; Angle &asymp; 0&deg; &rarr; Identical / closely related meaning<br>
+                    &bull; Angle &asymp; 90&deg; &rarr; Unrelated code semantics
+                  </div>
+                </li>
+                <li><strong>Logarithmic Traversal:</strong> HNSW hops across high-layer expressways in $O(\log N)$ time instead of scanning all records.</li>
+                <li><strong>Local Filesystem:</strong> Persisted in <code>.chroma_db/</code>. 100% offline.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 8: How Indexing Works — Step-by-Step Pipeline
+           =================================================================== -->
+      <section class="slide" data-title="Indexing Walkthrough">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Indexing Engine</span>
+            <div class="slide-title-group">
+              <h2>How Indexing Works: From File to Vector</h2>
+              <p>The 4-stage lifecycle of a source file during the indexing process</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">indexer.py &bull; db.py</span>
+          </div>
+        </div>
+
+        <div class="grid-4" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                1. Read &amp; Filter
+              </span>
+              <span class="card-badge badge-cyan">Step 01</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Indexer encounters <code>calculator.py</code>.</li>
+                <li><code>should_ignore_path()</code> checks ignore rules (skips <code>.git</code>, <code>venv</code>, <code>.chroma_db</code>).</li>
+                <li><code>is_binary_file()</code> scans first 1024 bytes for <code>\x00</code> null bytes.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                2. Hash Check
+              </span>
+              <span class="card-badge badge-amber">Step 02</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Computes <code>compute_sha256(content)</code> on disk.</li>
+                <li>Compares against stored hash in <code>index_state.json</code>.</li>
+                <li><strong>If Match:</strong> Bypassed immediately (0ms).</li>
+                <li><strong>If Different:</strong> Continues to Step 3.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle></svg>
+                3. Embed Chunks
+              </span>
+              <span class="card-badge badge-cyan">Step 03</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Splits source into <code>CodeChunk</code> objects via AST.</li>
+                <li>Each chunk's text is passed to <code>all-MiniLM-L6-v2</code>.</li>
+                <li>Outputs a <strong>384-dimensional dense vector</strong> encoding the code semantics.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse></svg>
+                4. DB Upsert
+              </span>
+              <span class="card-badge badge-emerald">Step 04</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Old file vectors purged: <code>delete_file_chunks()</code>.</li>
+                <li>Inserts document text, embeddings &amp; line metadata.</li>
+                <li>Saves new SHA-256 hash in <code>index_state.json</code>.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 9: Incremental Indexing — 3 Scenarios
+           =================================================================== -->
+      <section class="slide" data-title="Incremental Scenarios">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Change Detection</span>
+            <div class="slide-title-group">
+              <h2>Incremental Synchronization: 3 Simple Scenarios</h2>
+              <p>Concrete examples of how the indexer handles unchanged, modified, and deleted files</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">indexer.py</span>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Case A: Unchanged File
+              </span>
+              <span class="card-badge badge-cyan">Fast Skip</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Disk hash == <code>index_state.json</code> hash.</li>
+                <li><strong>Action:</strong> Skipped immediately.</li>
+                <li><strong>Cost:</strong> 0 embeddings, 0 DB writes, ~0.1ms compute.</li>
+                <li><em>Example:</em> <code>formatter.py</code> hasn't been edited &rarr; bypassed completely.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                Case B: Modified File
+              </span>
+              <span class="card-badge badge-emerald">Upsert</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Disk hash &ne; <code>index_state.json</code> hash.</li>
+                <li><strong>Step 1:</strong> <code>delete_file_chunks(path)</code> wipes old vectors for this file only.</li>
+                <li><strong>Step 2:</strong> Re-chunks &amp; <code>upsert_chunks()</code> embeds fresh vectors.</li>
+                <li><strong>Step 3:</strong> Updates new hash in state file.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                Case C: Deleted File
+              </span>
+              <span class="card-badge badge-rose">Purge</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>File was tracked but now absent from disk.</li>
+                <li><strong>Action:</strong> <code>delete_file_chunks(path)</code> purges all chunk IDs from ChromaDB.</li>
+                <li>Purges key from <code>index_state.json</code>.</li>
+                <li><strong>Result:</strong> Zero dead vectors or phantom symbols.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 12px; background: var(--bg-code); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-family: var(--font-mono);">
+          <span style="color:var(--text-muted);"><strong style="color:var(--cyan);">Pipeline:</strong> Read File</span>
+          <span style="color:var(--text-dim);">&rarr;</span>
+          <span style="color:var(--text-muted);">Compute SHA-256</span>
+          <span style="color:var(--text-dim);">&rarr;</span>
+          <span style="color:var(--text-muted);">Compare Hash State</span>
+          <span style="color:var(--text-dim);">&rarr;</span>
+          <span style="color:var(--emerald);">&check; Atomic ChromaDB Update</span>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 8: Watch Mode & Synchronization
+           =================================================================== -->
+      <section class="slide" data-title="Watch Mode">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Filesystem Watcher</span>
+            <div class="slide-title-group">
+              <h2>Watch Mode &amp; Real-Time Synchronization</h2>
+              <p>Debounced event handling with a dedicated Docker polling fallback</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">watcher.py</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                Event Handling &amp; Debounce Engine
+              </span>
+              <span class="card-badge badge-cyan">Watchdog</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Handler:</strong> <code>CodebaseChangeHandler</code> catches <code>on_modified</code>, <code>on_created</code>, <code>on_deleted</code>, and <code>on_moved</code>.</li>
+                <li><strong>Debounce Window (0.5s):</strong> Coalesces rapid sequential disk writes (e.g. editor temp files and auto-save bursts) to prevent indexing churn.</li>
+                <li><strong>Worker Loop:</strong> <code>_process_pending_loop</code> runs on a background daemon thread, processing ready events sequentially.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                Polling Fallback Loop (Subject Requirement)
+              </span>
+              <span class="card-badge badge-amber">Overlayfs Safe</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Why it exists:</strong> On container filesystems (Docker bind mounts, btrfs, overlayfs), <code>inotify</code> can silently drop file events.</li>
+                <li><strong>Implementation:</strong> <code>_polling_fallback_loop</code> executes every 10 seconds in the background.</li>
+                <li><strong>Mechanism:</strong> Triggers an incremental <code>indexer.index_all()</code> scan, guaranteeing eventual consistency if inotify drops an event.</li>
+                <li><strong>Activity Buffer:</strong> Ring buffer (max 100 logs) feeds SSE live broadcasts.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 9: Exclusions & Safety Rules
+           =================================================================== -->
+      <section class="slide" data-title="Exclusions & Safety">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Safety Rules</span>
+            <div class="slide-title-group">
+              <h2>Exclusions &amp; Self-Referential Loop Defense</h2>
+              <p>Preventing index contamination, infinite watcher feedback, and binary bloat</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Subject Rule VI.1</span>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                Ignored Directories
+              </span>
+              <span class="card-badge badge-rose">Filtered</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><code>.git</code> (VCS internal data)</li>
+                <li><code>node_modules</code> (Vendor libraries)</li>
+                <li><code>dist</code>, <code>build</code> (Artifacts)</li>
+                <li><code>venv</code>, <code>.venv</code>, <code>env</code>, <code>.env</code></li>
+                <li><code>__pycache__</code>, <code>.pytest_cache</code></li>
+                <li>Hidden directories (starting with <code>.</code>)</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                Vector DB Loop Prevention
+              </span>
+              <span class="card-badge badge-amber">Critical Rule</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>The Danger:</strong> If the vector database folder is watched, ChromaDB writes trigger the watcher, causing an infinite indexing loop!</li>
+                <li><strong>The Defense:</strong> <code>should_ignore_path()</code> explicitly excludes <code>.chroma</code>, <code>.chroma_db</code>, and the configured DB path.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                Binary File Protection
+              </span>
+              <span class="card-badge badge-cyan">Content Check</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Extension filter:</strong> <code>.pyc</code>, <code>.so</code>, <code>.dll</code>, <code>.exe</code>, <code>.png</code>, <code>.jpg</code>, <code>.pdf</code>, <code>.zip</code>, <code>.safetensors</code>, <code>.gguf</code>.</li>
+                <li><strong>Null-byte detection:</strong> <code>is_binary_file()</code> scans first 1024 bytes for <code>\x00</code> to prevent parsing non-text binaries.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 10: Overview Dashboard
+           =================================================================== -->
+      <section class="slide" data-title="Overview Dashboard">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Dashboard</span>
+            <div class="slide-title-group">
+              <h2>Part 1 Overview Dashboard &amp; REST Endpoints</h2>
+              <p>Self-contained FastAPI application exposing index health and live SSE events</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">dashboard.py</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                Implemented REST &amp; SSE Endpoints
+              </span>
+              <span class="card-badge badge-cyan">FastAPI</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><code>GET /api/status</code>: Returns total chunks, file count, embedding model, and watcher state.</li>
+                <li><code>GET /api/files</code>: Returns sorted list of all indexed files and chunk tallies.</li>
+                <li><code>GET /api/file?path=...</code>: Returns detailed chunk boundaries and symbol data.</li>
+                <li><code>GET /api/activity</code>: Returns recent watcher activity snapshot.</li>
+                <li><code>GET /events</code>: <strong>Server-Sent Events (SSE)</strong> real-time event stream.</li>
+                <li><code>GET /</code>: Embedded offline dark-mode UI (Figure VI.1 from Subject).</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                Dashboard UI Concepts &amp; Boundaries
+              </span>
+              <span class="card-badge badge-emerald">UI Structure</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Live Metric Cards:</strong> Indexed Chunk Count, Source Files Count, Embedding Model (<code>all-MiniLM-L6-v2</code>), LLM Model (<code>qwen2.5:3b</code>).</li>
+                <li><strong>File Breakdown Table:</strong> Path, chunk count, and synchronization status.</li>
+                <li><strong>Live Watcher Feed:</strong> Real-time event log with color badges for <code>MODIFIED</code>, <code>DELETED</code>, <code>POLL_SYNC</code>, <code>WATCHER_START</code>.</li>
+                <li><strong>Phase Boundaries:</strong> P1 Overview tab active; P2 (Ask &amp; Retrieve) and P3 (Patch Loop) tabs are visibly disabled.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 11: Subject Compliance Checklist
+           =================================================================== -->
+      <section class="slide" data-title="Subject Compliance">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Subject Audit</span>
+            <div class="slide-title-group">
+              <h2>Part 1 — What is Already Satisfied?</h2>
+              <p>Honest comparison of implemented codebase against 42 Subject Chapter VI.1</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Audited</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 10px;">
+          <table class="compliance-table">
+            <thead>
+              <tr>
+                <th style="width: 38%;">Requirement (Subject Chapter VI.1)</th>
+                <th style="width: 20%;">Implementation File</th>
+                <th style="width: 18%;">Status</th>
+                <th style="width: 24%;">Verification Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Logical AST-based code chunking</td>
+                <td><code>p1/chunker.py</code></td>
+                <td><span class="status-tag done">&check; Implemented</span></td>
+                <td>ASTChunker extracts functions/classes/methods</td>
+              </tr>
+              <tr>
+                <td>Local embeddings (all-MiniLM-L6-v2)</td>
+                <td><code>p1/db.py</code></td>
+                <td><span class="status-tag done">&check; Implemented</span></td>
+                <td>Offline sentence-transformers, 384d vectors</td>
+              </tr>
+              <tr>
+                <td>ChromaDB PersistentClient storage</td>
+                <td><code>p1/db.py</code></td>
+                <td><span class="status-tag done">&check; Implemented</span></td>
+                <td>Cosine distance, persistent to <code>.chroma_db</code></td>
+              </tr>
+              <tr>
+                <td>Incremental reindexing (SHA-256)</td>
+                <td><code>p1/indexer.py</code></td>
+                <td><span class="status-tag done">&check; Implemented</span></td>
+                <td>Hash comparison skips unchanged files</td>
+              </tr>
+              <tr>
+                <td>Deletion handling (vector removal)</td>
+                <td><code>p1/indexer.py</code></td>
+                <td><span class="status-tag done">&check; Implemented</span></td>
+                <td><code>delete_file_chunks</code> removes orphaned vectors</td>
+              </tr>
+              <tr>
+                <td>Exclusion rules &amp; DB self-exclusion</td>
+                <td><code>p1/indexer.py</code></td>
+                <td><span class="status-tag done">&check; Implemented</span></td>
+                <td>Filters git, venv, caches, binaries &amp; <code>.chroma_db</code></td>
+              </tr>
+              <tr>
+                <td>Watch mode with debounce &amp; polling fallback</td>
+                <td><code>p1/watcher.py</code></td>
+                <td><span class="status-tag done">&check; Implemented</span></td>
+                <td>0.5s debounce + 10s overlayfs polling thread</td>
+              </tr>
+              <tr>
+                <td>Overview Dashboard with SSE stream</td>
+                <td><code>p1/dashboard.py</code></td>
+                <td><span class="status-tag done">&check; Implemented</span></td>
+                <td>FastAPI + SSE live stream matching Fig VI.1</td>
+              </tr>
+              <tr>
+                <td>Target Demo Application</td>
+                <td><code>demo_app/</code></td>
+                <td><span class="status-tag done">&check; Implemented</span></td>
+                <td>3 files: <code>calculator.py</code>, <code>formatter.py</code>, <code>main.py</code></td>
+              </tr>
+              <tr>
+                <td>Docker environment &amp; Root Makefile</td>
+                <td>Repository root</td>
+                <td><span class="status-tag not-done">&cross; Not Yet Done</span></td>
+                <td>Planned for integration phase</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 12: Final Summary & Next Steps
+           =================================================================== -->
+      <section class="slide" data-title="Summary & Next Steps">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Conclusion</span>
+            <div class="slide-title-group">
+              <h2>Current Part 1 Status &amp; Next Steps</h2>
+              <p>Summary of completed foundation and roadmap for Part 2</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Roadmap</span>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                What Works Today
+              </span>
+              <span class="card-badge badge-emerald">Part 1 Done</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Complete offline codebase indexing pipeline.</li>
+                <li>Accurate semantic AST chunking preserving line ranges and decorators.</li>
+                <li>ChromaDB vector persistence with SHA-256 incremental synchronization.</li>
+                <li>Real-time watcher with debounce and polling fallback.</li>
+                <li>FastAPI Overview Dashboard with live SSE feed.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                What This Enables
+              </span>
+              <span class="card-badge badge-cyan">Solid Ground</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Guarantees the vector index never drifts from disk during code edits.</li>
+                <li>Provides high-fidelity, line-bounded code blocks for future retrieval.</li>
+                <li>Ensures zero cloud exposure, fully satisfying 42 local execution rules.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Next Milestones
+              </span>
+              <span class="card-badge badge-amber">Upcoming</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Part 2: Architect API &amp; RAG</strong>
+                  <br>&bull; Endpoints: <code>POST /context</code> and <code>POST /ask</code>
+                  <br>&bull; Local Ollama orchestration (<code>qwen2.5:3b</code>)
+                  <br>&bull; Hybrid retrieval &amp; Ask UI
+                </li>
+                <li><strong>Part 3: Patch Loop</strong>
+                  <br>&bull; Structured patch JSON generation
+                  <br>&bull; Validation &amp; atomic rollback
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div> <!-- /slides-wrapper -->
+
+    <!-- ===================================================================
+         Presentation Footer Controls
+         =================================================================== -->
+    <footer class="deck-footer">
+      <div class="footer-left">
+        <span class="key-hint"><span class="kbd">&larr;</span> / <span class="kbd">&rarr;</span> Navigate</span>
+        <span class="key-hint"><span class="kbd">Space</span> Next</span>
+        <span class="key-hint"><span class="kbd">F</span> Fullscreen</span>
+        <span class="key-hint"><span class="kbd">O</span> Overview</span>
+      </div>
+
+      <div class="footer-center">
+        <button class="nav-btn" id="btnPrev" title="Previous slide (Left Arrow)">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <span class="slide-counter" id="slideCounter">01 / 12</span>
+        <button class="nav-btn" id="btnNext" title="Next slide (Right Arrow / Space)">
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+
+      <div class="footer-right">
+        <button class="nav-btn" id="btnOverview" title="Slide Overview Grid (O)">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </button>
+        <button class="nav-btn" id="btnFullscreen" title="Toggle Fullscreen (F)">
+          <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+        </button>
+      </div>
+    </footer>
+
+    <!-- ===================================================================
+         Slide Overview / Thumbnails Modal (Toggle with 'O')
+         =================================================================== -->
+    <div id="overview-modal">
+      <div class="overview-header">
+        <h3>Slide Overview (Press Esc or O to close)</h3>
+        <button class="nav-btn" id="btnCloseOverview" title="Close overview">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="overview-grid" id="overviewGrid">
+        <!-- Injected dynamically by script.js -->
+      </div>
+    </div>
+
+  </div> <!-- /deck-container -->
+</div> <!-- /deck-viewport -->
+
+<script src="script.js"></script>
+</body>
+</html>
+
