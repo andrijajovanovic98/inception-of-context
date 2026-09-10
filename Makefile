@@ -91,10 +91,16 @@ ensure-deps: ensure-venv
 		> $(IOC_DIR)/run.sh
 	@chmod +x $(IOC_DIR)/run.sh
 
-# Fast preflight for make p1 (no pip reinstall, no model re-pull if present)
-ensure-ready: ensure-venv
-	@$(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers" 2>/dev/null \
-		|| { echo "[!] Runtime deps missing. Run: make setup"; exit 1; }
+# Fast preflight for make p1 (no pip install, no empty venv creation)
+ensure-ready:
+	@if [ ! -x "$(VENV)/bin/pip" ] \
+		|| ! $(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers" 2>/dev/null; then \
+		echo "[!] IoC runtime not ready under $(IOC_DIR) (missing after fclean, or never set up)."; \
+		echo "    1) make setup"; \
+		echo "    2) make p1"; \
+		exit 1; \
+	fi
+	@echo "[*] Runtime ready: $(VENV)"
 
 ensure-ollama: ensure-dirs
 	@command -v ollama >/dev/null 2>&1 || { echo "ollama not found in PATH"; exit 1; }
