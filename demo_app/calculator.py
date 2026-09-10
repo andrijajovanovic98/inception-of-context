@@ -3,6 +3,8 @@ Calculator module for the demo application.
 Provides arithmetic operations with configurable precision.
 """
 
+from typing import Union  # noqa: F401
+
 
 class Calculator:
     """A simple arithmetic calculator with configurable floating point precision."""
