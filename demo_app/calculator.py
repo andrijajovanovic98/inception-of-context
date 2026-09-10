@@ -3,8 +3,6 @@ Calculator module for the demo application.
 Provides arithmetic operations with configurable precision.
 """
 
-from typing import Union
-
 
 class Calculator:
     """A simple arithmetic calculator with configurable floating point precision."""
@@ -34,4 +32,3 @@ class Calculator:
     def power(self, base: float, exp: float) -> float:
         """Return base raised to the power of exp."""
         return round(base ** exp, self.precision)
-

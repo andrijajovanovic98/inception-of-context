@@ -1,0 +1,2532 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inception-of-Context &mdash; 1. rész: Indexelés és szinkronizáció</title>
+  <style>
+/* ==========================================================================
+   Inception-of-Context (IoC) &mdash; Part 1 Presentation Stylesheet
+   Modern 16:9 Dark Technical Slide Deck (100% Local & Self-Contained)
+   ========================================================================== */
+
+:root {
+  --bg-canvas: #070a11;
+  --bg-slide: #0d1322;
+  --bg-card: #131c31;
+  --bg-card-hover: #192542;
+  --bg-code: #090d17;
+  
+  --border-subtle: #1e2c4a;
+  --border-strong: #2e4370;
+  --border-glow: rgba(56, 189, 248, 0.25);
+  
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  
+  --cyan: #38bdf8;
+  --cyan-glow: rgba(56, 189, 248, 0.15);
+  --emerald: #34d399;
+  --emerald-glow: rgba(52, 211, 153, 0.15);
+  --amber: #fbbf24;
+  --amber-glow: rgba(251, 191, 36, 0.15);
+  --rose: #f43f5e;
+  --rose-glow: rgba(244, 63, 94, 0.15);
+  --indigo: #818cf8;
+  --indigo-glow: rgba(129, 140, 248, 0.15);
+  
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-canvas);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   Presentation Viewport & 16:9 Aspect Ratio Frame
+   ========================================================================== */
+#deck-viewport {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  background: radial-gradient(circle at 50% 30%, #111a33 0%, #070a11 85%);
+  padding: 16px;
+}
+
+#deck-container {
+  width: min(96vw, calc(92vh * 16 / 9));
+  height: min(92vh, calc(96vw * 9 / 16));
+  aspect-ratio: 16 / 9;
+  background-color: var(--bg-slide);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top Progress Bar */
+.progress-bar-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  z-index: 50;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--cyan), var(--emerald));
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 8px var(--cyan);
+}
+
+/* Header strip inside slide */
+.slide-header {
+  height: 64px;
+  min-height: 64px;
+  padding: 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(13, 19, 34, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.slide-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ioc-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  background: var(--cyan-glow);
+  color: var(--cyan);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+.slide-title-group h2 {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+}
+
+.slide-title-group p {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.slide-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-tag {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   Slide Content Arena
+   ========================================================================== */
+.slides-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  padding: 24px 36px 14px;
+}
+
+.slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 24px 36px 14px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.985) translateY(8px);
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.28s;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.slide.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: scale(1) translateY(0);
+}
+
+/* ==========================================================================
+   Footer & Navigation Bar
+   ========================================================================== */
+.deck-footer {
+  height: 50px;
+  min-height: 50px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(10, 15, 27, 0.85);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.footer-left, .footer-center, .footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.key-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.kbd {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--cyan);
+}
+
+.slide-counter {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  letter-spacing: 1px;
+}
+
+.nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.nav-btn:hover {
+  background: var(--cyan-glow);
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.nav-btn:active {
+  transform: scale(0.95);
+}
+
+.nav-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ==========================================================================
+   Slide Content Elements: Cards, Grids, Badges, Tables
+   ========================================================================== */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  height: 100%;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  height: 100%;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  height: 100%;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.card.glow-cyan {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-emerald {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-amber {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-rose {
+  border-color: rgba(244, 63, 94, 0.4);
+  background: linear-gradient(180deg, rgba(244, 63, 94, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--cyan);
+}
+
+.card-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-cyan { background: var(--cyan-glow); color: var(--cyan); border: 1px solid rgba(56, 189, 248, 0.3); }
+.badge-emerald { background: var(--emerald-glow); color: var(--emerald); border: 1px solid rgba(52, 211, 153, 0.3); }
+.badge-amber { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.3); }
+.badge-rose { background: var(--rose-glow); color: var(--rose); border: 1px solid rgba(244, 63, 94, 0.3); }
+.badge-dim { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+.card-content {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.card-content ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.card-content li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  position: relative;
+}
+
+.card-content li::before {
+  content: "›";
+  color: var(--cyan);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.card-content strong {
+  color: var(--text-main);
+}
+
+.code-box {
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: #cbd5e1;
+  line-height: 1.45;
+  overflow-x: auto;
+  position: relative;
+}
+
+.code-box code {
+  font-family: inherit;
+}
+
+.token-kw { color: #f43f5e; font-weight: 600; }
+.token-fn { color: #38bdf8; }
+.token-str { color: #34d399; }
+.token-num { color: #fbbf24; }
+.token-comm { color: #64748b; font-style: italic; }
+.token-cls { color: #a78bfa; font-weight: 600; }
+
+/* ==========================================================================
+   Slide 1: Title Hero Slide
+   ========================================================================= */
+.slide-title-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  gap: 18px;
+  padding: 10px 30px;
+}
+
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--cyan);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.hero-pill .pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--emerald);
+  box-shadow: 0 0 8px var(--emerald);
+}
+
+.hero-title {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--cyan);
+  letter-spacing: -0.3px;
+}
+
+.hero-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 660px;
+  line-height: 1.5;
+}
+
+.hero-specs {
+  display: flex;
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.spec-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  min-width: 140px;
+}
+
+.spec-item .spec-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.spec-item .spec-value {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   Slide 4: Architecture Pipeline Flowchart
+   ========================================================================== */
+.pipeline-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  justify-content: center;
+}
+
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.flow-node {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.flow-node:hover {
+  transform: translateY(-2px);
+  border-color: var(--cyan);
+}
+
+.flow-node .node-num {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--cyan);
+  text-transform: uppercase;
+}
+
+.flow-node .node-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.flow-node .node-file {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--emerald);
+  background: rgba(52, 211, 153, 0.08);
+  padding: 2px 5px;
+  border-radius: 4px;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.flow-node .node-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.flow-arrow {
+  color: var(--text-dim);
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Tables & Checklists
+   ========================================================================== */
+.compliance-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.compliance-table th {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: left;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.compliance-table td {
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+}
+
+.compliance-table tr:last-child td {
+  border-bottom: none;
+}
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.status-tag.done {
+  background: var(--emerald-glow);
+  color: var(--emerald);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.status-tag.pending {
+  background: var(--amber-glow);
+  color: var(--amber);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.status-tag.not-done {
+  background: var(--rose-glow);
+  color: var(--rose);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+/* ==========================================================================
+   File Tree Component
+   ========================================================================== */
+.file-tree {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  color: #cbd5e1;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.tree-folder {
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+.tree-file {
+  color: #f1f5f9;
+}
+
+.tree-file-highlight {
+  color: var(--emerald);
+  font-weight: 600;
+}
+
+.tree-note {
+  color: var(--text-dim);
+  font-size: 10.5px;
+  margin-left: 6px;
+}
+
+/* ==========================================================================
+   Thumbnails / Overview Modal
+   ========================================================================== */
+#overview-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(7, 10, 17, 0.94);
+  backdrop-filter: blur(12px);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  padding: 24px 30px;
+}
+
+#overview-modal.open {
+  display: flex;
+}
+
+.overview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.overview-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 6px;
+}
+
+.thumb-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.thumb-card:hover, .thumb-card.active-thumb {
+  border-color: var(--cyan);
+  background: var(--bg-card-hover);
+  box-shadow: 0 0 12px var(--cyan-glow);
+}
+
+.thumb-num {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+.thumb-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+/* ==========================================================================
+   Detailed Walkthrough & Scenario Helpers
+   ========================================================================== */
+.chunk-item-card {
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--cyan);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.chunk-item-card:last-child {
+  margin-bottom: 0;
+}
+
+.chunk-item-title {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-main);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.chunk-item-desc {
+  color: var(--text-dim);
+  font-size: 10.5px;
+}
+
+.tag-skip {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--cyan);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.tag-update {
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--emerald);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.tag-purge {
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--rose);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+/* ==========================================================================
+   Visual Transformation Pipeline & Vector / DB Storage Graphics
+   ========================================================================== */
+.vector-stream {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #050811;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow-x: auto;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.vec-dim {
+  color: var(--cyan);
+  background: rgba(56, 189, 248, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  white-space: nowrap;
+}
+
+.vec-dots {
+  color: var(--text-dim);
+  letter-spacing: 2px;
+}
+
+.db-mock-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  background: #060913;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.db-mock-table th {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--cyan);
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.db-mock-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: #cbd5e1;
+}
+
+.semantic-map-box {
+  background: #050811;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.cluster-group {
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.cluster-title {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.cluster-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.point-pill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.point-pill.math {
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--cyan);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.point-pill.format {
+  background: rgba(168, 85, 247, 0.12);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.point-pill.entry {
+  background: rgba(52, 211, 153, 0.12);
+  color: var(--emerald);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+
+
+
+/* ===== Formatting consistency fixes ===== */
+.card-content {
+  word-spacing: normal;
+  letter-spacing: normal;
+  overflow-wrap: break-word;
+  hyphens: none;
+}
+
+.card-content li {
+  display: block;
+  position: relative;
+  padding-left: 14px;
+  gap: 0;
+  align-items: unset;
+}
+
+.card-content li::before {
+  content: "›";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--cyan);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.card-content code,
+.slide code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: rgba(56, 189, 248, 0.10);
+  color: var(--cyan);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+  word-break: keep-all;
+  display: inline;
+  vertical-align: baseline;
+  line-height: 1.35;
+}
+
+.code-box {
+  white-space: pre;
+  tab-size: 4;
+  line-height: 1.55;
+  overflow-x: auto;
+  overflow-y: auto;
+  word-spacing: normal;
+  letter-spacing: normal;
+}
+
+.code-line {
+  display: block;
+  white-space: pre;
+  min-height: 1.55em;
+}
+
+.code-line .token-num {
+  display: inline-block;
+  min-width: 2.2em;
+  margin-right: 0.45em;
+  color: var(--text-dim);
+  user-select: none;
+}
+
+/* Compact full-file listing: must come after .code-line so it wins */
+.code-box-fit {
+  font-size: 8.8px;
+  line-height: 1.1;
+  max-height: none;
+  overflow: visible;
+  padding: 5px 7px;
+}
+
+.code-box-fit .code-line {
+  min-height: 0;
+  height: auto;
+  line-height: 1.1;
+  margin: 0;
+  padding: 0;
+}
+
+.code-box-fit .code-line.code-line-blank {
+  height: 0.4em;
+  line-height: 0.4em;
+  min-height: 0.4em;
+}
+
+.code-box-fit .code-line .token-num {
+  min-width: 2em;
+  margin-right: 0.4em;
+}
+
+.file-tree {
+  white-space: normal; /* avoid blank lines from HTML newlines between rows */
+  word-spacing: normal;
+  letter-spacing: normal;
+  line-height: 1.45;
+}
+
+.file-tree > div {
+  white-space: pre; /* keep box-drawing spacing on each row only */
+  margin: 0;
+  padding: 0;
+  line-height: 1.45;
+}
+
+.MathJax, .mjx-chtml, mjx-container {
+  font-size: 105% !important;
+}
+
+  </style>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [["\\(", "\\)"], ["$", "$"]],
+        displayMath: [["\\[", "\\]"], ["$$", "$$"]]
+      },
+      options: { skipHtmlTags: ["script", "noscript", "style", "textarea", "pre", "code"] }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+<body>
+
+<div id="deck-viewport">
+  <div id="deck-container">
+    
+    <!-- Top Progress Bar -->
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Slides Wrapper -->
+    <div class="slides-wrapper">
+
+      <!-- ===================================================================
+           SLIDE 1: Title Slide
+           =================================================================== -->
+      <section class="slide active" data-title="Cím és áttekintés">
+        <div class="slide-title-hero">
+          <div class="hero-pill">
+            <span class="pulse-dot"></span>
+            <span>42 Beta-Test projekt &bull; AI-native mérnöki munka</span>
+          </div>
+
+          <h1 class="hero-title">Inception-of-Context</h1>
+          <h3 class="hero-subtitle">1. rész: Indexelés és szinkronizáció</h3>
+          
+          <p class="hero-desc">
+            Helyi kódbázisból szinkronizált, kereshető vektorindex szemantikus AST-darabolással,
+            helyi sűrű beágyazásokkal és valós idejű fájlrendszer-összehangolással.
+          </p>
+
+          <div class="hero-specs">
+            <div class="spec-item">
+              <span class="spec-label">Jelenlegi fázis</span>
+              <span class="spec-value" style="color:var(--emerald);">1. rész kész</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Vektoros tároló</span>
+              <span class="spec-value" style="color:var(--cyan);">ChromaDB tartós</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Beágyazási modell</span>
+              <span class="spec-value" style="color:var(--indigo);">all-MiniLM-L6-v2</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Futási mód</span>
+              <span class="spec-value" style="color:var(--amber);">100% offline / helyi</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 2: Goal of Part 1
+           =================================================================== -->
+      <section class="slide" data-title="Az 1. rész célja">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">1. rész fókusz</span>
+            <div class="slide-title-group">
+              <h2>Az 1. rész célja: Indexelés és szinkronizáció</h2>
+              <p>A kódintelligencia vektoros gerincének kialakítása</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Subject VI.1. fejezet</span>
+          </div>
+        </div>
+
+        <div class="grid-4" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                1. Kódfelfedezés
+              </span>
+              <span class="card-badge badge-cyan">Fájlrendszer</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Rekurzívan bejárja a célkódbázis könyvtárát (pl. <code>demo_app/</code>).</li>
+                <li>Szigorú kizárási szűrőket alkalmaz gitre, cache-ekre és build mappákra.</li>
+                <li>Biztonságosan kizárja a vektoradatbázis mappát az indexelésből.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                2. Logikai darabolás
+              </span>
+              <span class="card-badge badge-emerald">AST parser</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Fájlokat szemantikus határok mentén vág: függvények, osztályok, metódusok.</li>
+                <li>Megőrzi a dekorátorokat, docstringeket és a sor-tartomány metaadatot.</li>
+                <li>Elutasítja a kódlogikát törő, tetszőleges fix tokenes vágásokat.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                3. Helyi tartós tárolás
+              </span>
+              <span class="card-badge badge-amber">Offline</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Helyben beágyazza a darabokat az <code>all-MiniLM-L6-v2</code> modellel.</li>
+                <li>Vektorokat és metaadatot helyi ChromaDB-be ment.</li>
+                <li>Nincs felhőfüggőség, nincs külső API-költség.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                4. Valós idejű szinkron
+              </span>
+              <span class="card-badge badge-rose">Inkrementális</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>SHA-256 fájlhash-eket követ a felesleges frissítések elkerülésére.</li>
+                <li>Késleltetve összevonja (debounce) a gyors lemezírási eseményeket a <code>watchdog</code> segítségével.</li>
+                <li>Periodikus lekérdezési (polling) tartalékot tartalmaz Docker és overlayfs fájlrendszerekhez.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 3: Jelenlegi repozitórium-struktúra
+           =================================================================== -->
+      <section class="slide" data-title="Repozitórium-elrendezés">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Repozitórium-ellenőrzés</span>
+            <div class="slide-title-group">
+              <h2>Jelenlegi repozitórium-struktúra</h2>
+              <p>Lemezen ellenőrizve: csak az 1. rész és a demoalkalmazás létezik</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Szigorúan a kódbázishoz kötve</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="file-tree">
+            <div><span class="tree-folder">inception-of-context/</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">p1/</span> <span class="tree-note">&larr; 1. rész implementáció</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">index.py</span> <span class="tree-note">(CLI belépési pont, args, futtató)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">indexer.py</span> <span class="tree-note">(CodebaseIndexer, hash-szinkron, szűrők)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">chunker.py</span> <span class="tree-note">(ASTChunker, FallbackChunker, CodeChunk)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">db.py</span> <span class="tree-note">(VektorDB, ChromaDB PersistentClient)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">watcher.py</span> <span class="tree-note">(CodebaseWatcher, debounce, polling)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard.py</span> <span class="tree-note">(FastAPI szerver, SSE élő folyam)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">requirements.txt</span> <span class="tree-note">(chromadb, watchdog, fastapi...)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">demo_app/</span> <span class="tree-note">&larr; Indexelendő célkódbázis</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">calculator.py</span> <span class="tree-note">(Calculator osztály aritmetikai metódusokkal)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">formatter.py</span> <span class="tree-note">(ResultFormatter, pénznem/százalék)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">main.py</span> <span class="tree-note">(calculate_tax, main / run_demo)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">presentation/</span> <span class="tree-note">&larr; Prezentáció</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">PRESENTATION.html</span> <span class="tree-note">(angol)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">PRESENTATION_HU.html</span> <span class="tree-note">(magyar)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Makefile</span> <span class="tree-note">(setup, p1, clean, fclean &rarr; /tmp/ioc)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">README.md</span> <span class="tree-note">(Description, Instructions, Resources)</span></div>
+            <div>&boxur;&boxh;&boxh; <span class="tree-file">.gitignore</span> <span class="tree-note">(Kihagyja: .chroma_db, súlyok, cache-ek)</span></div>
+          </div>
+
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                Repozitórium státusz és hatókör
+              </span>
+              <span class="card-badge badge-cyan">Hatókör</span>
+            </div>
+            <div class="card-content">
+              <ul style="gap: 12px;">
+                <li>
+                  <strong>Megvalósított modulok:</strong> Az 1. rész összes magkomponense (<code>chunker.py</code>, <code>db.py</code>, <code>indexer.py</code>, <code>watcher.py</code>, <code>dashboard.py</code>, <code>index.py</code>) megvan és működik.
+                </li>
+                <li>
+                  <strong>Cél demo app:</strong> Moduláris, 3 fájlos Python célalkalmazás (<code>demo_app/</code>) az AST-darabolás és a vektortárolás gyakorlásához.
+                </li>
+                <li>
+                  <strong>Még nincs implementálva:</strong> A <code>p2/</code> (Architect API / RAG) és a <code>p3/</code> (Patch Loop / javítási ciklus) még NEM létezik.
+                </li>
+                <li>
+                  <strong>Csomagolási megjegyzés:</strong> A gyökér <code>Makefile</code> és a <code>README.md</code> megvan (<code>make setup</code> / <code>make p1</code>). A <code>Dockerfile</code> még nincs bevezetve.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 4: Architecture Flow
+           =================================================================== -->
+      <section class="slide" data-title="Architektúra-folyamat">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Adatfolyam</span>
+            <div class="slide-title-group">
+              <h2>1. rész architektúra és adatfolyamat</h2>
+              <p>Végponttól végpontig: célfájloktól a tartós vektortárolásig és az áttekintő felületig</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Moduláris tervezés</span>
+          </div>
+        </div>
+
+        <div class="pipeline-flow" style="margin-top: 10px;">
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">Lépés 01</span>
+              <span class="node-title">Célkönyvtár</span>
+              <span class="node-file">demo_app/</span>
+              <span class="node-desc">Indexelendő és szinkronizálandó forrásfájlok</span>
+            </div>
+            <span class="flow-arrow">&rarr;</span>
+            <div class="flow-node">
+              <span class="node-num">Lépés 02</span>
+              <span class="node-title">Szűrés és hash-ellenőrzés</span>
+              <span class="node-file">indexer.py:should_ignore_path</span>
+              <span class="node-desc">Cache, git, venv, binárisok kiszűrése; SHA-256 összevetés</span>
+            </div>
+            <span class="flow-arrow">&rarr;</span>
+            <div class="flow-node">
+              <span class="node-num">Lépés 03</span>
+              <span class="node-title">Logikai AST-darabolás</span>
+              <span class="node-file">chunker.py:ASTChunker</span>
+              <span class="node-desc">Függvényekre, metódusokra, osztályokra bontás sorszámokkal</span>
+            </div>
+          </div>
+
+          <div style="text-align: center; color: var(--text-dim); font-size: 16px; margin: -2px 0;">&darr;</div>
+
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">Lépés 04</span>
+              <span class="node-title">Sűrű beágyazások</span>
+              <span class="node-file">db.py:VektorDB</span>
+              <span class="node-desc">Az <code>all-MiniLM-L6-v2</code> offline 384d vektorokat számol</span>
+            </div>
+            <span class="flow-arrow">&rarr;</span>
+            <div class="flow-node">
+              <span class="node-num">Lépés 05</span>
+              <span class="node-title">Perzisztens vektor-DB</span>
+              <span class="node-file">.chroma_db/</span>
+              <span class="node-desc">A ChromaDB dokumentumokat, beágyazásokat és metaadatot tárol</span>
+            </div>
+            <span class="flow-arrow">&rarr;</span>
+            <div class="flow-node">
+              <span class="node-num">Lépés 06</span>
+              <span class="node-title">Figyelő és áttekintő felület</span>
+              <span class="node-file">watcher.py &bull; dashboard.py</span>
+              <span class="node-desc">0.5s késleltetett szinkron, periodikus lekérdezési tartalék és élő SSE folyam</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 5: Logical Chunking &mdash; Concept & Architecture
+           =================================================================== -->
+      <section class="slide" data-title="Logikai darabolás fogalma">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Daraboló motor</span>
+            <div class="slide-title-group">
+              <h2>Logikai kód-darabolás: AST vs. fix méret</h2>
+              <p>Miért rombolja a karakteres vágás a kódkontextust, és hogyan őrzi meg az AST a szintaxist</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">chunker.py</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                Fix méretű darabolás (elutasítva)
+              </span>
+              <span class="card-badge badge-rose">Naiv 500 karakter</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Önkényesen vágja a függvényeket:</strong> Vak karakterhatárok leválasztják a fejlécet a törzstől vagy a return-től.</li>
+                <li><strong>Tönkreteszi a szintaxist:</strong> Hiányos kódtöredékeket ad párosítatlan zárójelekkel és félbehagyott behúzással.</li>
+                <li><strong>Elveszíti a paraméterlistákat:</strong> A visszakereső csak a 10-15. sort kaphatja meg anélkül, hogy ismerné az argumentumokat.</li>
+                <li><strong>Subject-sértés:</strong> A VI.1. fejezet szerint a fix méretű darabolás ebben a részben nem elfogadható.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                ASTChunker az IoC-ben (megvalósítva)
+              </span>
+              <span class="card-badge badge-emerald">Python AST</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Fa-parse:</strong> A beépített <code>ast.parse()</code>-t használja a pontos szintaktikai csomópontokhoz: függvények, osztályok, metódusok.</li>
+                <li><strong>Dekorátor-biztonság:</strong> A <code>_get_start_line_with_decorators()</code> a <code>@staticmethod</code>-ot / dekorátorokat a függvénnyel csoportosítja.</li>
+                <li><strong>Szimbólum-hierarchia:</strong> Felismeri az osztályokat, és minden metódust külön, önálló darabként kezel (pl. <code>Calculator.add</code>).</li>
+                <li><strong>Pontos sortartományok:</strong> 1-indexelt <code>start_line</code> és <code>end_line</code> a pontos helyhez.</li>
+                <li><strong>Tartalék:</strong> Regex dupla-újsor <code>FallbackChunker</code> nem-Python vagy szintaktikailag törött fájlokhoz.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 6: Chunking in Action &mdash; Concrete Walkthrough
+           =================================================================== -->
+      <section class="slide" data-title="Darabolás bemutató">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">AST működés közben</span>
+            <div class="slide-title-group">
+              <h2>Darabolás működés közben: demo_app/calculator.py</h2>
+              <p>Konkrét bemenet-kimenet bemutató az AST-darabolásról ebben a repozitóriumban</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Élő kódpélda</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 8px; gap: 12px; align-items: stretch;">
+          <div class="card glow-cyan" style="padding: 10px 12px; overflow: visible;">
+            <div class="card-header" style="margin-bottom: 6px;">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                Nyers bemenet: demo_app/calculator.py
+              </span>
+              <span class="card-badge badge-cyan">36 sor a lemezen</span>
+            </div>
+            <div class="code-box code-box-fit">
+<div class="code-line"><span class="token-num">01:</span> <span class="token-str">"""</span></div>
+<div class="code-line"><span class="token-num">02:</span> <span class="token-str">Calculator module for the demo application.</span></div>
+<div class="code-line"><span class="token-num">03:</span> <span class="token-str">Provides arithmetic operations with configurable precision.</span></div>
+<div class="code-line"><span class="token-num">04:</span> <span class="token-str">"""</span></div>
+<div class="code-line code-line-blank"><span class="token-num">05:</span></div>
+<div class="code-line"><span class="token-num">06:</span> <span class="token-kw">from</span> typing <span class="token-kw">import</span> Union</div>
+<div class="code-line code-line-blank"><span class="token-num">07:</span></div>
+<div class="code-line code-line-blank"><span class="token-num">08:</span></div>
+<div class="code-line"><span class="token-num">09:</span> <span class="token-kw">class</span> <span class="token-cls">Calculator</span>:</div>
+<div class="code-line"><span class="token-num">10:</span>    <span class="token-str">"""A simple arithmetic calculator with configurable floating point precision."""</span></div>
+<div class="code-line code-line-blank"><span class="token-num">11:</span></div>
+<div class="code-line"><span class="token-num">12:</span>    <span class="token-kw">def</span> <span class="token-fn">__init__</span>(self, precision: int = 2) -&gt; None:</div>
+<div class="code-line"><span class="token-num">13:</span>        <span class="token-str">"""Initialize the calculator with a rounding precision."""</span></div>
+<div class="code-line"><span class="token-num">14:</span>        self.precision = precision</div>
+<div class="code-line code-line-blank"><span class="token-num">15:</span></div>
+<div class="code-line"><span class="token-num">16:</span>    <span class="token-kw">def</span> <span class="token-fn">add</span>(self, a: float, b: float) -&gt; float:</div>
+<div class="code-line"><span class="token-num">17:</span>        <span class="token-str">"""Return the sum of two numbers rounded to precision."""</span></div>
+<div class="code-line"><span class="token-num">18:</span>        <span class="token-kw">return</span> round(a + b, self.precision)</div>
+<div class="code-line code-line-blank"><span class="token-num">19:</span></div>
+<div class="code-line"><span class="token-num">20:</span>    <span class="token-kw">def</span> <span class="token-fn">subtract</span>(self, a: float, b: float) -&gt; float:</div>
+<div class="code-line"><span class="token-num">21:</span>        <span class="token-str">"""Return the difference between two numbers rounded to precision."""</span></div>
+<div class="code-line"><span class="token-num">22:</span>        <span class="token-kw">return</span> round(a - b, self.precision)</div>
+<div class="code-line code-line-blank"><span class="token-num">23:</span></div>
+<div class="code-line"><span class="token-num">24:</span>    <span class="token-kw">def</span> <span class="token-fn">multiply</span>(self, a: float, b: float) -&gt; float:</div>
+<div class="code-line"><span class="token-num">25:</span>        <span class="token-str">"""Return the product of two numbers rounded to precision."""</span></div>
+<div class="code-line"><span class="token-num">26:</span>        <span class="token-kw">return</span> round(a * b, self.precision)</div>
+<div class="code-line code-line-blank"><span class="token-num">27:</span></div>
+<div class="code-line"><span class="token-num">28:</span>    <span class="token-kw">def</span> <span class="token-fn">divide</span>(self, a: float, b: float) -&gt; float:</div>
+<div class="code-line"><span class="token-num">29:</span>        <span class="token-str">"""Return the division of a by b. Raises ValueError if b is zero."""</span></div>
+<div class="code-line"><span class="token-num">30:</span>        <span class="token-kw">if</span> b == 0:</div>
+<div class="code-line"><span class="token-num">31:</span>            <span class="token-kw">raise</span> ValueError(<span class="token-str">"Division by zero is not allowed."</span>)</div>
+<div class="code-line"><span class="token-num">32:</span>        <span class="token-kw">return</span> round(a / b, self.precision)</div>
+<div class="code-line code-line-blank"><span class="token-num">33:</span></div>
+<div class="code-line"><span class="token-num">34:</span>    <span class="token-kw">def</span> <span class="token-fn">power</span>(self, base: float, exp: float) -&gt; float:</div>
+<div class="code-line"><span class="token-num">35:</span>        <span class="token-str">"""Return base raised to the power of exp."""</span></div>
+<div class="code-line"><span class="token-num">36:</span>        <span class="token-kw">return</span> round(base ** exp, self.precision)</div>
+            </div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px; line-height: 1.2;">
+              Teljes fájl a lemezen &mdash; modul-dokumentáció, osztály-dokumentáció és 6 metódus.
+            </div>
+          </div>
+
+          <div class="card glow-emerald" style="padding: 10px 12px;">
+            <div class="card-header" style="margin-bottom: 6px;">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                Eredő AST-darabok (kimenet)
+              </span>
+              <span class="card-badge badge-emerald">8 szemantikus darab</span>
+            </div>
+            <div style="overflow-y: auto; max-height: 320px; padding-right: 4px;">
+              <div class="chunk-item-card">
+                <div class="chunk-item-title">
+                  <span>1. &lt;module&gt; (1&ndash;8. sor)</span>
+                  <span class="badge-dim card-badge">module</span>
+                </div>
+                <div class="chunk-item-desc">Felső szintű docstring és importok az első osztály előtt.</div>
+              </div>
+
+              <div class="chunk-item-card">
+                <div class="chunk-item-title">
+                  <span>2. Calculator (9&ndash;10. sor)</span>
+                  <span class="badge-dim card-badge">class</span>
+                </div>
+                <div class="chunk-item-desc">Osztálydeklaráció és a precision docstring.</div>
+              </div>
+
+              <div class="chunk-item-card" style="border-left-color: var(--emerald);">
+                <div class="chunk-item-title">
+                  <span style="color:var(--emerald);">3. Calculator.add (16&ndash;18. sor)</span>
+                  <span class="badge-emerald card-badge">method</span>
+                </div>
+                <div class="chunk-item-desc"><code>def add(self, a, b): return round(a + b, self.precision)</code></div>
+              </div>
+
+              <div class="chunk-item-card" style="border-left-color: var(--cyan);">
+                <div class="chunk-item-title">
+                  <span style="color:var(--cyan);">4. Calculator.divide (28&ndash;32. sor)</span>
+                  <span class="badge-cyan card-badge">method</span>
+                </div>
+                <div class="chunk-item-desc">Teljes metódus nullával osztás ellenőrzéssel és hibadobással.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 7: Visual Vektorization &mdash; From Code to 384d Vektor
+           =================================================================== -->
+      <section class="slide" data-title="Vizuális vektorizálás">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Beágyazó motor</span>
+            <div class="slide-title-group">
+              <h2>Vizuális vektorizálás: kódtól a 384d vektorig</h2>
+              <p>Hogyan alakítja a neurális modell a nyers Python karaktereket geometriai térbeli koordinátákká</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">all-MiniLM-L6-v2</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                A matematikai transzformáció
+              </span>
+              <span class="card-badge badge-cyan">Transformer</span>
+            </div>
+            <div class="card-content" style="display:flex; flex-direction:column; gap:10px;">
+              <div>
+                <div style="font-size:11px; color:var(--text-dim); margin-bottom:3px; font-family:var(--font-mono);">1. BEMENET: nyers darab szöveg</div>
+                <div class="code-box" style="padding:6px 10px; font-size:11px;">"def add(self, a, b): return round(a + b, self.precision)"</div>
+              </div>
+
+              <div style="text-align:center; color:var(--cyan); font-size:14px; margin:-4px 0;">&darr; <em>Tokenizálás és 6 rétegű transformer</em></div>
+
+              <div>
+                <div style="font-size:11px; color:var(--text-dim); margin-bottom:3px; font-family:var(--font-mono);">2. KIMENET: 384 dimenziós sűrű vektor</div>
+                <div class="vector-stream">
+                  <span class="vec-dim">d0: +0.0412</span>
+                  <span class="vec-dim">d1: -0.0189</span>
+                  <span class="vec-dim">d2: +0.0831</span>
+                  <span class="vec-dim">d3: -0.0054</span>
+                  <span class="vec-dots">&bull;&bull;&bull;</span>
+                  <span class="vec-dim">d383: +0.0719</span>
+                </div>
+              </div>
+
+              <div style="font-size:11.5px; color:var(--text-muted); background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:8px 10px;">
+                <strong style="color:var(--text-main);">Mi ez a vektor?</strong> 384 dimenziós térbeli koordináta. Hasonló funkcionális szándékú kód (pl. aritmetika) majdnem azonos irányba mutat!
+              </div>
+            </div>
+          </div>
+
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                Szemantikus klaszterezés a vektortérben
+              </span>
+              <span class="card-badge badge-emerald">Koszinusz-tér</span>
+            </div>
+            <div class="semantic-map-box">
+              <div class="cluster-group" style="border-color: rgba(56, 189, 248, 0.4);">
+                <div class="cluster-title">
+                  <span style="color:var(--cyan);">1. klaszter: aritmetikai műveletek</span>
+                  <span style="color:var(--text-dim);">Koszinusz-távolság &lt; 0.20</span>
+                </div>
+                <div class="cluster-pills">
+                  <span class="point-pill math">Calculator.add</span>
+                  <span class="point-pill math">Calculator.subtract</span>
+                  <span class="point-pill math">Calculator.multiply</span>
+                  <span class="point-pill math">Calculator.divide</span>
+                </div>
+              </div>
+
+              <div class="cluster-group" style="border-color: rgba(168, 85, 247, 0.4);">
+                <div class="cluster-title">
+                  <span style="color:#c084fc;">2. klaszter: formázás és kimenet</span>
+                  <span style="color:var(--text-dim);">Koszinusz-távolság &lt; 0.22</span>
+                </div>
+                <div class="cluster-pills">
+                  <span class="point-pill format">format_currency</span>
+                  <span class="point-pill format">format_percentage</span>
+                  <span class="point-pill format">ResultFormatter.to_json</span>
+                </div>
+              </div>
+
+              <div class="cluster-group" style="border-color: rgba(52, 211, 153, 0.4); margin-bottom: 0;">
+                <div class="cluster-title">
+                  <span style="color:var(--emerald);">3. klaszter: összehangolás</span>
+                  <span style="color:var(--text-dim);">Összeköti a matekot és a formázást</span>
+                </div>
+                <div class="cluster-pills">
+                  <span class="point-pill entry">calculate_tax</span>
+                  <span class="point-pill entry">run_demo</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 8: Inside ChromaDB &mdash; Tables & HNSW Graph
+           =================================================================== -->
+      <section class="slide" data-title="A ChromaDB belseje">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Adatbázis-tárolás</span>
+            <div class="slide-title-group">
+              <h2>A ChromaDB belseje: perzisztens táblák és HNSW index</h2>
+              <p>Hogyan tárolódnak tartósan a vektorok, forrásszöveg és metaadat a .chroma_db/ mappában</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">chroma.sqlite3</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                Perzisztens rekordséma (SQLite tábla)
+              </span>
+              <span class="card-badge badge-emerald">Tárolási séma</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="db-mock-table">
+                <thead>
+                  <tr>
+                    <th>Chunk ID (kulcs)</th>
+                    <th>Dokumentum (részlet)</th>
+                    <th>Metaadat (JSON)</th>
+                    <th>Vektor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="color:var(--cyan);"><code>calc.py:add:16</code></td>
+                    <td><code>def add(self, a, b):...</code></td>
+                    <td><code>{"symbol":"add", "lines":"16-18"}</code></td>
+                    <td><span class="badge-cyan card-badge">[384d]</span></td>
+                  </tr>
+                  <tr>
+                    <td style="color:var(--cyan);"><code>calc.py:div:28</code></td>
+                    <td><code>def divide(self, a, b):...</code></td>
+                    <td><code>{"symbol":"divide", "lines":"28-32"}</code></td>
+                    <td><span class="badge-cyan card-badge">[384d]</span></td>
+                  </tr>
+                  <tr>
+                    <td style="#c084fc;"><code>form.py:curr:10</code></td>
+                    <td><code>def format_currency:...</code></td>
+                    <td><code>{"symbol":"currency", "lines":"10-13"}</code></td>
+                    <td><span class="badge-cyan card-badge">[384d]</span></td>
+                  </tr>
+                  <tr>
+                    <td style="color:var(--emerald);"><code>main.py:tax:17</code></td>
+                    <td><code>def calculate_tax:...</code></td>
+                    <td><code>{"symbol":"calculate_tax", "lines":"17-21"}</code></td>
+                    <td><span class="badge-cyan card-badge">[384d]</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+              Minden rekord összeköti az egyedi chunk ID-t a nyers forrásszöveggel, a gazdag JSON sor-metaadattal és a nagydimenziós vektorral.
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                HNSW vektorgráf-index
+              </span>
+              <span class="card-badge badge-amber">Szubmilliszekundumos</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Hierarchikus navigálható kisvilág (HNSW):</strong> Többrétegű gráf, amely nagydimenziós vektorcsomópontokat köt össze.</li>
+                <li><strong>Koszinusz-távolság (<code>hnsw:space: "cosine"</code>):</strong> Szögeltérést mér (\(1 - \cos(\theta)\)):
+                  <div style="font-family:var(--font-mono); font-size:11px; color:var(--cyan); margin:4px 0;">
+                    &bull; Szög &asymp; 0&deg; &rarr; Azonos / közeli jelentés<br>
+                    &bull; Szög &asymp; 90&deg; &rarr; Nem rokon kódszemantika
+                  </div>
+                </li>
+                <li><strong>Logaritmikus bejárás:</strong> A HNSW a felső rétegű „autópályákon” ugrik \(O(\log N)\) időben, nem végigpásztázza az összes rekordot.</li>
+                <li><strong>Helyi fájlrendszer:</strong> A <code>.chroma_db/</code> mappában tartósan tárolódik. 100% offline.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 8: How Indexing Works &mdash; Step-by-Step Pipeline
+           =================================================================== -->
+      <section class="slide" data-title="Indexelés bemutató">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Indexelő motor</span>
+            <div class="slide-title-group">
+              <h2>Hogyan működik az indexelés: fájltól a vektorig</h2>
+              <p>Egy forrásfájl 4 szakaszos életciklusa az indexelés során</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">indexer.py &bull; db.py</span>
+          </div>
+        </div>
+
+        <div class="grid-4" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                1. Olvasás és szűrés
+              </span>
+              <span class="card-badge badge-cyan">Lépés 01</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Az indexer találkozik a <code>calculator.py</code> fájllal.</li>
+                <li>A <code>should_ignore_path()</code> ellenőrzi a kizárási szabályokat (kihagyja: <code>.git</code>, <code>venv</code>, <code>.chroma_db</code>).</li>
+                <li>Az <code>is_binary_file()</code> az első 1024 bájtban <code>\x00</code> null bájtokat keres.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                2. Hash-ellenőrzés
+              </span>
+              <span class="card-badge badge-amber">Lépés 02</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Kiszámolja a <code>compute_sha256(content)</code>-et a lemezen.</li>
+                <li>Összeveti a tárolt hasht az <code>index_state.json</code>-ban.</li>
+                <li><strong>Ha egyezik:</strong> Azonnal kihagyva (0ms).</li>
+                <li><strong>Ha különbözik:</strong> Folytatja a 3. lépéssel.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle></svg>
+                3. Darabok beágyazása
+              </span>
+              <span class="card-badge badge-cyan">Lépés 03</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>AST-tel <code>CodeChunk</code> objektumokra bontja a forrást.</li>
+                <li>Minden darab szövege az <code>all-MiniLM-L6-v2</code>-höz kerül.</li>
+                <li><strong>384 dimenziós sűrű vektort</strong> ad, amely a kód szemantikáját kódolja.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse></svg>
+                4. DB upsert
+              </span>
+              <span class="card-badge badge-emerald">Lépés 04</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Régi fájlvektorok törölve: <code>delete_file_chunks()</code>.</li>
+                <li>Beszúrja a dokumentumszöveget, beágyazásokat és sor-metaadatot.</li>
+                <li>Elmenti az új SHA-256 hasht az <code>index_state.json</code>-ba.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 9: Inkrementális Indexing  3 Scenarios
+           =================================================================== -->
+      <section class="slide" data-title="Inkrementális forgatókönyvek">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Változásészlelés</span>
+            <div class="slide-title-group">
+              <h2>Inkrementális szinkronizáció: 3 egyszerű forgatókönyv</h2>
+              <p>Konkrét példák: változatlan, módosított és törölt fájlok kezelése</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">indexer.py</span>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                A eset: változatlan fájl
+              </span>
+              <span class="card-badge badge-cyan">Gyors kihagyás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Lemezhash == <code>index_state.json</code> hash.</li>
+                <li><strong>Művelet:</strong> Azonnal kihagyva.</li>
+                <li><strong>Költség:</strong> 0 beágyazás, 0 DB írás, ~0.1ms számítás.</li>
+                <li><em>Példa:</em> A <code>formatter.py</code> nem változott &rarr; teljesen kihagyva.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                B eset: módosított fájl
+              </span>
+              <span class="card-badge badge-emerald">Upsert</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Lemezhash &ne; <code>index_state.json</code> hash.</li>
+                <li><strong>1. lépés:</strong> A <code>delete_file_chunks(path)</code> csak ehhez a fájlhoz tartozó régi vektorokat törli.</li>
+                <li><strong>2. lépés:</strong> Újradarabolás és <code>upsert_chunks()</code> friss vektorokkal.</li>
+                <li><strong>3. lépés:</strong> Frissíti az új hasht az állapotfájlban.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                C eset: törölt fájl
+              </span>
+              <span class="card-badge badge-rose">Tisztítás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A fájl követve volt, de már nincs a lemezen.</li>
+                <li><strong>Művelet:</strong> A <code>delete_file_chunks(path)</code> minden chunk ID-t töröl a ChromaDB-ből.</li>
+                <li>Törli a kulcsot az <code>index_state.json</code>-ból.</li>
+                <li><strong>Eredmény:</strong> Nincs holt vektor vagy fantom szimbólum.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 12px; background: var(--bg-code); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-family: var(--font-mono);">
+          <span style="color:var(--text-muted);"><strong style="color:var(--cyan);">Folyamat:</strong> Fájlolvasás</span>
+          <span style="color:var(--text-dim);">&rarr;</span>
+          <span style="color:var(--text-muted);">SHA-256 számítás</span>
+          <span style="color:var(--text-dim);">&rarr;</span>
+          <span style="color:var(--text-muted);">Hash-állapot összevetés</span>
+          <span style="color:var(--text-dim);">&rarr;</span>
+          <span style="color:var(--emerald);">&check; Atomikus ChromaDB frissítés</span>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 8: Watch Mode & Synchronization
+           =================================================================== -->
+      <section class="slide" data-title="Figyelő mód">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Fájlrendszer-figyelő</span>
+            <div class="slide-title-group">
+              <h2>Figyelő mód és valós idejű szinkronizáció</h2>
+              <p>Késleltetett eseménykezelés dedikált Docker periodikus lekérdezési tartalékkal</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">watcher.py</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                Eseménykezelés és késleltető (debounce) motor
+              </span>
+              <span class="card-badge badge-cyan">Watchdog</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Handler:</strong> A <code>CodebaseChangeHandler</code> kezeli: <code>on_modified</code>, <code>on_created</code>, <code>on_deleted</code>, <code>on_moved</code>.</li>
+                <li><strong>Késleltetési ablak (0.5s, debounce):</strong> Összevonja a gyors egymás utáni lemezírásokat (pl. szerkesztő temp és autosave), hogy ne legyen indexelési zaj.</li>
+                <li><strong>Feldolgozó ciklus:</strong> A <code>_process_pending_loop</code> háttérszálon fut, és sorban dolgozza fel az eseményeket.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                Periodikus lekérdezési tartalékciklus (Subject követelmény)
+              </span>
+              <span class="card-badge badge-amber">Overlayfs-biztos</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Miért kell:</strong> Konténeres fájlrendszereken (Docker bind mount, btrfs, overlayfs) az <code>inotify</code> csendben eldobhatja az eseményeket.</li>
+                <li><strong>Megvalósítás:</strong> A <code>_polling_fallback_loop</code> 10 másodpercenként fut a háttérben.</li>
+                <li><strong>Mechanizmus:</strong> Inkrementális <code>indexer.index_all()</code> scan-t indít, így eventual consistency marad, ha az inotify elmulaszt valamit.</li>
+                <li><strong>Aktivitás-puffer:</strong> Gyűrűpuffer (max 100 log) táplálja az SSE élő adást.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 9: Exclusions & Biztonsági szabályok
+           =================================================================== -->
+      <section class="slide" data-title="Kizárások és biztonság">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Biztonsági szabályok</span>
+            <div class="slide-title-group">
+              <h2>Kizárások és önreferenciális ciklus elleni védelem</h2>
+              <p>Indexszennyezés, végtelen figyelő-visszacsatolás és bináris felduzzadás megelőzése</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Subject VI.1. szabály</span>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                Kizárt könyvtárak
+              </span>
+              <span class="card-badge badge-rose">Szűrt</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><code>.git</code> (VCS belső adat)</li>
+                <li><code>node_modules</code> (Vendor könyvtárak)</li>
+                <li><code>dist</code>, <code>build</code> (Artifactek)</li>
+                <li><code>venv</code>, <code>.venv</code>, <code>env</code>, <code>.env</code></li>
+                <li><code>__pycache__</code>, <code>.pytest_cache</code></li>
+                <li>Rejtett könyvtárak (<code>.</code>-tal kezdődők)</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                Vektor-DB ciklus megelőzése
+              </span>
+              <span class="card-badge badge-amber">Kritikus szabály</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>A veszély:</strong> Ha a vektoradatbázis mappa is figyelve van, a ChromaDB írások újraindítják a figyelőt - végtelen indexelési ciklus!</li>
+                <li><strong>A védelem:</strong> A <code>should_ignore_path()</code> explicit kizárja a <code>.chroma</code>, <code>.chroma_db</code> és a beállított DB útvonalat.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                Bináris fájlvédelem
+              </span>
+              <span class="card-badge badge-cyan">Tartalomellenőrzés</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Kiterjesztés-szűrő:</strong> <code>.pyc</code>, <code>.so</code>, <code>.dll</code>, <code>.exe</code>, <code>.png</code>, <code>.jpg</code>, <code>.pdf</code>, <code>.zip</code>, <code>.safetensors</code>, <code>.gguf</code>.</li>
+                <li><strong>Null-bájt detekció:</strong> Az <code>is_binary_file()</code> az első 1024 bájtban <code>\x00</code>-t keres, hogy ne parse-oljon nem szöveges binárist.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 10: Overview Dashboard
+           =================================================================== -->
+      <section class="slide" data-title="Áttekintő dashboard">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Dashboard</span>
+            <div class="slide-title-group">
+              <h2>1. rész áttekintő dashboard és REST végpontok</h2>
+              <p>Önálló FastAPI alkalmazás az index állapotával és élő SSE eseményekkel</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">dashboard.py</span>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                Megvalósított REST és SSE végpontok
+              </span>
+              <span class="card-badge badge-cyan">FastAPI</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><code>GET /api/status</code>: Visszaadja az összes darabot, fájlszámot, beágyazási modellt és a figyelő állapotát.</li>
+                <li><code>GET /api/files</code>: Visszaadja az indexelt fájlok rendezett listáját és a darabszámokat.</li>
+                <li><code>GET /api/file?path=...</code>: Visszaadja a részletes darabhatárokat és szimbólumadatokat.</li>
+                <li><code>GET /api/activity</code>: Visszaadja a figyelő legutóbbi aktivitásának pillanatképét.</li>
+                <li><code>GET /events</code>: <strong>SSE (Server-Sent Events)</strong> &mdash; valós idejű eseményfolyam.</li>
+                <li><code>GET /</code>: Beágyazott offline dark-mode UI (Subject VI.1. ábra).</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                Dashboard UI koncepciók és határok
+              </span>
+              <span class="card-badge badge-emerald">UI struktúra</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Élő metrikakártyák:</strong> Indexelt darabszám, forrásfájlok száma, beágyazási modell (<code>all-MiniLM-L6-v2</code>), LLM modell (<code>qwen2.5:3b</code>).</li>
+                <li><strong>Fájlbontás tábla:</strong> Útvonal, darabszám és szinkron státusz.</li>
+                <li><strong>Élő figyelő folyam:</strong> Valós idejű eseménylog színes státuszjelölőkkel: <code>MODIFIED</code>, <code>DELETED</code>, <code>POLL_SYNC</code>, <code>WATCHER_START</code>.</li>
+                <li><strong>Fázishatárok:</strong> P1 Áttekintés aktív; a P2 (Kérdezés és visszakeresés) és P3 (Patch Loop) fülek láthatóan letiltva.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 11: Subject Compliance Checklist
+           =================================================================== -->
+      <section class="slide" data-title="Subject megfelelés">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Subject-audit</span>
+            <div class="slide-title-group">
+              <h2>1. rész &mdash; Mi teljesült már?</h2>
+              <p>Őszinte összevetés a megvalósított kódbázis és a 42 Subject VI.1. fejezete között</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Ellenőrizve</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 10px;">
+          <table class="compliance-table">
+            <thead>
+              <tr>
+                <th style="width: 38%;">Követelmény (Subject VI.1. fejezet)</th>
+                <th style="width: 20%;">Implementációs fájl</th>
+                <th style="width: 18%;">Státusz</th>
+                <th style="width: 24%;">Ellenőrzési bizonyíték</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Logikai AST-alapú kód-darabolás</td>
+                <td><code>p1/chunker.py</code></td>
+                <td><span class="status-tag done">&check; Implementálva</span></td>
+                <td>Az ASTChunker függvényeket/osztályokat/metódusokat nyer ki</td>
+              </tr>
+              <tr>
+                <td>Helyi beágyazások (all-MiniLM-L6-v2)</td>
+                <td><code>p1/db.py</code></td>
+                <td><span class="status-tag done">&check; Implementálva</span></td>
+                <td>Offline sentence-transformers, 384d vektorok</td>
+              </tr>
+              <tr>
+                <td>ChromaDB PersistentClient tárolás</td>
+                <td><code>p1/db.py</code></td>
+                <td><span class="status-tag done">&check; Implementálva</span></td>
+                <td>Koszinusz-távolság, perzisztens a <code>.chroma_db</code>-ben</td>
+              </tr>
+              <tr>
+                <td>Inkrementális újraindexelés (SHA-256)</td>
+                <td><code>p1/indexer.py</code></td>
+                <td><span class="status-tag done">&check; Implementálva</span></td>
+                <td>A hash-összevetés kihagyja a változatlan fájlokat</td>
+              </tr>
+              <tr>
+                <td>Törléskezelés (vektor eltávolítás)</td>
+                <td><code>p1/indexer.py</code></td>
+                <td><span class="status-tag done">&check; Implementálva</span></td>
+                <td>A <code>delete_file_chunks</code> eltávolítja az árva vektorokat</td>
+              </tr>
+              <tr>
+                <td>Kizárási szabályok és DB önkizárás</td>
+                <td><code>p1/indexer.py</code></td>
+                <td><span class="status-tag done">&check; Implementálva</span></td>
+                <td>Szűri: git, venv, cache, binárisok és <code>.chroma_db</code></td>
+              </tr>
+              <tr>
+                <td>Figyelő mód késleltetéssel (debounce) és periodikus lekérdezési tartalékkal</td>
+                <td><code>p1/watcher.py</code></td>
+                <td><span class="status-tag done">&check; Implementálva</span></td>
+                <td>0.5s debounce + 10s overlayfs periodikus lekérdezési szál</td>
+              </tr>
+              <tr>
+                <td>Áttekintő felület SSE folyammal</td>
+                <td><code>p1/dashboard.py</code></td>
+                <td><span class="status-tag done">&check; Implementálva</span></td>
+                <td>FastAPI + SSE élő folyam a VI.1. ábra szerint</td>
+              </tr>
+              <tr>
+                <td>Cél demo alkalmazás</td>
+                <td><code>demo_app/</code></td>
+                <td><span class="status-tag done">&check; Implementálva</span></td>
+                <td>3 fájl: <code>calculator.py</code>, <code>formatter.py</code>, <code>main.py</code></td>
+              </tr>
+              <tr>
+                <td>Gyökér Makefile és README</td>
+                <td>Repozitórium gyökér</td>
+                <td><span class="status-tag done">&check; Implementálva</span></td>
+                <td><code>make setup</code> / <code>make p1</code> a <code>/tmp/ioc</code> alatt</td>
+              </tr>
+              <tr>
+                <td>Docker környezet</td>
+                <td>Repozitórium gyökér</td>
+                <td><span class="status-tag not-done">&cross; Még nincs kész</span></td>
+                <td>Az integrációs fázisra tervezve</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+
+      <!-- ===================================================================
+           SLIDE 12: Final Summary & Next Steps
+           =================================================================== -->
+      <section class="slide" data-title="Összefoglaló és következő lépések">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Összefoglaló</span>
+            <div class="slide-title-group">
+              <h2>Jelenlegi 1. rész státusz és következő lépések</h2>
+              <p>Az elkészült alap összefoglalója és a 2. rész útiterve</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Útiterv</span>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Ami ma működik
+              </span>
+              <span class="card-badge badge-emerald">1. rész kész</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Teljes offline kódbázis-indexelési folyamat.</li>
+                <li>Pontos szemantikus AST-darabolás, sortartományokkal és dekorátorokkal.</li>
+                <li>ChromaDB tartós vektortárolás SHA-256 inkrementális szinkronnal.</li>
+                <li>Valós idejű figyelő késleltetéssel (debounce) és periodikus lekérdezési tartalékkal.</li>
+                <li>FastAPI áttekintő felület élő SSE folyammal.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                Mit tesz lehetővé
+              </span>
+              <span class="card-badge badge-cyan">Szilárd alap</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Garantálja, hogy a vektorindex nem csúszik el a lemeztől szerkesztés közben.</li>
+                <li>Nagy hűségű, sorhatárolt kódblokkokat ad a későbbi visszakereséshez.</li>
+                <li>Nulla felhőkitettség, teljesíti a 42 helyi futtatási szabályait.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Következő mérföldkövek
+              </span>
+              <span class="card-badge badge-amber">Következik</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>2. rész: Architect API és RAG</strong>
+                  <br>&bull; Végpontok: <code>POST /context</code> és <code>POST /ask</code>
+                  <br>&bull; Helyi Ollama-vezérlés (<code>qwen2.5:3b</code>)
+                  <br>&bull; Hibrid visszakeresés és Ask felület
+                </li>
+                <li><strong>3. rész: Patch Loop (javítási ciklus)</strong>
+                  <br>&bull; Strukturált patch JSON generálás
+                  <br>&bull; Validáció és atomikus visszaállítás
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div> <!-- /slides-wrapper -->
+
+    <!-- ===================================================================
+         Presentation Footer Controls
+         =================================================================== -->
+    <footer class="deck-footer">
+      <div class="footer-left">
+        <span class="key-hint"><span class="kbd">&larr;</span> / <span class="kbd">&rarr;</span> Navigáció</span>
+        <span class="key-hint"><span class="kbd">Space</span> Következő</span>
+        <span class="key-hint"><span class="kbd">F</span> Teljes képernyő</span>
+        <span class="key-hint"><span class="kbd">O</span> Áttekintés</span>
+      </div>
+
+      <div class="footer-center">
+        <button class="nav-btn" id="btnPrev" title="Előző dia (bal nyíl)">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <span class="slide-counter" id="slideCounter">01 / 12</span>
+        <button class="nav-btn" id="btnNext" title="Következő dia (jobb nyíl / Space)">
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+
+      <div class="footer-right">
+        <button class="nav-btn" id="btnOverview" title="Diaáttekintő rács (O)">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </button>
+        <button class="nav-btn" id="btnFullscreen" title="Teljes képernyő (F)">
+          <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+        </button>
+      </div>
+    </footer>
+
+    <!-- ===================================================================
+         Slide Overview / Thumbnails Modal (Toggle with 'O')
+         =================================================================== -->
+    <div id="overview-modal">
+      <div class="overview-header">
+        <h3>Diaáttekintés (Esc vagy O a bezáráshoz)</h3>
+        <button class="nav-btn" id="btnCloseOverview" title="Áttekintés bezárása">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="overview-grid" id="overviewGrid">
+        <!-- Injected dynamically by deck engine -->
+      </div>
+    </div>
+
+  </div> <!-- /deck-container -->
+</div> <!-- /deck-viewport -->
+
+<script>
+/**
+ * Inception-of-Context (IoC) &mdash; Part 1 Presentation Deck Engine
+ * Handles keyboard navigation, fullscreen, slide counter, and overview grid.
+ * Zero external dependencies. 100% offline.
+ */
+
+(function () {
+  "use strict";
+
+  const slides = document.querySelectorAll(".slide");
+  const totalSlides = slides.length;
+  let currentIndex = 0;
+
+  const counterEl = document.getElementById("slideCounter");
+  const progressBar = document.getElementById("progressBar");
+  const btnPrev = document.getElementById("btnPrev");
+  const btnNext = document.getElementById("btnNext");
+  const btnFullscreen = document.getElementById("btnFullscreen");
+  const btnOverview = document.getElementById("btnOverview");
+  const overviewModal = document.getElementById("overview-modal");
+  const overviewGrid = document.getElementById("overviewGrid");
+  const btnCloseOverview = document.getElementById("btnCloseOverview");
+
+  // Populate overview modal with slide cards
+  function buildOverviewGrid() {
+    if (!overviewGrid) return;
+    overviewGrid.innerHTML = "";
+    slides.forEach((slide, idx) => {
+      const card = document.createElement("div");
+      card.className = `thumb-card ${idx === currentIndex ? "active-thumb" : ""}`;
+      const title = slide.getAttribute("data-title") || `Slide ${idx + 1}`;
+      card.innerHTML = `
+        <div class="thumb-num">${String(idx + 1).padStart(2, "0")} / ${String(totalSlides).padStart(2, "0")}</div>
+        <div class="thumb-title">${title}</div>
+      `;
+      card.addEventListener("click", () => {
+        goToSlide(idx);
+        toggleOverview(false);
+      });
+      overviewGrid.appendChild(card);
+    });
+  }
+
+  function toggleOverview(forceState) {
+    if (!overviewModal) return;
+    const shouldOpen = typeof forceState === "boolean" 
+      ? forceState 
+      : !overviewModal.classList.contains("open");
+    
+    if (shouldOpen) {
+      buildOverviewGrid();
+      overviewModal.classList.add("open");
+    } else {
+      overviewModal.classList.remove("open");
+    }
+  }
+
+  function updateUI() {
+    // Hide all slides, show active slide
+    slides.forEach((slide, idx) => {
+      if (idx === currentIndex) {
+        slide.classList.add("active");
+      } else {
+        slide.classList.remove("active");
+      }
+    });
+
+    // Update Counter (e.g. 03 / 12)
+    if (counterEl) {
+      const cur = String(currentIndex + 1).padStart(2, "0");
+      const tot = String(totalSlides).padStart(2, "0");
+      counterEl.textContent = `${cur} / ${tot}`;
+    }
+
+    // Update Progress Bar
+    if (progressBar) {
+      const percent = ((currentIndex + 1) / totalSlides) * 100;
+      progressBar.style.width = `${percent}%`;
+    }
+
+    // Sync URL hash
+    window.location.hash = `#${currentIndex + 1}`;
+
+    // Update overview thumbnail highlighting if open
+    const thumbs = document.querySelectorAll(".thumb-card");
+    thumbs.forEach((t, i) => {
+      if (i === currentIndex) {
+        t.classList.add("active-thumb");
+      } else {
+        t.classList.remove("active-thumb");
+      }
+    });
+  }
+
+  function goToSlide(index) {
+    if (index < 0) index = 0;
+    if (index >= totalSlides) index = totalSlides - 1;
+    currentIndex = index;
+    updateUI();
+  }
+
+  function nextSlide() {
+    if (currentIndex < totalSlides - 1) {
+      goToSlide(currentIndex + 1);
+    }
+  }
+
+  function prevSlide() {
+    if (currentIndex > 0) {
+      goToSlide(currentIndex - 1);
+    }
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.warn("Fullscreen request error:", err);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  }
+
+  // Keyboard Event Listener
+  window.addEventListener("keydown", (e) => {
+    // If overview modal is open, Esc closes it
+    if (overviewModal && overviewModal.classList.contains("open")) {
+      if (e.key === "Escape" || e.key === "o" || e.key === "O") {
+        e.preventDefault();
+        toggleOverview(false);
+        return;
+      }
+    }
+
+    switch (e.key) {
+      case "ArrowRight":
+      case " ":
+      case "PageDown":
+        e.preventDefault();
+        nextSlide();
+        break;
+      case "ArrowLeft":
+      case "PageUp":
+        e.preventDefault();
+        prevSlide();
+        break;
+      case "Home":
+        e.preventDefault();
+        goToSlide(0);
+        break;
+      case "End":
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+        break;
+      case "f":
+      case "F":
+        e.preventDefault();
+        toggleFullscreen();
+        break;
+      case "o":
+      case "O":
+        e.preventDefault();
+        toggleOverview();
+        break;
+      case "Escape":
+        if (overviewModal && overviewModal.classList.contains("open")) {
+          toggleOverview(false);
+        }
+        break;
+      default:
+        break;
+    }
+  });
+
+  // Button clicks
+  if (btnPrev) btnPrev.addEventListener("click", prevSlide);
+  if (btnNext) btnNext.addEventListener("click", nextSlide);
+  if (btnFullscreen) btnFullscreen.addEventListener("click", toggleFullscreen);
+  if (btnOverview) btnOverview.addEventListener("click", () => toggleOverview());
+  if (btnCloseOverview) btnCloseOverview.addEventListener("click", () => toggleOverview(false));
+
+  // Initialize from URL hash if valid
+  const initialHash = window.location.hash.replace("#", "");
+  const parsedSlideNum = parseInt(initialHash, 10);
+  if (!isNaN(parsedSlideNum) && parsedSlideNum >= 1 && parsedSlideNum <= totalSlides) {
+    currentIndex = parsedSlideNum - 1;
+  } else {
+    currentIndex = 0;
+  }
+
+  // Initial draw
+  updateUI();
+})();
+
+
+</script>
+</body>
+</html>
+

@@ -6,7 +6,6 @@ Calculates SHA-256 hashes per chunk to support incremental synchronization.
 
 import ast
 import hashlib
-import os
 import re
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional
@@ -220,7 +219,6 @@ class FallbackChunker:
         starts = [0] + [m.end() for m in matches]
         ends = [m.start() for m in matches] + [len(self.source_code)]
 
-        current_line = 1
         for start, end in zip(starts, ends):
             block_text = self.source_code[start:end].strip()
             if not block_text:
@@ -269,4 +267,3 @@ def chunk_file(file_path: str, source_code: Optional[str] = None) -> List[CodeCh
     else:
         fallback = FallbackChunker(file_path=file_path, source_code=source_code)
         return fallback.chunk()
-

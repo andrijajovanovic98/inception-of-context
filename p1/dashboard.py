@@ -8,18 +8,43 @@ Designed to run 100% locally with no external CDN or internet dependencies.
 import asyncio
 import json
 import os
+import threading
+from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, List, Optional
+from p1.chunker import chunk_file
+from p1.indexer import CodebaseIndexer
+from p1.watcher import CodebaseWatcher
 
 try:
     from fastapi import FastAPI, HTTPException, Query, Request
-    from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+    from fastapi.responses import HTMLResponse, Response, StreamingResponse
     FASTAPI_AVAILABLE = True
 except ImportError:
     FASTAPI_AVAILABLE = False
 
-from p1.chunker import chunk_file
-from p1.indexer import CodebaseIndexer
-from p1.watcher import CodebaseWatcher
+# Tiny inline SVG favicon (no external asset)
+_FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+    '<rect width="32" height="32" rx="6" fill="#0f172a"/>'
+    '<text x="16" y="22" text-anchor="middle" font-size="14" '
+    'font-family="monospace" font-weight="700" fill="#38bdf8">IoC</text>'
+    "</svg>"
+)
+
+# Sentinel placed on SSE queues to end generators during Ctrl+C shutdown
+_SSE_STOP = object()
+
+
+if FASTAPI_AVAILABLE:
+    class _QuietSSEResponse(StreamingResponse):
+        """StreamingResponse that does not surface CancelledError on Ctrl+C."""
+
+        async def __call__(self, scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+            try:
+                await super().__call__(scope, receive, send)
+            except asyncio.CancelledError:
+                # Expected when uvicorn cancels an open EventSource on shutdown.
+                return
 
 
 def create_dashboard_app(
@@ -33,17 +58,47 @@ def create_dashboard_app(
             "FastAPI is not installed. Please run: pip install -r p1/requirements.txt"
         )
 
-    app = FastAPI(
-        title="Inception-of-Context — Part 1 Overview",
-        description="Local Codebase Indexer and Synchronization Dashboard",
-        version="1.0.0",
-    )
-
     # In-memory queue fan-out for SSE clients
     sse_queues: List[asyncio.Queue] = []
+    sse_stop = threading.Event()
+    loop_holder: Dict[str, Any] = {"loop": None}
+
+    def _wake_sse_queues() -> None:
+        for q in list(sse_queues):
+            try:
+                q.put_nowait(_SSE_STOP)
+            except asyncio.QueueFull:
+                pass
+
+    def close_sse_clients() -> None:
+        """Signal all live SSE generators to exit (safe from signal handlers)."""
+        sse_stop.set()
+        loop = loop_holder.get("loop")
+        if loop is not None:
+            try:
+                loop.call_soon_threadsafe(_wake_sse_queues)
+            except RuntimeError:
+                pass
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        loop_holder["loop"] = asyncio.get_running_loop()
+        yield
+        close_sse_clients()
+
+    app = FastAPI(
+        title="Inception-of-Context  Part 1 Overview",
+        description="Local Codebase Indexer and Synchronization Dashboard",
+        version="1.0.0",
+        lifespan=lifespan,
+    )
+    # Used by index.py signal wrapper to wake SSE before uvicorn waits on tasks
+    app.close_sse_clients = close_sse_clients  # type: ignore[attr-defined]
 
     def on_watcher_activity(entry: Dict[str, Any]) -> None:
         """Callback invoked by the watcher on every new log entry."""
+        if sse_stop.is_set():
+            return
         for q in list(sse_queues):
             try:
                 q.put_nowait(entry)
@@ -52,6 +107,11 @@ def create_dashboard_app(
 
     if watcher:
         watcher.add_activity_listener(on_watcher_activity)
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon() -> Response:
+        """Browsers always request this; serve a tiny SVG to avoid 404 noise."""
+        return Response(content=_FAVICON_SVG, media_type="image/svg+xml")
 
     @app.get("/api/status")
     async def get_status() -> Dict[str, Any]:
@@ -82,7 +142,9 @@ def create_dashboard_app(
         }
 
     @app.get("/api/file")
-    async def get_file_chunks(path: str = Query(..., description="Target-relative file path")) -> Dict[str, Any]:
+    async def get_file_chunks(
+        path: str = Query(..., description="Target-relative file path"),
+    ) -> Dict[str, Any]:
         """Subject requirement: GET /file?path=... returning detailed chunks of a file."""
         abs_path = os.path.join(indexer.target_dir, path)
         if not os.path.isfile(abs_path):
@@ -122,22 +184,32 @@ def create_dashboard_app(
         async def event_generator() -> AsyncGenerator[str, None]:
             try:
                 # Send initial connection acknowledgment
-                yield f"data: {json.dumps({'action': 'CONNECTED', 'details': 'SSE connected'})}\n\n"
+                yield (
+                    "data: "
+                    + json.dumps({"action": "CONNECTED", "details": "SSE connected"})
+                    + "\n\n"
+                )
 
-                while True:
+                while not sse_stop.is_set():
                     if await request.is_disconnected():
                         break
                     try:
-                        # Wait for next event or timeout to send keep-alive comment
-                        entry = await asyncio.wait_for(queue.get(), timeout=15.0)
+                        # Short timeout so Ctrl+C stop flag is noticed quickly
+                        entry = await asyncio.wait_for(queue.get(), timeout=0.5)
+                        if entry is _SSE_STOP:
+                            break
                         yield f"data: {json.dumps(entry)}\n\n"
                     except asyncio.TimeoutError:
                         yield ": keep-alive\n\n"
+                    except asyncio.CancelledError:
+                        break
+            except asyncio.CancelledError:
+                pass
             finally:
                 if queue in sse_queues:
                     sse_queues.remove(queue)
 
-        return StreamingResponse(
+        return _QuietSSEResponse(
             event_generator(),
             media_type="text/event-stream",
             headers={
@@ -153,12 +225,50 @@ def create_dashboard_app(
         stats = indexer.db.get_stats()
         recent_logs = watcher.get_recent_activity(limit=20) if watcher else []
 
+        if stats["files"]:
+            files_rows = "".join(
+                (
+                    f'<tr><td><code>{f}</code></td>'
+                    f'<td><strong>{c}</strong> chunks</td>'
+                    f'<td><span style="color:var(--accent-green)">'
+                    f"Synced</span></td></tr>"
+                )
+                for f, c in sorted(stats["files"].items())
+            )
+        else:
+            files_rows = (
+                '<tr><td colspan="3" style="text-align:center; '
+                'color:var(--text-muted);">No files indexed yet.</td></tr>'
+            )
+
+        if recent_logs:
+            activity_items = "".join(
+                (
+                    f'<li class="feed-item">'
+                    f'<div class="feed-header">'
+                    f'<span class="feed-action {entry.get("action", "")}">'
+                    f'{entry.get("action", "")}</span>'
+                    f'<span>{entry.get("timestamp", "")}</span></div>'
+                    f'<div class="feed-path">{entry.get("path", "")}</div>'
+                    f'<div style="color:var(--text-muted);">'
+                    f'{entry.get("details", "")}</div></li>'
+                )
+                for entry in recent_logs
+            )
+        else:
+            activity_items = (
+                '<li class="feed-item" style="color:var(--text-muted); '
+                'text-align:center;">'
+                "Waiting for filesystem events...</li>"
+            )
+
         # Self-contained offline HTML UI
         return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/favicon.ico" type="image/svg+xml">
     <title>Inception-of-Context | Overview</title>
     <style>
         :root {{
@@ -233,9 +343,19 @@ def create_dashboard_app(
             border-radius: 8px;
             padding: 16px;
         }}
-        .card .title {{ font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }}
+        .card .title {{
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }}
         .card .value {{ font-size: 24px; font-weight: 700; color: var(--text); }}
-        .card .sub {{ font-size: 12px; color: var(--accent); margin-top: 4px; word-break: break-all; }}
+        .card .sub {{
+            font-size: 12px;
+            color: var(--accent);
+            margin-top: 4px;
+            word-break: break-all;
+        }}
         .layout {{
             display: grid;
             grid-template-columns: 3fr 2fr;
@@ -248,7 +368,13 @@ def create_dashboard_app(
             border-radius: 8px;
             padding: 20px;
         }}
-        .panel h2 {{ font-size: 16px; margin-bottom: 16px; color: var(--text); display: flex; justify-content: space-between; }}
+        .panel h2 {{
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: var(--text);
+            display: flex;
+            justify-content: space-between;
+        }}
         table {{
             width: 100%;
             border-collapse: collapse;
@@ -353,7 +479,7 @@ def create_dashboard_app(
                     </tr>
                 </thead>
                 <tbody id="filesTableBody">
-                    {"".join(f'<tr><td><code>{f}</code></td><td><strong>{c}</strong> chunks</td><td><span style="color:var(--accent-green)">Synced</span></td></tr>' for f, c in sorted(stats["files"].items())) if stats["files"] else '<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">No files indexed yet.</td></tr>'}
+                    {files_rows}
                 </tbody>
             </table>
         </div>
@@ -361,7 +487,7 @@ def create_dashboard_app(
         <div class="panel">
             <h2>Live Watcher Activity Feed</h2>
             <ul class="feed" id="activityFeed">
-                {"".join(f'<li class="feed-item"><div class="feed-header"><span class="feed-action {entry.get("action", "")}">{entry.get("action", "")}</span><span>{entry.get("timestamp", "")}</span></div><div class="feed-path">{entry.get("path", "")}</div><div style="color:var(--text-muted);">{entry.get("details", "")}</div></li>' for entry in recent_logs) if recent_logs else '<li class="feed-item" style="color:var(--text-muted); text-align:center;">Waiting for filesystem events...</li>'}
+                {activity_items}
             </ul>
         </div>
     </div>
@@ -424,4 +550,3 @@ def create_dashboard_app(
 </html>"""
 
     return app
-
