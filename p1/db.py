@@ -6,6 +6,7 @@ Supports incremental upserting, file-level chunk deletion, and collection statis
 
 import os
 from typing import Any, Dict, List, Optional
+from p1.chunker import CodeChunk
 
 # Enable offline mode automatically if weights already exist in local cache
 HF_CACHE_DIR = os.path.expanduser("~/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2")
@@ -20,8 +21,6 @@ try:
     CHROMADB_AVAILABLE = True
 except ImportError:
     CHROMADB_AVAILABLE = False
-
-from p1.chunker import CodeChunk
 
 
 DEFAULT_DB_DIR = ".chroma_db"
@@ -172,4 +171,3 @@ class VectorDB:
             kwargs["where"] = where
 
         return self.collection.query(**kwargs)
-

@@ -38,4 +38,3 @@ class ResultFormatter:
             "status": "success",
         }
         return json.dumps(payload, indent=2)
-

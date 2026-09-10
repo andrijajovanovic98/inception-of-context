@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Any, Callable, Deque, Dict, List, Optional
 
 try:
-    from watchdog.events import FileSystemEvent, FileSystemEventHandler
+    from watchdog.events import FileSystemEventHandler
     from watchdog.observers import Observer
     from watchdog.observers.polling import PollingObserver
     WATCHDOG_AVAILABLE = True
@@ -207,7 +207,7 @@ class CodebaseWatcher:
                 self._observer = Observer()
                 self._observer.schedule(handler, self.indexer.target_dir, recursive=True)
                 self._observer.start()
-            except Exception as e:
+            except Exception:
                 # Fall back to polling observer if standard inotify fails
                 self._observer = PollingObserver(timeout=self.debounce_seconds)
                 self._observer.schedule(handler, self.indexer.target_dir, recursive=True)
@@ -232,4 +232,3 @@ class CodebaseWatcher:
             except Exception:
                 pass
         self.log_activity("WATCHER_STOP", self.indexer.target_dir, "Watcher stopped")
-

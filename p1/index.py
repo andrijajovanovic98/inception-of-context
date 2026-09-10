@@ -20,15 +20,15 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from p1.dashboard import create_dashboard_app
-from p1.db import DEFAULT_DB_DIR, VectorDB
-from p1.indexer import CodebaseIndexer
-from p1.watcher import CodebaseWatcher
+from p1.dashboard import create_dashboard_app  # noqa: E402
+from p1.db import DEFAULT_DB_DIR, VectorDB  # noqa: E402
+from p1.indexer import CodebaseIndexer  # noqa: E402
+from p1.watcher import CodebaseWatcher  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Inception-of-Context — Part 1 Indexer and Synchronizer",
+        description="Inception-of-Context  Part 1 Indexer and Synchronizer",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
@@ -85,11 +85,11 @@ def main() -> int:
         return 1
 
     print("=" * 60)
-    print(" Inception-of-Context (IoC) — Part 1 Indexer")
+    print(" Inception-of-Context (IoC) - Part 1 Indexer")
     print("=" * 60)
     print(f" Target codebase  : {target_path}")
     print(f" Database folder  : {os.path.abspath(args.db_dir)}")
-    print(f" Embedding model  : all-MiniLM-L6-v2 (local)")
+    print(" Embedding model  : all-MiniLM-L6-v2 (local)")
     print(f" LLM model        : {args.llm_model} (local runtime)")
     print("-" * 60)
 
@@ -115,7 +115,7 @@ def main() -> int:
     print("[*] Scanning target directory and indexing code chunks...")
     summary = indexer.index_all()
 
-    print(f"[+] Initial scan complete:")
+    print("[+] Initial scan complete:")
     print(f"    - Indexed files : {summary['indexed_files']}")
     print(f"    - Unchanged     : {summary['skipped_unchanged']}")
     print(f"    - Total chunks  : {summary['total_chunks']}")
@@ -150,12 +150,32 @@ def main() -> int:
         print(f"[+] Overview Dashboard running at: {dashboard_url}")
         print("    Press Ctrl+C to stop.")
         try:
-            uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+            # Wake SSE clients on SIGINT before uvicorn waits on open streams.
+            # A short graceful timeout lets generators exit without ERROR spam.
+            config = uvicorn.Config(
+                app,
+                host=args.host,
+                port=args.port,
+                log_level="info",
+                timeout_graceful_shutdown=2,
+            )
+            server = uvicorn.Server(config)
+            previous_handle_exit = server.handle_exit
+
+            def handle_exit(sig, frame):  # type: ignore[no-untyped-def]
+                closer = getattr(app, "close_sse_clients", None)
+                if callable(closer):
+                    closer()
+                previous_handle_exit(sig, frame)
+
+            server.handle_exit = handle_exit  # type: ignore[method-assign]
+            server.run()
         except KeyboardInterrupt:
-            print("\n[*] Shutting down dashboard...")
+            pass
         finally:
             if watcher:
                 watcher.stop()
+            print("\n[*] Dashboard stopped.")
         return 0
 
     # 7. If only watch mode (no web dashboard), keep main thread alive
@@ -175,5 +195,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
-
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        print("\n[*] Interrupted.", file=sys.stderr)
+        sys.exit(0)

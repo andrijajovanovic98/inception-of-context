@@ -5,7 +5,7 @@ Scans a target directory, enforces ignore rules, computes hashes, and updates Ch
 
 import json
 import os
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, Optional, Set
 
 from p1.chunker import chunk_file, compute_sha256
 from p1.db import DEFAULT_DB_DIR, VectorDB
@@ -240,4 +240,3 @@ class CodebaseIndexer:
             "total_files": stats["total_files"],
             "file_breakdown": stats["files"],
         }
-

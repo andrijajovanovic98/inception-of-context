@@ -4,7 +4,6 @@ Demonstrates arithmetic operations and formatting.
 """
 
 import sys
-from typing import List
 
 try:
     from demo_app.calculator import Calculator
@@ -39,6 +38,21 @@ def run_demo() -> int:
     return 0
 
 
-if __name__ == "__main__":
-    sys.exit(run_demo())
+def main() -> int:
+    """CLI entrypoint with exception handling."""
+    try:
+        return run_demo()
+    except ValueError as e:
+        print(f"[ERROR] {e}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"[ERROR] Unexpected failure: {e}", file=sys.stderr)
+        return 1
 
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        print("\n[*] Interrupted.", file=sys.stderr)
+        sys.exit(130)
