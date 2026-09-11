@@ -1,0 +1,3 @@
+# Bonus Dependencies for Inception-of-Context (IoC)
+# Inherits all dependencies from p1, p2, and p3.
+# Uses difflib and standard library subprocess for Git integration.

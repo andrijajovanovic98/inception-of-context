@@ -193,9 +193,14 @@ p3-cli: ensure-ready ensure-ollama-quick
 		--llm-model $(LLM_MODEL) \
 		--ollama-host $(OLLAMA_HOST)
 
-bonus:
-	@echo "[!] Bonus features are not implemented yet."
-	@exit 1
+bonus: ensure-ready ensure-ollama-quick
+	@echo "[*] Running Chapter VII Bonus Suite on :$(PORT)"
+	@$(PYTHON) bonus/index.py $(TARGET) \
+		--db-dir $(CHROMA_DIR) \
+		--watch --dashboard \
+		--host 127.0.0.1 --port $(PORT) \
+		--llm-model $(LLM_MODEL) \
+		--ollama-host $(OLLAMA_HOST)
 
 stop:
 	@if [ -f $(IOC_DIR)/ollama.pid ]; then \
