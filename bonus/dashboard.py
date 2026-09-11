@@ -526,7 +526,7 @@ def setup_bonus_dashboard(
                     gitBanner.style.display = 'block';
                     gitBanner.innerHTML = `
                         <div style="background:rgba(74,222,128,0.15); border:1px solid rgba(74,222,128,0.3); border-radius:6px; padding:10px 14px; font-size:13px; color:var(--accent-green); display:flex; justify-content:space-between; align-items:center;">
-                            <span>📦 <strong>Auto Git Commit:</strong> <code>${{escapeHtml(result.git_commit.message)}}</code></span>
+                            <span><strong>Auto Git Commit:</strong> <code>${{escapeHtml(result.git_commit.message)}}</code></span>
                             <span class="badge" style="background:#090d16;">commit ${{result.git_commit.commit_hash}}</span>
                         </div>
                     `;
@@ -692,3 +692,4 @@ def setup_bonus_dashboard(
     @app.get("/dashboard", response_class=HTMLResponse)
     async def render_bonus_dashboard_alias(request: Request) -> str:
         return await render_bonus_dashboard(request)
+

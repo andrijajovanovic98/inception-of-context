@@ -56,7 +56,7 @@ def create_bonus_api(
         max_attempts=max_attempts,
     )
 
-    app.title = "Inception-of-Context (IoC) — Bonus Extended API"
+    app.title = "Inception-of-Context (IoC) - Bonus Extended API"
     app.description = "Autonomous Codebase Engine with On-demand Reindex, Visual Diff, Dry-Run, and Git Commits"
     app.version = "3.1.0-bonus"
 
@@ -181,3 +181,4 @@ def create_bonus_api(
         return res_dict
 
     return app
+

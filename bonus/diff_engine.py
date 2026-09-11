@@ -121,3 +121,4 @@ def render_html_diff(diff_lines: List[str]) -> str:
 
     html_parts.append("</div>")
     return "".join(html_parts)
+

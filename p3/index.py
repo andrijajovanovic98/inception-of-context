@@ -41,7 +41,7 @@ from p3.loop import PatchLoopEngine, load_validation_command  # noqa: E402
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Inception-of-Context (IoC) — Part 3 Autonomous Patch Loop",
+        description="Inception-of-Context (IoC) - Part 3 Autonomous Patch Loop",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(

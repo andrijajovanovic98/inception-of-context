@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  ioc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ioc-app
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount demo_app so autonomous patches reflect on the host filesystem
+      - ./demo_app:/app/demo_app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OLLAMA_HOST=http://host.docker.internal:11435
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+

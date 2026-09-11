@@ -62,7 +62,7 @@ def create_patch_api(
         watcher=watcher,
     )
 
-    app.title = "Inception-of-Context (IoC) — Part 3 Autonomous Patch Loop API"
+    app.title = "Inception-of-Context (IoC) - Part 3 Autonomous Patch Loop API"
     app.description = "Autonomous Codebase Patch Loop with Structured JSON, AST Sanity Checks, and 100% Rollback"
     app.version = "3.0.0"
 

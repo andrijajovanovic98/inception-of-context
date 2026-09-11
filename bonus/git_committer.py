@@ -137,3 +137,4 @@ def commit_validated_patch(
             "message": commit_message,
             "error": str(e),
         }
+

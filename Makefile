@@ -40,19 +40,27 @@ export PYTHONPATH      := $(CURDIR):$(SITE_PACKAGES)
 export OLLAMA_MODELS   := $(OLLAMA_DIR)
 export OLLAMA_HOST
 
-.PHONY: all setup p1 p2 p3 p3-cli bonus stop clean fclean re help \
+.PHONY: all up down setup p1 p2 p3 p3-cli bonus stop clean fclean re help \
 	ensure-dirs ensure-venv ensure-deps ensure-ready ensure-ollama \
 	ensure-ollama-quick ensure-embed
 
 all: setup
 
+up:
+	@docker compose up --build -d 2>/dev/null || docker-compose up --build -d
+
+down:
+	@docker compose down 2>/dev/null || docker-compose down
+
 help:
+	@echo "make up      - build and launch containerized IoC via Docker Compose"
+	@echo "make down    - stop and tear down Docker containers"
 	@echo "make setup   - prepare /tmp/ioc (venv, pip, embeddings, ollama $(LLM_MODEL))"
 	@echo "make p1      - run Part 1 Overview dashboard on http://127.0.0.1:$(PORT)"
 	@echo "make p2      - run Part 2 Architect API & RAG dashboard on http://127.0.0.1:$(PORT)"
 	@echo "make p3      - run Part 3 Patch Loop & Dashboard on http://127.0.0.1:$(PORT)"
 	@echo "make p3-cli  - run headless patch loop: make p3-cli INTENT=\"your intent\""
-	@echo "make bonus   - (stub) bonus features"
+	@echo "make bonus   - run Chapter VII Bonus Suite & Dashboard on http://127.0.0.1:$(PORT)"
 	@echo "make stop    - stop background ollama started by this Makefile (if any)"
 	@echo "make clean   - remove chroma db / pip+hf caches (keep venv)"
 	@echo "make fclean  - full wipe of /tmp/ioc"

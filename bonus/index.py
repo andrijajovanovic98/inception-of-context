@@ -42,7 +42,7 @@ from p3.loop import PatchLoopEngine, load_validation_command
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Inception-of-Context (IoC) — Chapter VII Bonus Suite",
+        description="Inception-of-Context (IoC) - Chapter VII Bonus Suite",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("target", nargs="?", default="demo_app", help="Path to target codebase")
@@ -128,7 +128,7 @@ def main() -> int:
         return 1
 
     print("=" * 65)
-    print(" Inception-of-Context (IoC) — Chapter VII Bonus Suite")
+    print(" Inception-of-Context (IoC) - Chapter VII Bonus Suite")
     print("=" * 65)
     print(f" Target codebase  : {target_path}")
     print(f" Database folder  : {os.path.abspath(args.db_dir)}")
@@ -202,3 +202,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

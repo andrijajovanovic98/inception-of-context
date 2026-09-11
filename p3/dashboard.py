@@ -852,7 +852,7 @@ def setup_p3_dashboard(
                 if (!isPassed && att.attempt < result.attempts_count) {{
                     feedbackBanner = `
                         <div class="feedback-note">
-                            <span>🔄 Self-Healing Active:</span> Error logs and failed code were passed to Attempt #${{att.attempt + 1}} prompt for autonomous repair.
+                            <span>[Self-Healing Active]</span> Error logs and failed code were passed to Attempt #${{att.attempt + 1}} prompt for autonomous repair.
                         </div>
                     `;
                 }}
