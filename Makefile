@@ -20,6 +20,7 @@ PYTHON       := /usr/bin/python3
 PY_VER       := $(shell $(PYTHON) -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 SITE_PACKAGES:= $(VENV)/lib/python$(PY_VER)/site-packages
 REQ          := p1/requirements.txt
+REQ_P2       := p2/requirements.txt
 LLM_MODEL    := qwen2.5:3b
 EMBED_MODEL  := all-MiniLM-L6-v2
 PORT         := 8000
@@ -47,7 +48,7 @@ all: setup
 help:
 	@echo "make setup  - prepare /tmp/ioc (venv, pip, embeddings, ollama $(LLM_MODEL))"
 	@echo "make p1     - run Part 1 Overview dashboard on http://127.0.0.1:$(PORT)"
-	@echo "make p2     - (stub) Part 2 Ask & Retrieve"
+	@echo "make p2     - run Part 2 Architect API & RAG dashboard on http://127.0.0.1:$(PORT)"
 	@echo "make p3     - (stub) Part 3 Patch Loop"
 	@echo "make bonus  - (stub) bonus features"
 	@echo "make stop   - stop background ollama started by this Makefile (if any)"
@@ -72,15 +73,15 @@ ensure-venv: ensure-dirs
 	fi
 
 ensure-deps: ensure-venv
-	@if [ -f "$(IOC_DIR)/.deps-ok" ] && [ "$(IOC_DIR)/.deps-ok" -nt "$(REQ)" ] \
-		&& $(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers" 2>/dev/null; then \
+	@if [ -f "$(IOC_DIR)/.deps-ok" ] && [ "$(IOC_DIR)/.deps-ok" -nt "$(REQ)" ] && [ "$(IOC_DIR)/.deps-ok" -nt "$(REQ_P2)" ] \
+		&& $(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers,rank_bm25,httpx" 2>/dev/null; then \
 		echo "[*] Dependencies already ready (skip pip)"; \
 	else \
-		echo "[*] Installing CPU torch + Part 1 dependencies"; \
+		echo "[*] Installing CPU torch + Part 1 & Part 2 dependencies"; \
 		$(VENV)/bin/pip install --upgrade pip setuptools wheel; \
 		$(VENV)/bin/pip install --cache-dir $(PIP_CACHE) \
 			torch --index-url https://download.pytorch.org/whl/cpu; \
-		$(VENV)/bin/pip install --cache-dir $(PIP_CACHE) -r $(REQ) pillow; \
+		$(VENV)/bin/pip install --cache-dir $(PIP_CACHE) -r $(REQ) -r $(REQ_P2) pillow; \
 		touch "$(IOC_DIR)/.deps-ok"; \
 	fi
 	@printf '%s\n' \
@@ -100,10 +101,10 @@ ensure-deps: ensure-venv
 # Fast preflight for make p1 (no pip install, no empty venv creation)
 ensure-ready:
 	@if [ ! -x "$(VENV)/bin/pip" ] \
-		|| ! $(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers" 2>/dev/null; then \
+		|| ! $(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers,rank_bm25,httpx" 2>/dev/null; then \
 		echo "[!] IoC runtime not ready under $(IOC_DIR) (missing after fclean, or never set up)."; \
 		echo "    1) make setup"; \
-		echo "    2) make p1"; \
+		echo "    2) make p1 or make p2"; \
 		exit 1; \
 	fi
 	@echo "[*] Runtime ready: $(VENV)"
@@ -115,12 +116,12 @@ ensure-ollama: ensure-dirs
 	else \
 		echo "[*] Starting ollama serve (models=$(OLLAMA_DIR), host=$(OLLAMA_HOST))"; \
 		mkdir -p $(IOC_DIR)/logs $(OLLAMA_DIR); \
-		nohup env OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" \
+		nohup env HOME="$(IOC_DIR)" OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" \
 			ollama serve >$(IOC_DIR)/logs/ollama.log 2>&1 & echo $$! > $(IOC_DIR)/ollama.pid; \
 		sleep 2; \
 	fi
 	@echo "[*] Ensuring Ollama model $(LLM_MODEL)"
-	@OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" ollama pull $(LLM_MODEL)
+	@HOME="$(IOC_DIR)" OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" ollama pull $(LLM_MODEL)
 
 # Only start server if needed; pull model only when missing
 ensure-ollama-quick: ensure-dirs
@@ -130,14 +131,14 @@ ensure-ollama-quick: ensure-dirs
 	else \
 		echo "[*] Starting ollama serve (models=$(OLLAMA_DIR), host=$(OLLAMA_HOST))"; \
 		mkdir -p $(IOC_DIR)/logs $(OLLAMA_DIR); \
-		nohup env OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" \
+		nohup env HOME="$(IOC_DIR)" OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" \
 			ollama serve >$(IOC_DIR)/logs/ollama.log 2>&1 & echo $$! > $(IOC_DIR)/ollama.pid; \
 		sleep 2; \
 	fi
-	@if ! OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" \
+	@if ! HOME="$(IOC_DIR)" OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" \
 		ollama show $(LLM_MODEL) >/dev/null 2>&1; then \
 		echo "[*] Pulling missing model $(LLM_MODEL)"; \
-		OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" ollama pull $(LLM_MODEL); \
+		HOME="$(IOC_DIR)" OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" ollama pull $(LLM_MODEL); \
 	fi
 
 ensure-embed: ensure-deps
@@ -161,10 +162,14 @@ p1: ensure-ready ensure-ollama-quick
 		--host 127.0.0.1 --port $(PORT) \
 		--llm-model $(LLM_MODEL)
 
-p2:
-	@echo "[!] Part 2 (Ask & Retrieve) is not implemented yet."
-	@echo "    Planned: POST /context, POST /ask, Ollama RAG UI."
-	@exit 1
+p2: ensure-ready ensure-ollama-quick
+	@echo "[*] Part 2 - Architect API & RAG (Ask & Retrieve) on :$(PORT)"
+	@$(PYTHON) p2/index.py $(TARGET) \
+		--db-dir $(CHROMA_DIR) \
+		--watch --dashboard \
+		--host 127.0.0.1 --port $(PORT) \
+		--llm-model $(LLM_MODEL) \
+		--ollama-host $(OLLAMA_HOST)
 
 p3:
 	@echo "[!] Part 3 (Patch Loop) is not implemented yet."

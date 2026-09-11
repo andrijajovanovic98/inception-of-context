@@ -34,3 +34,9 @@ class Calculator:
     def power(self, base: float, exp: float) -> float:
         """Return base raised to the power of exp."""
         return round(base ** exp, self.precision)
+    
+    def sqrt(self, value: float) -> float:
+        """Return the square root of a number. Raises ValueError if value is negative."""
+        if value < 0:
+            raise ValueError("Square root of negative number is not allowed.")
+        return round(value ** 0.5, self.precision)

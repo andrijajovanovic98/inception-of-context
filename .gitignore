@@ -40,9 +40,6 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Assistant instructions and local AI guidelines
-GEMINI.md
-
 # Local documentation and subject files
 docu/
 
