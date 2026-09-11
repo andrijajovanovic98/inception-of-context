@@ -9,8 +9,7 @@ Renders the complete 4-tab web interface:
 100% local, zero external network or CDN dependencies.
 """
 
-import os
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -73,6 +72,14 @@ def setup_p3_dashboard(
         file_options = "".join(
             f'<option value="{f}">{f}</option>'
             for f in sorted(stats["files"].keys())
+        )
+
+        ask_query_placeholder = (
+            "e.g. What functions exist in calculator.py? or What does format_number do?"
+        )
+        patch_intent_placeholder = (
+            "e.g. Add a method multiply(a, b) to Calculator in calculator.py, "
+            "or add error handling for division by zero in divide()."
         )
 
         return f"""<!DOCTYPE html>
@@ -265,9 +272,15 @@ def setup_p3_dashboard(
             font-size: 10px;
             font-weight: 700;
         }}
-        .feed-action.CREATED, .feed-action.PATCH_SUCCESS {{ background: rgba(74, 222, 128, 0.2); color: var(--accent-green); }}
-        .feed-action.MODIFIED, .feed-action.PATCH_START {{ background: rgba(251, 191, 36, 0.2); color: var(--accent-amber); }}
-        .feed-action.DELETED, .feed-action.PATCH_FAILED, .feed-action.PATCH_ROLLBACK {{ background: rgba(248, 113, 113, 0.2); color: var(--accent-red); }}
+        .feed-action.CREATED, .feed-action.PATCH_SUCCESS {{
+            background: rgba(74, 222, 128, 0.2); color: var(--accent-green);
+        }}
+        .feed-action.MODIFIED, .feed-action.PATCH_START {{
+            background: rgba(251, 191, 36, 0.2); color: var(--accent-amber);
+        }}
+        .feed-action.DELETED, .feed-action.PATCH_FAILED, .feed-action.PATCH_ROLLBACK {{
+            background: rgba(248, 113, 113, 0.2); color: var(--accent-red);
+        }}
         .feed-path {{ font-family: monospace; font-weight: 600; color: var(--accent); }}
 
         /* Forms and Buttons */
@@ -465,7 +478,9 @@ def setup_p3_dashboard(
         <div class="header-title">
             <h1>Inception-of-Context</h1>
             <span style="color:var(--text-muted);">|</span>
-            <span style="font-weight:600; font-size:14px; color:var(--text-muted);">Part 3: Patch Loop Orchestrator</span>
+            <span style="font-weight:600; font-size:14px; color:var(--text-muted);">
+                Part 3: Patch Loop Orchestrator
+            </span>
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
             <span id="ollama-status-badge" class="badge badge-purple">Ollama: Checking...</span>
@@ -478,7 +493,9 @@ def setup_p3_dashboard(
         <button class="tab-btn" id="tab-btn-overview" onclick="showTab('overview')">Overview</button>
         <button class="tab-btn" id="tab-btn-files" onclick="showTab('files')">Files</button>
         <button class="tab-btn" id="tab-btn-ask" onclick="showTab('ask')">Ask &amp; Retrieve</button>
-        <button class="tab-btn active" id="tab-btn-patch" onclick="showTab('patch')">Patch Loop (Part 3)</button>
+        <button class="tab-btn active" id="tab-btn-patch" onclick="showTab('patch')">
+            Patch Loop (Part 3)
+        </button>
     </div>
 
     <!-- ================================================================= -->
@@ -500,7 +517,9 @@ def setup_p3_dashboard(
             </div>
             <div class="card">
                 <div class="title">Local Embedding</div>
-                <div class="val" style="font-size:15px; color:var(--accent-green);">{stats['embedding_model']}</div>
+                <div class="val" style="font-size:15px; color:var(--accent-green);">
+                    {stats['embedding_model']}
+                </div>
             </div>
             <div class="card">
                 <div class="title">Local LLM</div>
@@ -553,7 +572,7 @@ def setup_p3_dashboard(
         <div class="form-panel">
             <div class="form-group" style="margin-bottom:14px;">
                 <label for="ask-query">Ask the Codebase (Natural Language or Symbol Query):</label>
-                <textarea id="ask-query" placeholder="e.g. What functions exist in calculator.py? or What does format_number do?"></textarea>
+                <textarea id="ask-query" placeholder="{ask_query_placeholder}"></textarea>
             </div>
             <div class="form-row">
                 <div class="form-group" style="width:140px;">
@@ -577,11 +596,17 @@ def setup_p3_dashboard(
 
         <div id="ask-result-container" style="display:none;">
             <div class="card" id="answer-box" style="margin-bottom:24px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <div style="font-weight:700; color:var(--accent-purple); font-size:15px;">Model Response</div>
-                    <span id="ground-truth-badge" class="badge badge-purple" style="display:none;">Ground Truth Verified</span>
+                <div style="display:flex; justify-content:space-between; align-items:center;
+                            margin-bottom:12px;">
+                    <div style="font-weight:700; color:var(--accent-purple); font-size:15px;">
+                        Model Response
+                    </div>
+                    <span id="ground-truth-badge" class="badge badge-purple" style="display:none;">
+                        Ground Truth Verified
+                    </span>
                 </div>
-                <div id="answer-text" style="font-size:15px; line-height:1.6; white-space:pre-wrap; color:#e2e8f0;"></div>
+                <div id="answer-text"
+                     style="font-size:15px; line-height:1.6; white-space:pre-wrap; color:#e2e8f0;"></div>
             </div>
 
             <div class="card">
@@ -597,11 +622,16 @@ def setup_p3_dashboard(
     <div id="tab-patch" class="tab-content active">
         <!-- Control Form -->
         <div class="form-panel">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;
+                        margin-bottom:14px; flex-wrap:wrap; gap:10px;">
                 <div>
-                    <h2 style="font-size:16px; font-weight:700; color:#fff; margin-bottom:4px;">Autonomous Patch Loop (Subject Part 3)</h2>
+                    <h2 style="font-size:16px; font-weight:700; color:#fff; margin-bottom:4px;">
+                        Autonomous Patch Loop (Subject Part 3)
+                    </h2>
                     <p style="font-size:13px; color:var(--text-muted);">
-                        Intent &rarr; Retrieve &rarr; Structured Patch &rarr; AST Sanity &rarr; Atomic Apply &rarr; Validation Command &rarr; Error Feedback Loop (max 3) &rarr; 100% Rollback
+                        Intent &rarr; Retrieve &rarr; Structured Patch &rarr; AST Sanity &rarr;
+                        Atomic Apply &rarr; Validation Command &rarr; Error Feedback Loop (max 3)
+                        &rarr; 100% Rollback
                     </p>
                 </div>
                 <div style="display:flex; gap:8px;">
@@ -614,7 +644,7 @@ def setup_p3_dashboard(
 
             <div class="form-group" style="margin-bottom:14px;">
                 <label for="patch-intent">Coding Intent / Task Description:</label>
-                <textarea id="patch-intent" placeholder="e.g. Add a method multiply(a, b) to Calculator in calculator.py, or add error handling for division by zero in divide()."></textarea>
+                <textarea id="patch-intent" placeholder="{patch_intent_placeholder}"></textarea>
             </div>
 
             <div class="form-row">
@@ -711,8 +741,14 @@ def setup_p3_dashboard(
             statusBadge.className = 'badge badge-amber';
             statusBadge.innerText = 'RUNNING';
             statusTitle.innerText = 'Autonomous Patch Loop in progress...';
-            statusMsg.innerHTML = 'Retrieving context &rarr; Generating JSON patch &rarr; Checking sanity &rarr; Applying &rarr; Validating';
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--accent);">Executing autonomous patch and self-healing loop... Please wait.</div>';
+            statusMsg.innerHTML = (
+                'Retrieving context &rarr; Generating JSON patch &rarr; '
+                + 'Checking sanity &rarr; Applying &rarr; Validating'
+            );
+            container.innerHTML = (
+                '<div style="text-align:center; padding:40px; color:var(--accent);">'
+                + 'Executing autonomous patch and self-healing loop... Please wait.</div>'
+            );
 
             try {{
                 const res = await fetch('/patch/run', {{
@@ -757,13 +793,19 @@ def setup_p3_dashboard(
             if (result.status === 'success') {{
                 statusBadge.className = 'badge';
                 statusBadge.innerText = 'GREEN (PASSED)';
-                statusTitle.innerText = `Autonomous patch validated and applied in ${{result.attempts_count}} attempt(s)!`;
+                statusTitle.innerText = (
+                    `Autonomous patch validated and applied in ${{result.attempts_count}} attempt(s)!`
+                );
                 statusMsg.innerText = 'All validation tests passed. Codebase committed and re-indexed.';
             }} else {{
                 statusBadge.className = 'badge badge-red';
                 statusBadge.innerText = 'FAILED (100% ROLLED BACK)';
-                statusTitle.innerText = `Loop failed after ${{result.attempts_count}} attempt(s). Codebase restored.`;
-                statusMsg.innerText = result.error_message || 'Project cleanly restored to exact pre-loop snapshot.';
+                statusTitle.innerText = (
+                    `Loop failed after ${{result.attempts_count}} attempt(s). Codebase restored.`
+                );
+                statusMsg.innerText = (
+                    result.error_message || 'Project cleanly restored to exact pre-loop snapshot.'
+                );
             }}
 
             // Render Attempt cards
@@ -826,8 +868,13 @@ def setup_p3_dashboard(
                         <div class="chunk-card" style="margin-bottom:10px;">
                             <div class="chunk-header">
                                 <div class="chunk-meta">
-                                    <span class="badge ${{f.op === 'create' ? 'badge-purple' : f.op === 'delete' ? 'badge-red' : ''}}">${{f.op.toUpperCase()}}</span>
-                                    <span style="font-family:monospace; font-weight:700;">${{escapeHtml(f.path)}}</span>
+                                    <span class="badge ${{
+                                        f.op === 'create' ? 'badge-purple'
+                                        : f.op === 'delete' ? 'badge-red' : ''
+                                    }}">${{f.op.toUpperCase()}}</span>
+                                    <span style="font-family:monospace; font-weight:700;">
+                                        ${{escapeHtml(f.path)}}
+                                    </span>
                                 </div>
                             </div>
                             <pre class="code-pre"><code>${{escapeHtml(f.content || '')}}</code></pre>
@@ -841,11 +888,18 @@ def setup_p3_dashboard(
                     const vCode = att.validation_exit_code;
                     valHtml = `
                         <div style="margin-top:10px;">
-                            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:12px;">
-                                <span style="color:var(--text-muted);">Validation: <code>${{escapeHtml(att.validation_command)}}</code></span>
-                                <span class="badge ${{vCode === 0 ? '' : 'badge-red'}}">Exit Code: ${{vCode}}</span>
+                            <div style="display:flex; justify-content:space-between;
+                                        margin-bottom:6px; font-size:12px;">
+                                <span style="color:var(--text-muted);">
+                                    Validation: <code>${{escapeHtml(att.validation_command)}}</code>
+                                </span>
+                                <span class="badge ${{vCode === 0 ? '' : 'badge-red'}}">
+                                    Exit Code: ${{vCode}}
+                                </span>
                             </div>
-                            <pre class="terminal-box">${{escapeHtml(att.validation_output || '(no stdout/stderr output)')}}</pre>
+                            <pre class="terminal-box">${{
+                                escapeHtml(att.validation_output || '(no stdout/stderr output)')
+                            }}</pre>
                         </div>
                     `;
                 }}
@@ -855,7 +909,9 @@ def setup_p3_dashboard(
                 if (!isPassed && att.attempt < result.attempts_count) {{
                     feedbackBanner = `
                         <div class="feedback-note">
-                            <span>[Self-Healing Active]</span> Error logs and failed code were passed to Attempt #${{att.attempt + 1}} prompt for autonomous repair.
+                            <span>[Self-Healing Active]</span>
+                            Error logs and failed code were passed to Attempt #${{att.attempt + 1}}
+                            prompt for autonomous repair.
                         </div>
                     `;
                 }}
@@ -867,7 +923,9 @@ def setup_p3_dashboard(
                             <strong style="font-size:15px; color:#fff;">Attempt #${{att.attempt}}</strong>
                             ${{statusPill}}
                         </div>
-                        <span style="font-size:12px; color:var(--text-muted);">${{escapeHtml(patchObj.explanation || '')}}</span>
+                        <span style="font-size:12px; color:var(--text-muted);">
+                            ${{escapeHtml(patchObj.explanation || '')}}
+                        </span>
                     </div>
                     <div class="attempt-body">
                         <div>
@@ -876,7 +934,10 @@ def setup_p3_dashboard(
                         </div>
                         <div>
                             <label>Structured Patch Content:</label>
-                            ${{filesHtml || '<div style="color:var(--text-muted); font-size:13px;">No files generated.</div>'}}
+                            ${{filesHtml || (
+                                '<div style="color:var(--text-muted); font-size:13px;">'
+                                + 'No files generated.</div>'
+                            )}}
                         </div>
                         ${{valHtml}}
                         ${{feedbackBanner}}
@@ -985,21 +1046,29 @@ def setup_p3_dashboard(
         function renderChunks(chunks) {{
             const container = document.getElementById('retrieved-chunks-list');
             if (!chunks || chunks.length === 0) {{
-                container.innerHTML = '<div style="color:var(--text-muted); padding:16px;">No chunks retrieved.</div>';
+                container.innerHTML = (
+                    '<div style="color:var(--text-muted); padding:16px;">No chunks retrieved.</div>'
+                );
                 return;
             }}
 
             let html = '';
             chunks.forEach((c, idx) => {{
-                const score = c.similarity_score !== undefined ? (c.similarity_score * 100).toFixed(1) + '% match' : '';
+                const score = c.similarity_score !== undefined
+                    ? (c.similarity_score * 100).toFixed(1) + '% match'
+                    : '';
                 html += `
                 <div class="chunk-card">
                     <div class="chunk-header">
                         <div class="chunk-meta">
                             <span style="font-weight:700; color:var(--accent);">▶ Chunk #${{idx + 1}}</span>
                             <span style="color:var(--text); font-family:monospace;">${{c.file_path}}</span>
-                            <span style="color:var(--text-muted);">[${{c.symbol_type || 'code'}}: ${{c.symbol_name || 'block'}}]</span>
-                            <span style="color:var(--text-muted); font-size:12px;">Lines ${{c.start_line}}-${{c.end_line}}</span>
+                            <span style="color:var(--text-muted);">
+                                [${{c.symbol_type || 'code'}}: ${{c.symbol_name || 'block'}}]
+                            </span>
+                            <span style="color:var(--text-muted); font-size:12px;">
+                                Lines ${{c.start_line}}-${{c.end_line}}
+                            </span>
                         </div>
                         <span class="score-pill">${{score}}</span>
                     </div>
@@ -1019,26 +1088,36 @@ def setup_p3_dashboard(
             if (!filePath) return;
 
             const container = document.getElementById('file-chunks-container');
-            container.innerHTML = '<div style="color:var(--accent); text-align:center; padding:20px;">Loading chunks...</div>';
+            container.innerHTML = (
+                '<div style="color:var(--accent); text-align:center; padding:20px;">'
+                + 'Loading chunks...</div>'
+            );
 
             try {{
                 const res = await fetch('/file?path=' + encodeURIComponent(filePath));
                 if (!res.ok) throw new Error('File not found');
                 const data = await res.json();
 
-                let html = '<div style="margin-bottom:16px; font-weight:600; color:var(--accent-green);">' +
-                           data.total_chunks + ' AST chunks found in ' + data.file_path + '</div>';
+                let html = (
+                    '<div style="margin-bottom:16px; font-weight:600; color:var(--accent-green);">'
+                    + data.total_chunks + ' AST chunks found in ' + data.file_path + '</div>'
+                );
 
                 data.chunks.forEach((c, i) => {{
                     html += `
                     <div class="chunk-card">
                         <div class="chunk-header">
                             <div class="chunk-meta">
-                                <span style="color:var(--accent); font-weight:bold; margin-right:8px;">▶</span>
+                                <span style="color:var(--accent); font-weight:bold;
+                                             margin-right:8px;">▶</span>
                                 <span style="font-weight:700; color:var(--accent);">${{c.symbol_name}}</span>
-                                <span style="color:var(--text-muted); font-size:12px;">(${{c.symbol_type}}, lines ${{c.start_line}}-${{c.end_line}})</span>
+                                <span style="color:var(--text-muted); font-size:12px;">
+                                    (${{c.symbol_type}}, lines ${{c.start_line}}-${{c.end_line}})
+                                </span>
                             </div>
-                            <span style="font-size:11px; color:var(--text-muted); font-family:monospace;">${{c.content_hash.substring(0, 10)}}...</span>
+                            <span style="font-size:11px; color:var(--text-muted); font-family:monospace;">
+                                ${{c.content_hash.substring(0, 10)}}...
+                            </span>
                         </div>
                         <pre class="code-pre"><code>${{escapeHtml(c.content)}}</code></pre>
                     </div>
@@ -1046,7 +1125,10 @@ def setup_p3_dashboard(
                 }});
                 container.innerHTML = html;
             }} catch (err) {{
-                container.innerHTML = '<div style="color:var(--accent-red); padding:20px;">Error loading file: ' + err.message + '</div>';
+                container.innerHTML = (
+                    '<div style="color:var(--accent-red); padding:20px;">'
+                    + 'Error loading file: ' + err.message + '</div>'
+                );
             }}
         }}
 
@@ -1092,7 +1174,9 @@ def setup_p3_dashboard(
                     if (badge) {{
                         badge.innerText = data.action;
                         if (data.action === 'PATCH_SUCCESS') badge.className = 'badge';
-                        else if (data.action === 'PATCH_FAILED' || data.action === 'PATCH_ROLLBACK') badge.className = 'badge badge-red';
+                        else if (
+                            data.action === 'PATCH_FAILED' || data.action === 'PATCH_ROLLBACK'
+                        ) badge.className = 'badge badge-red';
                         else badge.className = 'badge badge-amber';
                     }}
                 }}
@@ -1106,4 +1190,3 @@ def setup_p3_dashboard(
     @app.get("/dashboard", response_class=HTMLResponse)
     async def render_dashboard_alias(request: Request) -> str:
         return await render_dashboard(request)
-

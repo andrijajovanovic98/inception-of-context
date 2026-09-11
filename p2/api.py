@@ -21,17 +21,17 @@ if PROJECT_ROOT not in sys.path:
 try:
     from fastapi import FastAPI, HTTPException, Query, Request
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
+    from fastapi.responses import Response, StreamingResponse
     from pydantic import BaseModel, Field
     FASTAPI_AVAILABLE = True
 except ImportError:
     FASTAPI_AVAILABLE = False
 
-from p1.chunker import chunk_file
-from p1.indexer import CodebaseIndexer
-from p1.watcher import CodebaseWatcher
-from p2.llm import OllamaClient, ask_rag
-from p2.retriever import Retriever
+from p1.chunker import chunk_file  # noqa: E402
+from p1.indexer import CodebaseIndexer  # noqa: E402
+from p1.watcher import CodebaseWatcher  # noqa: E402
+from p2.llm import OllamaClient, ask_rag  # noqa: E402
+from p2.retriever import Retriever  # noqa: E402
 
 # Favicon SVG (no external network dependencies)
 _FAVICON_SVG = (
@@ -52,8 +52,13 @@ if FASTAPI_AVAILABLE:
 
     class AskRequest(BaseModel):
         query: str = Field(..., description="Question or intent to ask the codebase LLM")
-        k: Optional[int] = Field(default=3, ge=1, le=20, description="Number of context chunks to feed into the prompt")
-        model: Optional[str] = Field(default=None, description="Optional override for the local LLM model name")
+        k: Optional[int] = Field(
+            default=3, ge=1, le=20,
+            description="Number of context chunks to feed into the prompt",
+        )
+        model: Optional[str] = Field(
+            default=None, description="Optional override for the local LLM model name",
+        )
 
     class _QuietSSEResponse(StreamingResponse):
         """StreamingResponse that suppresses CancelledError on shutdown."""
@@ -75,7 +80,10 @@ def create_architect_api(
     Integrates indexer, hybrid retriever, local LLM client, and filesystem watcher.
     """
     if not FASTAPI_AVAILABLE:
-        raise ImportError("FastAPI is required. Please install dependencies: pip install -r p2/requirements.txt")
+        raise ImportError(
+            "FastAPI is required. Please install dependencies: "
+            "pip install -r p2/requirements.txt"
+        )
 
     sse_queues: List[asyncio.Queue] = []
     sse_stop = threading.Event()
@@ -215,11 +223,15 @@ def create_architect_api(
         }
 
     @app.get("/file")
-    async def get_file_root(path: str = Query(..., description="Target-relative file path")) -> Dict[str, Any]:
+    async def get_file_root(
+        path: str = Query(..., description="Target-relative file path"),
+    ) -> Dict[str, Any]:
         return await _handle_file(path)
 
     @app.get("/api/file")
-    async def get_file_api(path: str = Query(..., description="Target-relative file path")) -> Dict[str, Any]:
+    async def get_file_api(
+        path: str = Query(..., description="Target-relative file path"),
+    ) -> Dict[str, Any]:
         return await _handle_file(path)
 
     # -------------------------------------------------------------------------
@@ -230,9 +242,9 @@ def create_architect_api(
         clamped_offset = max(0, min(offset, total_count))
         clamped_limit = max(1, min(limit, 100))
 
-        slice_ids = retriever.chunk_ids[clamped_offset : clamped_offset + clamped_limit]
-        slice_docs = retriever.documents[clamped_offset : clamped_offset + clamped_limit]
-        slice_metas = retriever.metadatas[clamped_offset : clamped_offset + clamped_limit]
+        slice_ids = retriever.chunk_ids[clamped_offset:clamped_offset + clamped_limit]
+        slice_docs = retriever.documents[clamped_offset:clamped_offset + clamped_limit]
+        slice_metas = retriever.metadatas[clamped_offset:clamped_offset + clamped_limit]
 
         chunk_items: List[Dict[str, Any]] = []
         for cid, doc, meta in zip(slice_ids, slice_docs, slice_metas):

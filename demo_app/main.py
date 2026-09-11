@@ -9,8 +9,12 @@ try:
     from demo_app.calculator import Calculator
     from demo_app.formatter import ResultFormatter, format_currency, format_percentage
 except ImportError:
-    from calculator import Calculator
-    from formatter import ResultFormatter, format_currency, format_percentage
+    from calculator import Calculator  # type: ignore[no-redef]
+    from formatter import (  # type: ignore[no-redef]
+        ResultFormatter,
+        format_currency,
+        format_percentage,
+    )
 
 
 def calculate_tax(amount: float, tax_rate: float) -> float:

@@ -9,7 +9,7 @@ Supports:
 
 import difflib
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 def compute_file_diff(
@@ -94,9 +94,16 @@ def render_html_diff(diff_lines: List[str]) -> str:
     Renders unified diff lines into an HTML representation with colored lines.
     """
     if not diff_lines:
-        return '<div style="color:var(--text-muted); font-size:12px; padding:8px;">No differences detected.</div>'
+        return (
+            '<div style="color:var(--text-muted); font-size:12px; padding:8px;">'
+            "No differences detected.</div>"
+        )
 
-    html_parts = ['<div class="visual-diff-container" style="font-family:monospace; font-size:12px; line-height:1.4; background:#050811; border:1px solid var(--border); border-radius:6px; padding:10px; overflow-x:auto;">']
+    html_parts = [
+        '<div class="visual-diff-container" style="font-family:monospace; font-size:12px; '
+        "line-height:1.4; background:#050811; border:1px solid var(--border); "
+        'border-radius:6px; padding:10px; overflow-x:auto;">'
+    ]
 
     for line in diff_lines:
         line_clean = line.rstrip("\r\n")
@@ -109,16 +116,26 @@ def render_html_diff(diff_lines: List[str]) -> str:
         )
 
         if line_clean.startswith("+++") or line_clean.startswith("---"):
-            html_parts.append(f'<div style="color:var(--text-muted); font-weight:700;">{escaped}</div>')
+            html_parts.append(
+                f'<div style="color:var(--text-muted); font-weight:700;">{escaped}</div>'
+            )
         elif line_clean.startswith("@@"):
-            html_parts.append(f'<div style="color:var(--accent); background:rgba(56,189,248,0.1); padding:2px 4px; border-radius:3px; margin:4px 0;">{escaped}</div>')
+            html_parts.append(
+                f'<div style="color:var(--accent); background:rgba(56,189,248,0.1); '
+                f'padding:2px 4px; border-radius:3px; margin:4px 0;">{escaped}</div>'
+            )
         elif line_clean.startswith("+"):
-            html_parts.append(f'<div style="color:var(--accent-green); background:rgba(74,222,128,0.12); padding:1px 4px;">{escaped}</div>')
+            html_parts.append(
+                f'<div style="color:var(--accent-green); '
+                f'background:rgba(74,222,128,0.12); padding:1px 4px;">{escaped}</div>'
+            )
         elif line_clean.startswith("-"):
-            html_parts.append(f'<div style="color:var(--accent-red); background:rgba(248,113,113,0.12); padding:1px 4px;">{escaped}</div>')
+            html_parts.append(
+                f'<div style="color:var(--accent-red); '
+                f'background:rgba(248,113,113,0.12); padding:1px 4px;">{escaped}</div>'
+            )
         else:
             html_parts.append(f'<div style="color:#94a3b8; padding:1px 4px;">{escaped}</div>')
 
     html_parts.append("</div>")
     return "".join(html_parts)
-

@@ -6,7 +6,6 @@ Drives the autonomous coding cycle:
   error feedback retry loop (max 3 attempts) -> commit or 100% rollback.
 """
 
-import asyncio
 import os
 import shlex
 import subprocess
@@ -108,7 +107,12 @@ class PatchLoopEngine:
 
         self.sanity_checker = SanityChecker(target_dir=self.target_dir)
         self.applier = PatchApplier(target_dir=self.target_dir)
-        self.generator = PatchGenerator(llm_client=self.llm_client, target_dir=self.target_dir)
+        if self.llm_client is None:
+            raise ValueError("PatchLoopEngine requires an OllamaClient")
+        self.generator = PatchGenerator(
+            llm_client=self.llm_client,
+            target_dir=self.target_dir,
+        )
 
     def _run_validation(self, modified_files: List[str]) -> Tuple[bool, str, int, str]:
         """
@@ -252,7 +256,8 @@ class PatchLoopEngine:
                 if self.indexer:
                     try:
                         self.indexer.index_all()
-                        self.retriever.refresh_index()
+                        if self.retriever is not None:
+                            self.retriever.refresh_index()
                     except Exception:
                         pass
 

@@ -7,9 +7,8 @@ before touching the disk and provides explicit feedback for the retry loop.
 
 import ast
 import os
-import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Set
 
 RETRIEVAL_MARKERS = [
     "=== RETRIEVED",
@@ -166,7 +165,8 @@ class SanityChecker:
                 for marker in RETRIEVAL_MARKERS:
                     if marker in content:
                         errors.append(
-                            f"Rule 1 Violation: Retrieval marker '{marker}' leaked into file content of '{rel_path}'"
+                            f"Rule 1 Violation: Retrieval marker '{marker}' leaked into "
+                            f"file content of '{rel_path}'"
                         )
                         break
 
@@ -176,8 +176,8 @@ class SanityChecker:
             if op == "create":
                 if file_exists:
                     errors.append(
-                        f"Rule 2 Violation: Tried to create file '{rel_path}', but it already exists on disk. "
-                        f"Use op='modify' instead."
+                        f"Rule 2 Violation: Tried to create file '{rel_path}', "
+                        f"but it already exists on disk. Use op='modify' instead."
                     )
 
             # -----------------------------------------------------------------
@@ -232,8 +232,9 @@ class SanityChecker:
                         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                             if is_stub_function(node):
                                 errors.append(
-                                    f"Rule 4 Violation: Function '{node.name}' in '{rel_path}' (line {node.lineno}) "
-                                    f"is only a stub body (pass, ..., or return None). Implementation is required."
+                                    f"Rule 4 Violation: Function '{node.name}' in '{rel_path}' "
+                                    f"(line {node.lineno}) is only a stub body "
+                                    f"(pass, ..., or return None). Implementation is required."
                                 )
 
             # -----------------------------------------------------------------

@@ -28,16 +28,16 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from bonus.api import create_bonus_api
-from bonus.dashboard import setup_bonus_dashboard
-from bonus.diff_engine import compute_patch_diff
-from bonus.git_committer import commit_validated_patch, generate_commit_message
-from p1.db import DEFAULT_DB_DIR, VectorDB
-from p1.indexer import CodebaseIndexer
-from p1.watcher import CodebaseWatcher
-from p2.llm import DEFAULT_LLM_MODEL, DEFAULT_OLLAMA_HOST, OllamaClient
-from p2.retriever import Retriever
-from p3.loop import PatchLoopEngine, load_validation_command
+from bonus.api import create_bonus_api  # noqa: E402
+from bonus.dashboard import setup_bonus_dashboard  # noqa: E402
+from bonus.diff_engine import compute_patch_diff  # noqa: E402
+from bonus.git_committer import commit_validated_patch, generate_commit_message  # noqa: E402
+from p1.db import DEFAULT_DB_DIR, VectorDB  # noqa: E402
+from p1.indexer import CodebaseIndexer  # noqa: E402
+from p1.watcher import CodebaseWatcher  # noqa: E402
+from p2.llm import DEFAULT_LLM_MODEL, DEFAULT_OLLAMA_HOST, OllamaClient  # noqa: E402
+from p2.retriever import Retriever  # noqa: E402
+from p3.loop import PatchLoopEngine, load_validation_command  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -56,7 +56,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--llm-model", default=DEFAULT_LLM_MODEL, help="Local Ollama model name")
     parser.add_argument("--ollama-host", default=DEFAULT_OLLAMA_HOST, help="Ollama host address")
     parser.add_argument("--intent", "-i", type=str, default=None, help="Run patch loop headlessly")
-    parser.add_argument("--dry-run", action="store_true", help="Simulate patch and compute diff without disk writes")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Simulate patch and compute diff without disk writes",
+    )
     parser.add_argument("--auto-commit", action="store_true", help="Automatically git commit validated patch")
     parser.add_argument("--k", type=int, default=3, help="Context chunks to retrieve")
     return parser.parse_args()
@@ -202,4 +206,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
