@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inception-of-Context - 3. resz: Patch generalas, alkalmazas es validacio</title>
+  <style>
+/* ==========================================================================
+   Inception-of-Context (IoC) - Part 3 Presentation Stylesheet
+   Modern 16:9 Dark Technical Slide Deck (100% Local & Self-Contained)
+   ========================================================================== */
+
+:root {
+  --bg-canvas: #070a11;
+  --bg-slide: #0d1322;
+  --bg-card: #131c31;
+  --bg-card-hover: #192542;
+  --bg-code: #090d17;
+  
+  --border-subtle: #1e2c4a;
+  --border-strong: #2e4370;
+  --border-glow: rgba(56, 189, 248, 0.25);
+  
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  
+  --cyan: #38bdf8;
+  --cyan-glow: rgba(56, 189, 248, 0.15);
+  --emerald: #34d399;
+  --emerald-glow: rgba(52, 211, 153, 0.15);
+  --amber: #fbbf24;
+  --amber-glow: rgba(251, 191, 36, 0.15);
+  --rose: #f43f5e;
+  --rose-glow: rgba(244, 63, 94, 0.15);
+  --indigo: #818cf8;
+  --indigo-glow: rgba(129, 140, 248, 0.15);
+  
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-canvas);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#deck-viewport {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  background: radial-gradient(circle at 50% 30%, #111a33 0%, #070a11 85%);
+  padding: 16px;
+}
+
+#deck-container {
+  width: min(96vw, calc(92vh * 16 / 9));
+  height: min(92vh, calc(96vw * 9 / 16));
+  aspect-ratio: 16 / 9;
+  background-color: var(--bg-slide);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.progress-bar-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  z-index: 50;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--rose), var(--amber), var(--emerald));
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 8px var(--amber);
+}
+
+.slide-header {
+  height: 64px;
+  min-height: 64px;
+  padding: 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(13, 19, 34, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.slide-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ioc-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  background: var(--amber-glow);
+  color: var(--amber);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+.slide-title-group h2 {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+}
+
+.slide-title-group p {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.slide-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-tag {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.slides-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  padding: 24px 36px 14px;
+}
+
+.slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 24px 36px 14px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.985) translateY(8px);
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.28s;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.slide.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: scale(1) translateY(0);
+}
+
+.deck-footer {
+  height: 50px;
+  min-height: 50px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(10, 15, 27, 0.85);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.footer-left, .footer-center, .footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.key-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.kbd {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--amber);
+}
+
+.slide-counter {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  letter-spacing: 1px;
+}
+
+.nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.nav-btn:hover {
+  background: var(--amber-glow);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.nav-btn:active {
+  transform: scale(0.95);
+}
+
+.nav-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  height: 100%;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  height: 100%;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  height: 100%;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.card.glow-cyan {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-emerald {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-amber {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-rose {
+  border-color: rgba(244, 63, 94, 0.4);
+  background: linear-gradient(180deg, rgba(244, 63, 94, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-indigo {
+  border-color: rgba(129, 140, 248, 0.4);
+  background: linear-gradient(180deg, rgba(129, 140, 248, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--amber);
+}
+
+.card-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-cyan { background: var(--cyan-glow); color: var(--cyan); border: 1px solid rgba(56, 189, 248, 0.3); }
+.badge-emerald { background: var(--emerald-glow); color: var(--emerald); border: 1px solid rgba(52, 211, 153, 0.3); }
+.badge-amber { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.3); }
+.badge-rose { background: var(--rose-glow); color: var(--rose); border: 1px solid rgba(244, 63, 94, 0.3); }
+.badge-indigo { background: var(--indigo-glow); color: var(--indigo); border: 1px solid rgba(129, 140, 248, 0.3); }
+.badge-dim { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+.card-content {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  flex: 1;
+  word-spacing: normal;
+  letter-spacing: normal;
+  overflow-wrap: break-word;
+  hyphens: none;
+}
+
+.card-content ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.card-content li {
+  display: block;
+  position: relative;
+  padding-left: 14px;
+}
+
+.card-content li::before {
+  content: ">";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--amber);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.card-content strong {
+  color: var(--text-main);
+}
+
+.card-content code,
+.slide code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: rgba(251, 191, 36, 0.10);
+  color: var(--amber);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+  word-break: keep-all;
+  display: inline;
+  vertical-align: baseline;
+  line-height: 1.35;
+}
+
+.code-box {
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: #cbd5e1;
+  line-height: 1.45;
+  white-space: pre;
+  tab-size: 4;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.token-kw { color: #f43f5e; font-weight: 600; }
+.token-fn { color: #38bdf8; }
+.token-cm { color: #64748b; font-style: italic; }
+.token-str { color: #34d399; }
+.token-num { color: #fbbf24; }
+.token-comm { color: #64748b; font-style: italic; }
+.token-cls { color: #a78bfa; font-weight: 600; }
+
+.slide-title-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  gap: 18px;
+  padding: 10px 30px;
+}
+
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--amber);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.hero-pill .pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 8px var(--amber);
+}
+
+.hero-title {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #ffffff 30%, #fbbf24 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--amber);
+  letter-spacing: -0.3px;
+}
+
+.hero-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 740px;
+  line-height: 1.5;
+}
+
+.hero-specs {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.spec-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  min-width: 140px;
+}
+
+.spec-item .spec-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.spec-item .spec-value {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-top: 2px;
+}
+
+.pipeline-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  justify-content: center;
+}
+
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.flow-node {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.flow-node:hover {
+  transform: translateY(-2px);
+  border-color: var(--amber);
+}
+
+.flow-node .node-num {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--amber);
+  text-transform: uppercase;
+}
+
+.flow-node .node-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.flow-node .node-file {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--emerald);
+  background: rgba(52, 211, 153, 0.08);
+  padding: 2px 5px;
+  border-radius: 4px;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.flow-node .node-desc {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.flow-arrow {
+  color: var(--text-dim);
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.db-mock-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  background: #060913;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.db-mock-table th {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--amber);
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.db-mock-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: #cbd5e1;
+}
+
+#overview-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(7, 10, 17, 0.94);
+  backdrop-filter: blur(12px);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  padding: 24px 30px;
+}
+
+#overview-modal.open {
+  display: flex;
+}
+
+.overview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.overview-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 6px;
+}
+
+.thumb-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.thumb-card:hover, .thumb-card.active-thumb {
+  border-color: var(--amber);
+  background: var(--bg-card-hover);
+  box-shadow: 0 0 12px var(--amber-glow);
+}
+
+.thumb-num {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--amber);
+  font-weight: 700;
+}
+
+.thumb-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.callout-box {
+  background: rgba(251, 191, 36, 0.05);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.callout-box strong {
+  color: var(--amber);
+}
+  </style>
+</head>
+<body>
+
+<div id="deck-viewport">
+  <div id="deck-container">
+    
+    <!-- Top Progress Bar -->
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Slides Wrapper -->
+    <div class="slides-wrapper">
+
+      <!-- SLIDE 1: Title Hero -->
+      <section class="slide active" data-title="Cim es attekintes">
+        <div class="slide-title-hero">
+          <div class="hero-pill">
+            <span class="pulse-dot"></span>
+            INCEPTION OF CONTEXT - 3. RESZ
+          </div>
+          <h1 class="hero-title">Patch generalas es Onjavito ciklus</h1>
+          <div class="hero-subtitle">Strukturalt JSON, 6 AST Sanity Check, Atomikus kezeles es Rollback</div>
+          <p class="hero-desc">
+            A 3. reszben az IoC egy autonom kodolo agensse valik.
+            A felhasznaloi szandekbol kiindulva kontextust gyujt, strukturalt modositast general,
+            szigoruan ellenorzi azt a lemezre iras elott, kiertekeli a projekt tesztjeit,
+            es hiba eseten 3 kiserleten at onjavitast vegez - vagy 100%-ban visszagorgeti az eredeti allapotot.
+          </p>
+          <div class="hero-specs">
+            <div class="spec-item">
+              <span class="spec-label">Mukodesi modell</span>
+              <span class="spec-value">Autonom Ciklus (Loop)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Eloszures</span>
+              <span class="spec-value">6 AST Sanity Check</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Onjavitas</span>
+              <span class="spec-value">Max 3 probalkozas</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Biztonsag</span>
+              <span class="spec-value">100% Atomikus Rollback</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 2: Goal of Part 3 -->
+      <section class="slide" data-title="A 3. resz celja">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>A 3. resz specifikacioja: Ez egy CIKLUS</h2>
+              <p>Mit kovetel meg a hivatalos subject a harmadik fazisban?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Subject Audit</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Nem kulonálló vegpontok</span>
+              <span class="card-badge badge-amber">The Loop</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>A subject kulcsmondata:</strong> <em>"This is a LOOP, not merely separate endpoints."</em></li>
+                <li>Egyetlen felhasznaloi szandek (pl. "add healthcheck route") inditja el a teljes folyamatot.</li>
+                <li>A rendszer onalloan iteral a sikerig vagy a biztonsagos visszagorgetesig.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Szigoru elozetes szures</span>
+              <span class="card-badge badge-rose">Sanity Checks</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Zéró lemeziras ellenorzes nelkul:</strong> A generalt patch nem kerulhet kozvetlenul a forrasfajlokba.</li>
+                <li><strong>6 kotelezo elutasitasi ok:</strong> Csonka fuggvenyek (stubs), meretzsugorodas, szivargo prompt markerek stb.</li>
+                <li>Szintaktikai es logikai vizsgalat AST segitsegevel.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Validacio es Visszagorgetes</span>
+              <span class="card-badge badge-emerald">Safety First</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>ioc.config.yml:</strong> Kulso konfiguracio alapjan futtatott forditasi es teszt parancsok.</li>
+                <li><strong>3 javito kiserlet:</strong> Forditasi hiba eseten a traceback visszakerul az LLM-nek.</li>
+                <li><strong>Garantalt Rollback:</strong> Ha mindharom kiserlet elbukik, a fajlrendszer pontosan visszaall.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 3: The Autonomous Loop Pipeline -->
+      <section class="slide" data-title="Az autonom patch-ciklus">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Az Autonom Patch-Ciklus lepesrol lepesre</h2>
+              <p>Hogyan halad a vezerles a felhasznaloi szandektol az atomikus commitig?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Control Flow</span>
+          </div>
+        </div>
+        <div class="pipeline-flow" style="margin-top: 10px;">
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">1. Lepes</span>
+              <span class="node-title">Szandek es Kontextus</span>
+              <span class="node-file">p3/generator.py</span>
+              <span class="node-desc">A felhasznalo kerese alapjan hibrid keresessel osszegyujtjuk az erintett forrasfajlokat.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">2. Lepes</span>
+              <span class="node-title">Strukturalt JSON Patch</span>
+              <span class="node-file">qwen2.5:3b</span>
+              <span class="node-desc">A modell nem diffet, hanem teljes feluliro tartalmat ad JSON formatumban.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">3. Lepes</span>
+              <span class="node-title">6 Sanity Check</span>
+              <span class="node-file">p3/validator.py</span>
+              <span class="node-desc">AST es heurisztikus ellenorzes. Ha barmelyik serul: azonnali refusal.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">4. Lepes</span>
+              <span class="node-title">Snapshot es *.ioc.tmp</span>
+              <span class="node-file">p3/applier.py</span>
+              <span class="node-desc">Memoria/fajl mentes az eredeti allapotrol. Ideiglenes fajlok letrehozasa.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">5. Lepes</span>
+              <span class="node-title">Validacio (ioc.config.yml)</span>
+              <span class="node-file">Subprocess</span>
+              <span class="node-desc">Futtatjuk a forditasi es teszt ellenorzeseket. Siker eseten vege!</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">6. Lepes</span>
+              <span class="node-title">Hiba & Onjavitas vagy Rollback</span>
+              <span class="node-file">Self-Healing</span>
+              <span class="node-desc">Hiba traceback vissza az LLM-nek (max 3x). Ha elfogy a probalkozas: 100% Rollback.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 4: Structured JSON Format -->
+      <section class="slide" data-title="Strukturalt JSON patch formatum">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Miert strukturalt JSON es miert NEM szabad diff?</h2>
+              <p>A kis méretű nyelvi modellek matematikai korlatai es a robusztus kódgenerálás</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">JSON Schema</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">A szabad diff (Unified Diff) bukasa</span>
+              <span class="card-badge badge-rose">Problemás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A 3B-s modellek szinte mindig elrontjak a diff fejlecek sorszamait: <code>@@ -14,6 +14,8 @@</code>.</li>
+                <li>Ha 1 karakterrel elcsuszik a whitespace vagy a tabulator, a <code>patch</code> vagy <code>git apply</code> hibaval elszall.</li>
+                <li>A subject kifejezetten megtiltja: <em>"The patch must NOT be a free-form diff."</em></li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">A subject altal elirt JSON schema</span>
+              <span class="card-badge badge-emerald">Eloiras</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+{
+  <span class="token-str">"summary"</span>: <span class="token-str">"Add divide method with zero-check"</span>,
+  <span class="token-str">"files"</span>: [
+    {
+      <span class="token-str">"path"</span>: <span class="token-str">"calculator.py"</span>,
+      <span class="token-str">"op"</span>: <span class="token-str">"modify"</span>,
+      <span class="token-str">"content"</span>: <span class="token-str">"class Calculator:\n    def add..."</span>
+    }
+  ]
+}</div>
+              <p style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
+                A <code>modify</code> muvelet eseten a <code>content</code> a fajl <strong>teljes, vegleges tartalmat</strong> jelenti, nem pedig toredeket!
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 5: The 6 Hard Refusals -->
+      <section class="slide" data-title="A 6 szigoru elozetes szures">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>A 6 kotelezo Sanity Check (Azonnali elutasitas)</h2>
+              <p>A p3/validator.py altal vegzett szigoru AST es heurisztikus audit a lemezreiras elott</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Hard Refusals</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 8%;">#</th>
+                <th style="width: 27%;">Ellenorzes neve</th>
+                <th style="width: 40%;">Miert veszelyes? (Subject indoklas)</th>
+                <th style="width: 25%;">Hogyan detektaljuk?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1</strong></td>
+                <td>Prompt marker szivargas</td>
+                <td>Az LLM visszamasolja a <code>[SOURCE 1]:</code> vagy <code>--- KODRESZLETEK ---</code> cimkeket a kodba.</td>
+                <td>Regex mintaillesztes a generalt tartalomban.</td>
+              </tr>
+              <tr>
+                <td><strong>2</strong></td>
+                <td>Letezo fajl felulirasa 'create'-tel</td>
+                <td>A <code>create</code> opcioval nem szabad letezo fajlt felulirni (adatsérülés veszelye).</td>
+                <td><code>os.path.exists(path)</code> vizsgalata.</td>
+              </tr>
+              <tr>
+                <td><strong>3</strong></td>
+                <td>Ures/Null csere</td>
+                <td>Non-empty fajlt tilos <code>""</code>, <code>"None"</code> vagy <code>"null"</code> szovegre cserelni.</td>
+                <td>Hossz es kulcsszo vizsgalat.</td>
+              </tr>
+              <tr>
+                <td><strong>4</strong></td>
+                <td>Stub-only fuggvenyek</td>
+                <td>A modell csak csonka fuggvenyeket general: <code>pass</code>, <code>raise NotImplementedError</code>.</td>
+                <td>AST elemzes: a fuggvenytorzs nem lehet pusztan Pass/Raise csomopont.</td>
+              </tr>
+              <tr>
+                <td><strong>5</strong></td>
+                <td>Meretzsugorodas (&gt; 60%)</td>
+                <td>Ha egy letezo fajl merete tobb mint 60%-kal csokken, az kodvesztest jelez.</td>
+                <td><code>len(uj_kod) &lt; len(regi_kod) * 0.4</code> ellenorzes.</td>
+              </tr>
+              <tr>
+                <td><strong>6</strong></td>
+                <td>Tobb mint 3 fajl modositasa</td>
+                <td>A scope robbanas megelozese: 1 patch maximalisan 3 forrasfajlt erinthet.</td>
+                <td><code>len(patch["files"]) &gt; 3</code> elutasitas.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SLIDE 6: Atomic Staging & Snapshotting -->
+      <section class="slide" data-title="Atomikus fajlkezeles es mentes">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Atomikus modositas es Pillanatkep (Snapshotting)</h2>
+              <p>Hogyan garantaljuk a fajlrendszer serulesmentesseget barmilyen hiba eseten?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Atomic Safety</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">1. Lepes: Pillanatkep keszitese</span>
+              <span class="card-badge badge-cyan">Snapshot</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Mielott barmely fajlhoz hozzaernenk a lemezen, a rendszer elmenti az erintett fajlok pontos tartalmat a memoriaba vagy a <code>.ioc_snapshots/</code> tarba.</li>
+                <li>Uj fajl letrehozasa eseten feljegyzi, hogy a rollback soran a fajlt torolni kell.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 10px;">
+snapshots[file_path] = file_path.read_text()</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">2. Lepes: *.ioc.tmp es os.replace</span>
+              <span class="card-badge badge-emerald">Atomicitás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A kod eloszor egy ideiglenes <code>calculator.py.ioc.tmp</code> fajlba irodik ki.</li>
+                <li>Csak miutan <strong>az osszes</strong> fajl hiba nelkul kiirasra kerult, hajtjuk vegre a POSIX atomikus atnevezest: <code>os.replace(tmp_path, target_path)</code>.</li>
+                <li>Nincs olyan koztes allapot, ahol egy fajl felig ki van irva, vagy a folyamat megszakadasakor serult marad!</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 7: Validation Engine & ioc.config.yml -->
+      <section class="slide" data-title="Validacio: ioc.config.yml">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Validacios motor es az ioc.config.yml</h2>
+              <p>A projekt-specifikus ellenorzesek levalasztasa az IoC motorjarol</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Config Driven</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">A konfiguracio: demo_app/ioc.config.yml</span>
+              <span class="card-badge badge-cyan">YAML Spec</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+version: 1
+validation:
+  command: "python3 -m py_compile {files} &amp;&amp; python3 main.py"
+  timeout_seconds: 15
+  stop_on_first_failure: true</div>
+              <ul style="margin-top: 10px;">
+                <li>A <code>{files}</code> helyere dinamikusan az erintett fajlok kerulnek.</li>
+                <li>Nem csak forditast (<code>py_compile</code>), hanem fuggosegi tesztet vagy a <code>main.py</code> lefutast is ellenorzi!</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Hogyan futtatja a p3/validator.py?</span>
+              <span class="card-badge badge-emerald">Subprocess</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Aszinkron subprocess hivas: <code>asyncio.create_subprocess_shell</code>.</li>
+                <li>Idotullepes vedelem (timeout guard): ha vegtelen ciklus keletkezik a generalt kodban, a rendszer leallitja a folyamatot.</li>
+                <li>Kimenti az <code>exit_code</code>-ot, valamint az egesz <code>stdout</code> es <code>stderr</code> hibacsatornat.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 8: Self-Healing Retry Loop -->
+      <section class="slide" data-title="Ongyogjito ujraprobalkozasi ciklus">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Onjavito ujraprobalkozasi ciklus (Self-Healing Loop)</h2>
+              <p>A forditasi vagy futasi hiba visszataplalasa az LLM szamara hibajavitasra</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Retry Engine</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">1. Kiserlet elbukik (Traceback elkapasa)</span>
+              <span class="card-badge badge-rose">Kudarc</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 8px;">
+                Tegyuk fel, hogy az 1. kiserletnel a modell elgepelte a kivetel nevet:
+              </p>
+              <div class="code-box" style="font-size: 10.5px;">
+Traceback (most recent call last):
+  File "calculator.py", line 18
+    except ZeroDivisionErrorr:
+                           ^
+SyntaxError: invalid syntax</div>
+              <p style="margin-top: 8px; font-size: 11.5px;">
+                Ahelyett, hogy a rendszer feladna, ezt a pontos traceback-et injektalja a kovetkezo promptba!
+              </p>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">2. Kiserlet: Celzott javito prompt</span>
+              <span class="card-badge badge-emerald">Javitas</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 10.5px; height: 100%;">
+RETRY_PROMPT = f"""
+Az elozo patch alkalmazasa UTAN a validacio elbukott!
+HIBAUZENET:
+{captured_stderr}
+
+KERES: Javitsa ki a szintaktikai hibat, es adja vissza a
+javitott fajlt teljes egeszeben a megszokott JSON formatumban!
+"""</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 9: 100% Rollback Guarantee -->
+      <section class="slide" data-title="100% Visszagorgetesi garancia">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>100% Visszagorgetesi Garancia (Rollback)</h2>
+              <p>A 42 ertekeles egyik legfontosabb sarokkove: a kodbazis soha nem maradhat hibas allapotban</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Fail-Safe</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Mikor fut le a Rollback?</span>
+              <span class="card-badge badge-rose">Kriteriumok</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Ha az 1., 2. es a 3. kiserlet is elbukik a validacion.</li>
+                <li>Ha a Sanity Check (a 6 refusal) valamelyike ervenyesul es a modell nem tudja orvosolni.</li>
+                <li>Ha barmi varatlan rendszerkivetel lep fel a folyamat soran.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Hogyan all vissza a rendszer?</span>
+              <span class="card-badge badge-amber">Mechanizmus</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A snapshotban tarolt eredeti tartalmat visszaallitjuk atomikus <code>os.replace</code> hivassal.</li>
+                <li>A letrehozott uj fajlokat (<code>op: create</code>) azonnal letoroljuk.</li>
+                <li>Az ideiglenes <code>*.ioc.tmp</code> fajlokat maradektalanul eltakaritjuk.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">A vedes bizonyiteka</span>
+              <span class="card-badge badge-emerald">Audit</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A <code>git status</code> es <code>git diff</code> futtatasaval a vedonel azonnal lathato: a kodbazis <strong>tokeletesen tiszta</strong> maradt.</li>
+                <li>Egyetlen bajtnyi szemét sem marad vissza a sikertelen kiserletbol!</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 10: Walkthrough: Successful Patch -->
+      <section class="slide" data-title="Bemutato: Sikeres patch alkalmazas">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Bemutato: Sikeres patch alkalmazas (1. kiserlet)</h2>
+              <p>Pelda: 'Osszetett hatvanyozas hozzaadasa a Calculatorhoz'</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Happy Path</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">A folyamat lepesei</span>
+              <span class="card-badge badge-cyan">Status Log</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+[10:00:01] Intent fogadva: "Add power method to Calculator"
+[10:00:02] Kontextus kinyerve: calculator.py (4 chunk)
+[10:00:04] LLM patch generalva (qwen2.5:3b)
+[10:00:04] Sanity check: PASSED (Nem stub, nincs marker)
+[10:00:04] Snapshot keszult calculator.py-rol
+[10:00:05] Kiirva: calculator.py.ioc.tmp
+[10:00:05] Atomikus csere vegrehajtva
+[10:00:06] Validacio futtatasa: python3 -m py_compile...
+[10:00:07] Validacio SIKERES (Exit code: 0)
+[10:00:07] Status: SUCCESS (Attempts: 1/3)</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">A modositott kod elonezet</span>
+              <span class="card-badge badge-emerald">calculator.py</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+<span class="token-kw">class</span> <span class="token-cls">Calculator</span>:
+    <span class="token-comm"># ... letezo metodusok megorizve ...</span>
+    
+    <span class="token-kw">def</span> <span class="token-fn">power</span>(self, base: float, exp: float) -> float:
+        <span class="token-str">"""Hatvanyozas megvalositasa."""</span>
+        <span class="token-kw">return</span> base ** exp</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 11: Walkthrough: Self-Healing in Action -->
+      <section class="slide" data-title="Bemutato: Ongyogyulas mukodes kozben">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Bemutato: Ongyogyulas mukodes kozben (Retry Loop)</h2>
+              <p>Hogyan javitja ki magat az autonóm agens mennesi beavatkozas nelkul?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Self-Healing Trace</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">1. Kiserlet: Elbukik</span>
+              <span class="card-badge badge-rose">Attempt 1 (Fail)</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A modell generalja a <code>divide</code> metodust, de elfelejti lezarni az idezojeles docstringet.</li>
+                <li>A <code>python3 -m py_compile</code> elszall: <code>SyntaxError: unterminated string literal</code>.</li>
+                <li>A rendszer NEM dobja el a folyamatot: a hiba bekerul a retry promptba.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">2. Kiserlet: Sikeres javitas</span>
+              <span class="card-badge badge-emerald">Attempt 2 (Success)</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A modell latja a SyntaxError hibauzenetet es a sorszamot.</li>
+                <li>Javitja a string lezarasat, majd ujra bekuldi a teljes fajlt.</li>
+                <li>A validacio lefut: <strong>EXIT CODE 0</strong>. A patch sikeresen elfogadva!</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 12: Part 3 Dashboard & UI -->
+      <section class="slide" data-title="Part 3 felulet es funkciok">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Part 3 Iranyitopult: Patch &amp; Self-Healing felulet</h2>
+              <p>A webes felulet komponensei a ciklus kovetesehez es auditjahoz</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Web UI</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Felhasznaloi vezerlok</span>
+              <span class="card-badge badge-cyan">Interakció</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Szandek mezo (Intent Input):</strong> Szoveges mezo a programozasi feladat megadasara.</li>
+                <li><strong>Dry-Run kapcsolo:</strong> Szimulacios mod, amellyel a lemezreiras nelkul tesztelheto a kod generalasa.</li>
+                <li><strong>Kiserlet szamlalo (Attempt Stepper):</strong> Vizuális indikátor a probalkozasok szamahoz (1/3, 2/3, 3/3).</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">Elo terminal naplo es Diff nezet</span>
+              <span class="card-badge badge-indigo">Audit</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Beepitett terminal:</strong> Megjeleniti a validacios folyamat kimenetet es a tesztek eredmenyet valos idoben (SSE).</li>
+                <li><strong>Szines diff nezet:</strong> Zold (+), piros (-) szinekkel illusztralja a valtozasokat a regi es uj kod kozott.</li>
+                <li><strong>Allapotjelzo badge:</strong> <code>APPLIED</code> (zold) vagy <code>ROLLED_BACK</code> (piros).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 13: Bonus Features Overview -->
+      <section class="slide" data-title="Bonusz kepessegek">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Bonusz kepessegek attekintese</h2>
+              <p>Tovabbi erteket ado professzionalis modulok a gyoker bonus/ mappaban</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Bonus XP</span>
+          </div>
+        </div>
+        <div class="grid-4" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">POST /reindex</span>
+              <span class="card-badge badge-cyan">API</span>
+            </div>
+            <div class="card-content">
+              Kifejezett vegpont a teljes adatbazis ujrageneralasa celjabol a futasi ido alatt.
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Visual Diff</span>
+              <span class="card-badge badge-emerald">Engine</span>
+            </div>
+            <div class="card-content">
+              Unified diff kalkulator szines soronkenti jelolessel a dashboard reszere.
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Git Committer</span>
+              <span class="card-badge badge-amber">Git</span>
+            </div>
+            <div class="card-content">
+              Sikeres validacio utan automatikus commit LLM altal generalt konvencionalis commit uzenettel.
+            </div>
+          </div>
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">Dry-Run Mod</span>
+              <span class="card-badge badge-indigo">Safety</span>
+            </div>
+            <div class="card-content">
+              Szimulacios mod, amely lemezmodositas nelkul vizsgalja meg a generalt patchet es diffet.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 14: Subject Compliance -->
+      <section class="slide" data-title="Subject megfeleles">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Subject megfeleles es ellenorzesi lista</h2>
+              <p>Minden eloirt Part 3 kovetelmeny teljesulesenek ellenorzese</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Audit 100%</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 35%;">Subject kovetelmeny</th>
+                <th style="width: 25%;">Megvalositas a kodban</th>
+                <th style="width: 15%;">Allapot</th>
+                <th style="width: 25%;">Hogyan ellenorizheto?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Autonom patch ciklus (Loop)</td>
+                <td><code>p3/loop.py</code> engine</td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td><code>make p3-cli</code> futtatasa szandekkal</td>
+              </tr>
+              <tr>
+                <td>Strukturalt JSON patch (nem diff)</td>
+                <td>Pydantic models (<code>op, path, content</code>)</td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>LLM kimenet auditálása</td>
+              </tr>
+              <tr>
+                <td>6 kotelezo Sanity Refusal ellenorzes</td>
+                <td><code>p3/validator.py</code> AST vizsgalat</td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>Stub es meretcsokkenes tesztek</td>
+              </tr>
+              <tr>
+                <td>ioc.config.yml validacios parancs</td>
+                <td><code>demo_app/ioc.config.yml</code></td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>Subprocess futtatas es ellenorzes</td>
+              </tr>
+              <tr>
+                <td>Max 3 ujraprobalkozasi ciklus (Self-Healing)</td>
+                <td><code>p3/loop.py</code> retry mechanizmus</td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>Hibas kod eseten a 2. es 3. kiserlet kovetese</td>
+              </tr>
+              <tr>
+                <td>100% Rollback sikertelenseg eseten</td>
+                <td>Pillanatkep es <code>os.replace</code> visszaallitas</td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>Hibas szandek utan <code>git status</code> ellenorzes</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SLIDE 15: Summary & Defense Guide -->
+      <section class="slide" data-title="Osszefoglalo es vedesi forgatokonyv">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Osszefoglalo es vedesi forgatokonyv</h2>
+              <p>Lepesrol lepesre utmutato a Part 3 bemutatasahoz az ertekelonek</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Defense Demo</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">1. Sikeres kodgeneralas</span>
+              <span class="card-badge badge-emerald">Demo 1</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Feladat:</strong> "Add a multiply method to Calculator".</li>
+                <li><strong>Mit mutass:</strong> Mutasd a dashboardon a zold sikert, a diff nezetet, es inditsd el a <code>python3 main.py</code>-t, ami lefut!</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">2. Sanity check kivedes</span>
+              <span class="card-badge badge-amber">Demo 2</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Feladat:</strong> Kerj egy csonka fuggvenyt (stub): "add dummy stub function with pass".</li>
+                <li><strong>Mit mutass:</strong> A validator azonnal elutasitja (Hard Refusal #4), a lemezhez hozza sem er a rendszer!</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">3. Rollback bemutatasa</span>
+              <span class="card-badge badge-rose">Demo 3</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Feladat:</strong> Kerj egy lehetetlen vagy szintaktikailag helytelen feladatot.</li>
+                <li><strong>Mit mutass:</strong> 3 kiserlet lefut, mind elbukik, majd a rendszer visszaallitja a fajlokat. A <code>git status</code> tokeletesen tiszta marad!</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div> <!-- /slides-wrapper -->
+
+    <!-- Deck Footer -->
+    <footer class="deck-footer">
+      <div class="footer-left">
+        <span class="slide-counter" id="slideCounter">01 / 15</span>
+        <span class="key-hint"><span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> Diak</span>
+        <span class="key-hint"><span class="kbd">Space</span> Tovabb</span>
+      </div>
+      <div class="footer-center">
+        <span style="color: var(--text-dim); font-size: 11px;">Inception-of-Context - 3. resz: Patch generalas es Onjavitas</span>
+      </div>
+      <div class="footer-right">
+        <button class="nav-btn" id="btnOverview" title="Diaattekintes (O)">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </button>
+        <button class="nav-btn" id="btnFullscreen" title="Teljes kepernyo (F)">
+          <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+        </button>
+        <button class="nav-btn" id="btnPrev" title="Elozo dia">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <button class="nav-btn" id="btnNext" title="Kovetkezo dia">
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+    </footer>
+
+    <!-- Slide Overview Modal -->
+    <div id="overview-modal">
+      <div class="overview-header">
+        <h3>Diaattekintes (Esc vagy O a bezarashoz)</h3>
+        <button class="nav-btn" id="btnCloseOverview" title="Attekintes bezarasa">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="overview-grid" id="overviewGrid">
+        <!-- Injected dynamically by deck engine -->
+      </div>
+    </div>
+
+  </div> <!-- /deck-container -->
+</div> <!-- /deck-viewport -->
+
+<script>
+/**
+ * Inception-of-Context (IoC) - Part 3 Presentation Deck Engine
+ * Zero external dependencies. 100% offline.
+ */
+(function () {
+  "use strict";
+
+  const slides = document.querySelectorAll(".slide");
+  const totalSlides = slides.length;
+  let currentIndex = 0;
+
+  const counterEl = document.getElementById("slideCounter");
+  const progressBar = document.getElementById("progressBar");
+  const btnPrev = document.getElementById("btnPrev");
+  const btnNext = document.getElementById("btnNext");
+  const btnFullscreen = document.getElementById("btnFullscreen");
+  const btnOverview = document.getElementById("btnOverview");
+  const overviewModal = document.getElementById("overview-modal");
+  const overviewGrid = document.getElementById("overviewGrid");
+  const btnCloseOverview = document.getElementById("btnCloseOverview");
+
+  function buildOverviewGrid() {
+    if (!overviewGrid) return;
+    overviewGrid.innerHTML = "";
+    slides.forEach((slide, idx) => {
+      const card = document.createElement("div");
+      card.className = `thumb-card ${idx === currentIndex ? "active-thumb" : ""}`;
+      const title = slide.getAttribute("data-title") || `Dia ${idx + 1}`;
+      card.innerHTML = `
+        <div class="thumb-num">${String(idx + 1).padStart(2, "0")} / ${String(totalSlides).padStart(2, "0")}</div>
+        <div class="thumb-title">${title}</div>
+      `;
+      card.addEventListener("click", () => {
+        goToSlide(idx);
+        toggleOverview(false);
+      });
+      overviewGrid.appendChild(card);
+    });
+  }
+
+  function toggleOverview(forceState) {
+    if (!overviewModal) return;
+    const shouldOpen = typeof forceState === "boolean" 
+      ? forceState 
+      : !overviewModal.classList.contains("open");
+    
+    if (shouldOpen) {
+      buildOverviewGrid();
+      overviewModal.classList.add("open");
+    } else {
+      overviewModal.classList.remove("open");
+    }
+  }
+
+  function updateUI() {
+    slides.forEach((slide, idx) => {
+      if (idx === currentIndex) {
+        slide.classList.add("active");
+      } else {
+        slide.classList.remove("active");
+      }
+    });
+
+    if (counterEl) {
+      const cur = String(currentIndex + 1).padStart(2, "0");
+      const tot = String(totalSlides).padStart(2, "0");
+      counterEl.textContent = `${cur} / ${tot}`;
+    }
+
+    if (progressBar) {
+      const percent = ((currentIndex + 1) / totalSlides) * 100;
+      progressBar.style.width = `${percent}%`;
+    }
+
+    window.location.hash = `#${currentIndex + 1}`;
+
+    const thumbs = document.querySelectorAll(".thumb-card");
+    thumbs.forEach((t, i) => {
+      if (i === currentIndex) {
+        t.classList.add("active-thumb");
+      } else {
+        t.classList.remove("active-thumb");
+      }
+    });
+  }
+
+  function goToSlide(index) {
+    if (index < 0) index = 0;
+    if (index >= totalSlides) index = totalSlides - 1;
+    currentIndex = index;
+    updateUI();
+  }
+
+  function nextSlide() {
+    if (currentIndex < totalSlides - 1) {
+      goToSlide(currentIndex + 1);
+    }
+  }
+
+  function prevSlide() {
+    if (currentIndex > 0) {
+      goToSlide(currentIndex - 1);
+    }
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.warn("Fullscreen request error:", err);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (overviewModal && overviewModal.classList.contains("open")) {
+      if (e.key === "Escape" || e.key === "o" || e.key === "O") {
+        e.preventDefault();
+        toggleOverview(false);
+        return;
+      }
+    }
+
+    switch (e.key) {
+      case "ArrowRight":
+      case " ":
+      case "PageDown":
+        e.preventDefault();
+        nextSlide();
+        break;
+      case "ArrowLeft":
+      case "PageUp":
+        e.preventDefault();
+        prevSlide();
+        break;
+      case "Home":
+        e.preventDefault();
+        goToSlide(0);
+        break;
+      case "End":
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+        break;
+      case "f":
+      case "F":
+        e.preventDefault();
+        toggleFullscreen();
+        break;
+      case "o":
+      case "O":
+        e.preventDefault();
+        toggleOverview();
+        break;
+      case "Escape":
+        if (overviewModal && overviewModal.classList.contains("open")) {
+          toggleOverview(false);
+        }
+        break;
+      default:
+        break;
+    }
+  });
+
+  if (btnPrev) btnPrev.addEventListener("click", prevSlide);
+  if (btnNext) btnNext.addEventListener("click", nextSlide);
+  if (btnFullscreen) btnFullscreen.addEventListener("click", toggleFullscreen);
+  if (btnOverview) btnOverview.addEventListener("click", () => toggleOverview());
+  if (btnCloseOverview) btnCloseOverview.addEventListener("click", () => toggleOverview(false));
+
+  const initialHash = window.location.hash.replace("#", "");
+  const parsedSlideNum = parseInt(initialHash, 10);
+  if (!isNaN(parsedSlideNum) && parsedSlideNum >= 1 && parsedSlideNum <= totalSlides) {
+    currentIndex = parsedSlideNum - 1;
+  } else {
+    currentIndex = 0;
+  }
+
+  updateUI();
+})();
+</script>
+</body>
+</html>

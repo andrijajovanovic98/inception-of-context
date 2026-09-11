@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inception-of-Context - Part 2: Architect API and RAG</title>
+  <style>
+/* ==========================================================================
+   Inception-of-Context (IoC) - Part 2 Presentation Stylesheet
+   Modern 16:9 Dark Technical Slide Deck (100% Local & Self-Contained)
+   ========================================================================== */
+
+:root {
+  --bg-canvas: #070a11;
+  --bg-slide: #0d1322;
+  --bg-card: #131c31;
+  --bg-card-hover: #192542;
+  --bg-code: #090d17;
+  
+  --border-subtle: #1e2c4a;
+  --border-strong: #2e4370;
+  --border-glow: rgba(56, 189, 248, 0.25);
+  
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  
+  --cyan: #38bdf8;
+  --cyan-glow: rgba(56, 189, 248, 0.15);
+  --emerald: #34d399;
+  --emerald-glow: rgba(52, 211, 153, 0.15);
+  --amber: #fbbf24;
+  --amber-glow: rgba(251, 191, 36, 0.15);
+  --rose: #f43f5e;
+  --rose-glow: rgba(244, 63, 94, 0.15);
+  --indigo: #818cf8;
+  --indigo-glow: rgba(129, 140, 248, 0.15);
+  
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-canvas);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#deck-viewport {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  background: radial-gradient(circle at 50% 30%, #111a33 0%, #070a11 85%);
+  padding: 16px;
+}
+
+#deck-container {
+  width: min(96vw, calc(92vh * 16 / 9));
+  height: min(92vh, calc(96vw * 9 / 16));
+  aspect-ratio: 16 / 9;
+  background-color: var(--bg-slide);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.progress-bar-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  z-index: 50;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--cyan), var(--emerald));
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 8px var(--cyan);
+}
+
+.slide-header {
+  height: 64px;
+  min-height: 64px;
+  padding: 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(13, 19, 34, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.slide-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ioc-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  background: var(--cyan-glow);
+  color: var(--cyan);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+.slide-title-group h2 {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+}
+
+.slide-title-group p {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.slide-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-tag {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.slides-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  padding: 24px 36px 14px;
+}
+
+.slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 24px 36px 14px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.985) translateY(8px);
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.28s;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.slide.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: scale(1) translateY(0);
+}
+
+.deck-footer {
+  height: 50px;
+  min-height: 50px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(10, 15, 27, 0.85);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.footer-left, .footer-center, .footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.key-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.kbd {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--cyan);
+}
+
+.slide-counter {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  letter-spacing: 1px;
+}
+
+.nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.nav-btn:hover {
+  background: var(--cyan-glow);
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.nav-btn:active {
+  transform: scale(0.95);
+}
+
+.nav-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  height: 100%;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  height: 100%;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  height: 100%;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.card.glow-cyan {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-emerald {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-amber {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-rose {
+  border-color: rgba(244, 63, 94, 0.4);
+  background: linear-gradient(180deg, rgba(244, 63, 94, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-indigo {
+  border-color: rgba(129, 140, 248, 0.4);
+  background: linear-gradient(180deg, rgba(129, 140, 248, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--cyan);
+}
+
+.card-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-cyan { background: var(--cyan-glow); color: var(--cyan); border: 1px solid rgba(56, 189, 248, 0.3); }
+.badge-emerald { background: var(--emerald-glow); color: var(--emerald); border: 1px solid rgba(52, 211, 153, 0.3); }
+.badge-amber { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.3); }
+.badge-rose { background: var(--rose-glow); color: var(--rose); border: 1px solid rgba(244, 63, 94, 0.3); }
+.badge-indigo { background: var(--indigo-glow); color: var(--indigo); border: 1px solid rgba(129, 140, 248, 0.3); }
+.badge-dim { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+.card-content {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  flex: 1;
+  word-spacing: normal;
+  letter-spacing: normal;
+  overflow-wrap: break-word;
+  hyphens: none;
+}
+
+.card-content ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.card-content li {
+  display: block;
+  position: relative;
+  padding-left: 14px;
+}
+
+.card-content li::before {
+  content: ">";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--cyan);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.card-content strong {
+  color: var(--text-main);
+}
+
+.card-content code,
+.slide code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: rgba(56, 189, 248, 0.10);
+  color: var(--cyan);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+  word-break: keep-all;
+  display: inline;
+  vertical-align: baseline;
+  line-height: 1.35;
+}
+
+.code-box {
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: #cbd5e1;
+  line-height: 1.45;
+  white-space: pre;
+  tab-size: 4;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.token-kw { color: #f43f5e; font-weight: 600; }
+.token-fn { color: #38bdf8; }
+.token-cm { color: #64748b; font-style: italic; }
+.token-str { color: #34d399; }
+.token-num { color: #fbbf24; }
+.token-comm { color: #64748b; font-style: italic; }
+.token-cls { color: #a78bfa; font-weight: 600; }
+
+.slide-title-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  gap: 18px;
+  padding: 10px 30px;
+}
+
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--cyan);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.hero-pill .pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--emerald);
+  box-shadow: 0 0 8px var(--emerald);
+}
+
+.hero-title {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--cyan);
+  letter-spacing: -0.3px;
+}
+
+.hero-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.hero-specs {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.spec-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  min-width: 140px;
+}
+
+.spec-item .spec-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.spec-item .spec-value {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-top: 2px;
+}
+
+.pipeline-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  justify-content: center;
+}
+
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.flow-node {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.flow-node:hover {
+  transform: translateY(-2px);
+  border-color: var(--cyan);
+}
+
+.flow-node .node-num {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--cyan);
+  text-transform: uppercase;
+}
+
+.flow-node .node-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.flow-node .node-file {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--emerald);
+  background: rgba(52, 211, 153, 0.08);
+  padding: 2px 5px;
+  border-radius: 4px;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.flow-node .node-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.flow-arrow {
+  color: var(--text-dim);
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.db-mock-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  background: #060913;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.db-mock-table th {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--cyan);
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.db-mock-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: #cbd5e1;
+}
+
+#overview-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(7, 10, 17, 0.94);
+  backdrop-filter: blur(12px);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  padding: 24px 30px;
+}
+
+#overview-modal.open {
+  display: flex;
+}
+
+.overview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.overview-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 6px;
+}
+
+.thumb-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.thumb-card:hover, .thumb-card.active-thumb {
+  border-color: var(--cyan);
+  background: var(--bg-card-hover);
+  box-shadow: 0 0 12px var(--cyan-glow);
+}
+
+.thumb-num {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+.thumb-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.callout-box {
+  background: rgba(56, 189, 248, 0.05);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.callout-box strong {
+  color: var(--cyan);
+}
+  </style>
+</head>
+<body>
+
+<div id="deck-viewport">
+  <div id="deck-container">
+    
+    <!-- Top Progress Bar -->
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Slides Wrapper -->
+    <div class="slides-wrapper">
+
+      <!-- SLIDE 1: Title Hero -->
+      <section class="slide active" data-title="Title & Overview">
+        <div class="slide-title-hero">
+          <div class="hero-pill">
+            <span class="pulse-dot"></span>
+            INCEPTION OF CONTEXT - PART 2
+          </div>
+          <h1 class="hero-title">Architect API & RAG</h1>
+          <div class="hero-subtitle">Hybrid Search, Symbol Pre-Resolution, and 100% Local Ollama LLM</div>
+          <p class="hero-desc">
+            In Part 2, we build a robust FastAPI REST service over the Part 1 index.
+            The Retrieval-Augmented Generation pipeline combines ChromaDB dense semantic vectors with BM25Okapi sparse lexical scoring,
+            reinforced by AST symbol pre-resolution to completely eradicate hallucinations.
+          </p>
+          <div class="hero-specs">
+            <div class="spec-item">
+              <span class="spec-label">Backend</span>
+              <span class="spec-value">FastAPI + SSE</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Retrieval</span>
+              <span class="spec-value">Dense + BM25Okapi</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Local LLM</span>
+              <span class="spec-value">qwen2.5:3b (Ollama)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">User Interface</span>
+              <span class="spec-value">3-Tab Dashboard</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 2: Goal of Part 2 -->
+      <section class="slide" data-title="Goal of Part 2">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Part 2 Specification & Requirements</h2>
+              <p>What does the official subject mandate for the second phase?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Subject Audit</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">HTTP API Over Index</span>
+              <span class="card-badge badge-cyan">FastAPI</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>REST Endpoints:</strong> An API interface allowing clients to inspect and retrieve repository index state.</li>
+                <li><strong>Mandatory Endpoints:</strong> <code>/status</code>, <code>/files</code>, <code>/file</code>, <code>/chunks</code>, <code>/context</code>, <code>/ask</code>, <code>/events</code>.</li>
+                <li><strong>Static Delivery:</strong> Integrated static serving of the single-page web dashboard.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">RAG & Hybrid Search</span>
+              <span class="card-badge badge-emerald">Retrieval</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Context Retrieval:</strong> <code>POST /context</code> returns the most relevant code chunks for any intent.</li>
+                <li><strong>Zero Hallucinations:</strong> Symbol questions ("is there a function called X?") must be answered from indexed facts.</li>
+                <li><strong>Hybrid Strategy:</strong> Dense (ChromaDB) + Sparse (BM25) re-ranking for optimal precision.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">100% Local LLM (Ollama)</span>
+              <span class="card-badge badge-amber">Local AI</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Strict Rule:</strong> Remote LLM APIs (OpenAI, Claude, Gemini) are strictly forbidden (0 XP).</li>
+                <li><strong>Model Class:</strong> ~3B parameter class local model (e.g. <code>qwen2.5:3b</code> or <code>qwen2.5-coder:3b</code>).</li>
+                <li><strong>Grounded Answer:</strong> The local model must strictly formulate responses from retrieved code context.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 3: Architecture Pipeline -->
+      <section class="slide" data-title="Architecture Pipeline">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Architecture Pipeline: From Query to Grounded Answer</h2>
+              <p>How an incoming user intent flows to the local model and generates verified code answers</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Dataflow</span>
+          </div>
+        </div>
+        <div class="pipeline-flow" style="margin-top: 10px;">
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">Step 1</span>
+              <span class="node-title">Request & Symbol Detection</span>
+              <span class="node-file">p2/api.py</span>
+              <span class="node-desc">Receive POST /ask or /context. Check in-memory AST symbol inventory for exact matches.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Step 2</span>
+              <span class="node-title">Hybrid Retrieval</span>
+              <span class="node-file">p2/retriever.py</span>
+              <span class="node-desc">Perform ChromaDB cosine search (Dense) + BM25Okapi lexical matching (Sparse).</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Step 3</span>
+              <span class="node-title">RRF Score Fusion</span>
+              <span class="node-file">p2/retriever.py</span>
+              <span class="node-desc">Combine reciprocal ranks with k=60 and select Top-K verified code chunks.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">Step 4</span>
+              <span class="node-title">Prompt Assembly</span>
+              <span class="node-file">p2/llm.py</span>
+              <span class="node-desc">Assemble strict system prompt containing verified source chunks and anti-hallucination bounds.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Step 5</span>
+              <span class="node-title">Local Ollama Evaluation</span>
+              <span class="node-file">127.0.0.1:11435</span>
+              <span class="node-desc">Inference via local qwen2.5:3b with zero external network transmission.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Step 6</span>
+              <span class="node-title">Response & SSE Broadcast</span>
+              <span class="node-file">Dashboard UI</span>
+              <span class="node-desc">Deliver grounded response, render audit chunks, and broadcast real-time event.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 4: Hybrid Retrieval: Dense + Sparse -->
+      <section class="slide" data-title="Hybrid Retrieval: Dense & BM25">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Hybrid Retrieval: Dense Vectors & Sparse BM25Okapi</h2>
+              <p>Why vector similarity alone fails on source code queries and how hybrid search fixes it</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Search Engine</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Dense Search (ChromaDB + all-MiniLM)</span>
+              <span class="card-badge badge-cyan">Semantics</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>How It Works:</strong> Maps text into 384-dimensional vector space; computes cosine distance.</li>
+                <li><strong>Strengths:</strong> Understands user intent and synonyms (e.g. "addition function" -&gt; finds <code>add</code>).</li>
+                <li><strong>Weakness in Code:</strong> Vulnerable to false positives on exact identifier names, method names, and acronyms.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 10px;">
+results = collection.query(
+    query_texts=[query],
+    n_results=top_k * 2
+)</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Sparse Search (BM25Okapi)</span>
+              <span class="card-badge badge-emerald">Exact Keywords</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>How It Works:</strong> TF-IDF variant measuring exact term frequency and inverse document frequency.</li>
+                <li><strong>Strengths:</strong> Flawlessly matches exact identifiers like <code>format_result</code> or <code>CalculatorError</code>.</li>
+                <li><strong>Weakness:</strong> Incapable of semantic understanding when terms do not explicitly overlap.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 10px;">
+tokenized_query = query.lower().split()
+bm25_scores = bm25.get_scores(tokenized_query)</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 5: Symbol Pre-Resolution -->
+      <section class="slide" data-title="Symbol Pre-Resolution">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Symbol Pre-Resolution: Eliminating Hallucinations</h2>
+              <p>Guaranteeing 100% factual accuracy for code symbol existence questions</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Anti-Hallucination</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">The Challenge: LLM Symbol Hallucination</span>
+              <span class="card-badge badge-rose">Risk</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Subject Mandate:</strong> "The /ask system must avoid hallucinating code symbols. Questions such as 'is there a function called X?' must be answered based on known indexed information."</li>
+                <li>If a 3B model is simply prompted "Is there a power() function?", it may plausibly guess "Yes, in calculator.py" even when it does not exist!</li>
+                <li>Purely generative token predictors favor probability over ground-truth negatives.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">The IoC Solution: Deterministic Pre-Resolution</span>
+              <span class="card-badge badge-emerald">Engine Solution</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>1. Pattern Interception:</strong> Detect symbol inquiries using regex patterns (e.g. <code>is there a function called X?</code>).</li>
+                <li><strong>2. AST Symbol Table:</strong> Query the indexed symbol table extracted during AST chunking (functions, classes, methods).</li>
+                <li><strong>3. Fact Injection:</strong> If a user asks for <code>power</code> and it does not exist, inject an explicit factual negative constraint: <em>"The requested symbol DOES NOT exist in the codebase."</em></li>
+              </ul>
+              <div class="callout-box" style="margin-top: 8px;">
+                <strong>Defense Tip:</strong> This two-layer safeguard guarantees that the 3B model never hallucinates non-existent functions during evaluation!
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 6: Reciprocal Rank Fusion (RRF) -->
+      <section class="slide" data-title="RRF & Score Fusion">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Reciprocal Rank Fusion (RRF) Algorithm</h2>
+              <p>Mathematically merging disparate score distributions into an optimal ranking</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Algorithm</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">The Fusion Formula</span>
+              <span class="card-badge badge-cyan">Mathematics</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 10px;">
+                Cosine similarities (0 to 1) and BM25 scores (unbounded positive reals) cannot be directly added without calibration. RRF normalizes across ranks:
+              </p>
+              <div class="code-box" style="font-size: 13px; text-align: center; padding: 14px;">
+RRF_Score(d) = SUM [ 1 / ( k + rank_i(d) ) ]
+k = 60 (standard smoothing constant)</div>
+              <ul style="margin-top: 10px;">
+                <li>Chunks ranking near the top in both systems receive the highest cumulative RRF score.</li>
+                <li>Documents appearing in only one list are appropriately smoothed, preventing outlier skew.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">Implementation: p2/retriever.py</span>
+              <span class="card-badge badge-indigo">Code</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+<span class="token-kw">def</span> <span class="token-fn">hybrid_retrieve</span>(query: str, top_k: int = <span class="token-num">4</span>):
+    dense_hits = chroma_client.query(query, n=top_k*<span class="token-num">2</span>)
+    sparse_scores = bm25.get_scores(query.split())
+    
+    rrf_scores = {}
+    <span class="token-kw">for</span> rank, doc_id <span class="token-kw">in</span> enumerate(dense_hits):
+        rrf_scores[doc_id] = rrf_scores.get(doc_id, <span class="token-num">0</span>) + <span class="token-num">1.0</span> / (<span class="token-num">60</span> + rank)
+        
+    <span class="token-kw">for</span> rank, (doc_id, _) <span class="token-kw">in</span> enumerate(sorted_bm25):
+        rrf_scores[doc_id] = rrf_scores.get(doc_id, <span class="token-num">0</span>) + <span class="token-num">1.0</span> / (<span class="token-num">60</span> + rank)
+        
+    <span class="token-kw">return</span> sorted(rrf_scores.items(), key=<span class="token-kw">lambda</span> x: x[<span class="token-num">1</span>], reverse=<span class="token-kw">True</span>)[:top_k]</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 7: Local LLM Integration (Ollama) -->
+      <section class="slide" data-title="Local LLM Integration">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Local LLM Integration: Ollama & qwen2.5:3b</h2>
+              <p>Completely offline, low-latency code inference with zero external dependencies</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Local Engine</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Why qwen2.5:3b?</span>
+              <span class="card-badge badge-cyan">Model Choice</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>3B Parameter Footprint:</strong> Runs smoothly on modern CPUs without requiring dedicated high-end GPUs.</li>
+                <li><strong>High Code Reasoning:</strong> Outstanding benchmarks for Python syntax analysis and structured JSON adherence.</li>
+                <li><strong>Subject Reference:</strong> The subject explicitly references models in the ~3B parameter class.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Ollama REST API</span>
+              <span class="card-badge badge-emerald">Integration</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Communicates directly via HTTP POST: <code>http://127.0.0.1:11435/api/generate</code>.</li>
+                <li>Zero external heavy SDKs: cleanly handled with native asynchronous <code>httpx</code> requests.</li>
+                <li>Supports both blocking JSON generation and chunked token streaming for real-time SSE.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Security & Isolation</span>
+              <span class="card-badge badge-amber">Offline Rule</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Runs inside containerized boundaries communicating strictly over local loopback.</li>
+                <li>No API tokens, no subscriptions, zero external internet dependencies.</li>
+                <li>Verifiable during defense by disconnecting network interfaces or auditing traffic.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 8: Prompt Engineering & Grounding -->
+      <section class="slide" data-title="Prompt Engineering & Grounding">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Prompt Engineering & Strict Context Grounding</h2>
+              <p>How the system enforces grounding so the LLM acts exclusively as an architect over real code</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Prompt Engineering</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">System Prompt Anatomy</span>
+              <span class="card-badge badge-cyan">System Prompt</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 11px; height: 100%;">
+SYSTEM_PROMPT = """
+You are a specialized software architect assistant.
+Answer EXCLUSIVELY based on the provided CODE CHUNKS (Context).
+
+STRICT CONSTRAINTS:
+1. If asked about a symbol (function, class, method) that is NOT
+   present in the context, explicitly respond:
+   "The requested symbol is not present in the indexed codebase."
+2. Never invent or hallucinate non-existent functions or parameters.
+3. Reference exact source file names and line ranges in explanations.
+"""</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Context Injection Preceding User Query</span>
+              <span class="card-badge badge-emerald">User Prompt</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 11px; height: 100%;">
+USER_PROMPT = f"""
+--- BEGIN RELEVANT CODE CHUNKS ---
+[SOURCE 1]: {chunk_1.file_path} ({chunk_1.type} {chunk_1.name}, L{chunk_1.start_line}-L{chunk_1.end_line})
+{chunk_1.code}
+
+[SOURCE 2]: {chunk_2.file_path} ({chunk_2.type} {chunk_2.name}, L{chunk_2.start_line}-L{chunk_2.end_line})
+{chunk_2.code}
+--- END RELEVANT CODE CHUNKS ---
+
+USER QUESTION: {user_query}
+GROUNDED ANSWER:
+"""</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 9: FastAPI REST Endpoints -->
+      <section class="slide" data-title="REST API Endpoints">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>FastAPI REST API Endpoints Overview</h2>
+              <p>Interfaces exposed by p2/api.py and their architectural responsibilities</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">API Reference</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 15%;">Endpoint</th>
+                <th style="width: 10%;">Method</th>
+                <th style="width: 35%;">Description & Responsibility</th>
+                <th style="width: 40%;">Sample Return Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>/status</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Index state, total chunk count, active models, and watcher activity.</td>
+                <td><code>{"status":"ready", "chunks":12, "files":3}</code></td>
+              </tr>
+              <tr>
+                <td><code>/files</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>List of indexed files with individual chunk counts and sizes.</td>
+                <td><code>[{"path":"calculator.py", "chunks":5}]</code></td>
+              </tr>
+              <tr>
+                <td><code>/file</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Full raw source code of a specified file with AST chunk boundaries.</td>
+                <td><code>{"path":"main.py", "content":"...", "chunks":[...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/chunks</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Complete inventory of indexed AST chunks with filtering options.</td>
+                <td><code>[{"id":"...", "name":"add", "type":"function"}]</code></td>
+              </tr>
+              <tr>
+                <td><code>/context</code></td>
+                <td><span class="card-badge badge-amber">POST</span></td>
+                <td>Hybrid retrieval returning the most relevant code chunks for a query.</td>
+                <td><code>{"query":"...", "chunks":[...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/ask</code></td>
+                <td><span class="card-badge badge-emerald">POST</span></td>
+                <td>Full RAG loop: hybrid retrieval, local LLM generation, grounded answer.</td>
+                <td><code>{"answer":"...", "retrieved_chunks":[...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/events</code></td>
+                <td><span class="card-badge badge-indigo">GET</span></td>
+                <td>Server-Sent Events (SSE) stream for real-time dashboard updates.</td>
+                <td><code>event: index_update\ndata: {...}\n\n</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SLIDE 10: Walkthrough: POST /context -->
+      <section class="slide" data-title="Walkthrough: POST /context">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Walkthrough: POST /context</h2>
+              <p>Structured code chunk retrieval backing the RAG system</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">JSON Contract</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Request JSON</span>
+              <span class="card-badge badge-cyan">Input</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+{
+  <span class="token-str">"query"</span>: <span class="token-str">"how is calculation result formatting handled?"</span>,
+  <span class="token-str">"top_k"</span>: <span class="token-num">2</span>
+}</div>
+              <p style="margin-top: 12px; font-size: 11.5px; color: var(--text-muted);">
+                Accepts user query intent along with an optional <code>top_k</code> parameter (default: 4).
+              </p>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Response JSON</span>
+              <span class="card-badge badge-emerald">Output</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+{
+  <span class="token-str">"query"</span>: <span class="token-str">"how is calculation result formatting handled?"</span>,
+  <span class="token-str">"chunks"</span>: [
+    {
+      <span class="token-str">"id"</span>: <span class="token-str">"formatter.py:format_result:1:18"</span>,
+      <span class="token-str">"file_path"</span>: <span class="token-str">"formatter.py"</span>,
+      <span class="token-str">"name"</span>: <span class="token-str">"format_result"</span>,
+      <span class="token-str">"type"</span>: <span class="token-str">"function"</span>,
+      <span class="token-str">"start_line"</span>: <span class="token-num">1</span>,
+      <span class="token-str">"end_line"</span>: <span class="token-num">18</span>,
+      <span class="token-str">"score"</span>: <span class="token-num">0.894</span>,
+      <span class="token-str">"content"</span>: <span class="token-str">"def format_result(val, fmt=\"json\"): ..."</span>
+    }
+  ]
+}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 11: Walkthrough: POST /ask -->
+      <section class="slide" data-title="Walkthrough: POST /ask">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Walkthrough: POST /ask (Full Grounded RAG)</h2>
+              <p>Grounded answer and retrieved audit context in a single atomic invocation</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Full RAG</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Request JSON</span>
+              <span class="card-badge badge-cyan">Request</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+{
+  <span class="token-str">"question"</span>: <span class="token-str">"What operations are supported by Calculator?"</span>,
+  <span class="token-str">"top_k"</span>: <span class="token-num">3</span>
+}</div>
+              <ul style="margin-top: 12px;">
+                <li>The endpoint automatically executes the hybrid retriever.</li>
+                <li>Gathers methods from <code>calculator.py</code> (add, subtract, multiply, divide).</li>
+                <li>Passes verified chunks to local <code>qwen2.5:3b</code> within grounded prompt bounds.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Response JSON</span>
+              <span class="card-badge badge-emerald">Response</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+{
+  <span class="token-str">"question"</span>: <span class="token-str">"What operations are supported by Calculator?"</span>,
+  <span class="token-str">"answer"</span>: <span class="token-str">"The Calculator class in calculator.py supports four arithmetic operations: add, subtract, multiply, and divide (which includes zero-division validation)."</span>,
+  <span class="token-str">"model"</span>: <span class="token-str">"qwen2.5:3b"</span>,
+  <span class="token-str">"duration_ms"</span>: <span class="token-num">482</span>,
+  <span class="token-str">"retrieved_chunks"</span>: [
+    <span class="token-str">"calculator.py:Calculator.add:10:14"</span>,
+    <span class="token-str">"calculator.py:Calculator.divide:25:30"</span>
+  ]
+}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 12: Server-Sent Events & Realtime -->
+      <section class="slide" data-title="Real-Time Events (SSE)">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Real-Time Event Stream (Server-Sent Events)</h2>
+              <p>GET /events endpoint: pushing live updates to the browser without periodic polling</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Reactivity</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Why SSE Over WebSockets or Polling?</span>
+              <span class="card-badge badge-cyan">Architecture</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Simplicity:</strong> Pure HTTP stream, avoiding complex bidirectional handshakes or extra protocol layers.</li>
+                <li><strong>Built-in Reconnection:</strong> Native browser <code>EventSource</code> handles connection drops transparently.</li>
+                <li><strong>Zero Network Overhead:</strong> Eliminates continuous HTTP request spam produced by naive client-side polling.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">System Event Types</span>
+              <span class="card-badge badge-indigo">Event Stream</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+<span class="token-comm"># 1. Index update event (when a file changes on disk)</span>
+event: index_updated
+data: {"file": "calculator.py", "action": "modified", "chunks": 5}
+
+<span class="token-comm"># 2. RAG query audit event (search logging)</span>
+event: query_executed
+data: {"query": "addition", "top_k": 3, "duration_ms": 120}
+
+<span class="token-comm"># 3. System heartbeat event</span>
+event: heartbeat
+data: {"status": "healthy", "timestamp": 1718000000}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 13: Files Browser & Chunk Gutter -->
+      <section class="slide" data-title="Files Browser & Chunk Gutter">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Files Browser & Chunk Gutter Indicators</h2>
+              <p>Visualizing source code with AST boundary markers directly in the dashboard</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">UI Component</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">AST Markers in Line Gutter</span>
+              <span class="card-badge badge-cyan">Visual Design</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 10px;">
+                Selecting a file in the Files tab highlights AST code units directly beside line numbers:
+              </p>
+              <ul>
+                <li><strong>Class Scope:</strong> Purple badge and border indicator (<code>class Calculator</code>).</li>
+                <li><strong>Function / Method:</strong> Cyan arrow badge (<code>def add()</code>).</li>
+                <li><strong>Interactive Inspector:</strong> Clicking any marker displays the chunk hash and embedding metadata during peer evaluation.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Code View Presentation</span>
+              <span class="card-badge badge-emerald">Mock View</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+<span class="token-num">1</span>  <span class="token-kw">class</span> <span class="token-cls">Calculator</span>:  <span style="color: #a78bfa;">[AST CLASS: Calculator]</span>
+<span class="token-num">2</span>      <span class="token-str">"""Calculator class for basic math operations."""</span>
+<span class="token-num">3</span>      
+<span class="token-num">4</span>      <span class="token-kw">def</span> <span class="token-fn">add</span>(self, a: float, b: float) -> float:  <span style="color: var(--cyan);">[AST FN: add]</span>
+<span class="token-num">5</span>          <span class="token-kw">return</span> a + b
+<span class="token-num">6</span>          
+<span class="token-num">7</span>      <span class="token-kw">def</span> <span class="token-fn">subtract</span>(self, a: float, b: float) -> float:  <span style="color: var(--cyan);">[AST FN: subtract]</span>
+<span class="token-num">8</span>          <span class="token-kw">return</span> a - b</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 14: Subject Compliance -->
+      <section class="slide" data-title="Subject Compliance">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Subject Compliance & Verification Checklist</h2>
+              <p>Verifying full compliance with all Part 2 requirements from the official subject PDF</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Audit 100%</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 35%;">Subject Requirement</th>
+                <th style="width: 25%;">Codebase Implementation</th>
+                <th style="width: 15%;">Status</th>
+                <th style="width: 25%;">Verification Command</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>FastAPI HTTP API over the index</td>
+                <td><code>p2/api.py</code> (FastAPI app)</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>curl http://localhost:8000/status</code></td>
+              </tr>
+              <tr>
+                <td>POST /context for relevant code chunks</td>
+                <td><code>p2/retriever.py</code> (Hybrid search)</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>curl -X POST /context -d '{"query":"add"}'</code></td>
+              </tr>
+              <tr>
+                <td>POST /ask Retrieval-Augmented Generation</td>
+                <td><code>p2/llm.py</code> + <code>p2/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>Dashboard "Ask &amp; Retrieve" tab</td>
+              </tr>
+              <tr>
+                <td>100% Local model runtime (Ollama ~3B)</td>
+                <td><code>qwen2.5:3b</code> on local server</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>Offline execution without internet connection</td>
+              </tr>
+              <tr>
+                <td>Prohibit code symbol hallucinations</td>
+                <td>AST symbol pre-resolution before prompt</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>Query "Is there a power() function?"</td>
+              </tr>
+              <tr>
+                <td>Ask &amp; Retrieve user dashboard</td>
+                <td>FastAPI HTML/JS dashboard</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>Browser: <code>http://localhost:8000</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SLIDE 15: Summary & Defense Tips -->
+      <section class="slide" data-title="Summary & Defense Tips">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Summary & Defense Guidelines</h2>
+              <p>Core talking points for peer evaluators during the Part 2 defense</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Defense Ready</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">1. Why Hybrid Search?</span>
+              <span class="card-badge badge-cyan">Retrieval</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Answer:</strong> Dense cosine search struggles on exact identifiers and short variable names, while BM25 lacks semantic intuition.</li>
+                <li>Combining both via Reciprocal Rank Fusion guarantees both semantic understanding and identifier precision.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">2. How Anti-Hallucination Works?</span>
+              <span class="card-badge badge-emerald">Safety</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Answer:</strong> Deterministic AST symbol pre-resolution.</li>
+                <li>When the user asks whether a function exists, the system verifies against indexed AST symbols and injects ground truth before model inference.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">3. Prove It Is 100% Local!</span>
+              <span class="card-badge badge-amber">Offline</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Answer:</strong> Disconnect network access or inspect Docker network routing.</li>
+                <li>Ollama evaluates strictly on <code>127.0.0.1:11435</code>. Zero external cloud requests occur.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div> <!-- /slides-wrapper -->
+
+    <!-- Deck Footer -->
+    <footer class="deck-footer">
+      <div class="footer-left">
+        <span class="slide-counter" id="slideCounter">01 / 15</span>
+        <span class="key-hint"><span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> Slides</span>
+        <span class="key-hint"><span class="kbd">Space</span> Next</span>
+      </div>
+      <div class="footer-center">
+        <span style="color: var(--text-dim); font-size: 11px;">Inception-of-Context - Part 2: Architect API and RAG</span>
+      </div>
+      <div class="footer-right">
+        <button class="nav-btn" id="btnOverview" title="Slide Overview (O)">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </button>
+        <button class="nav-btn" id="btnFullscreen" title="Fullscreen (F)">
+          <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+        </button>
+        <button class="nav-btn" id="btnPrev" title="Previous Slide">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <button class="nav-btn" id="btnNext" title="Next Slide">
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+    </footer>
+
+    <!-- Slide Overview Modal -->
+    <div id="overview-modal">
+      <div class="overview-header">
+        <h3>Slide Overview (Press Esc or O to close)</h3>
+        <button class="nav-btn" id="btnCloseOverview" title="Close Overview">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="overview-grid" id="overviewGrid">
+        <!-- Injected dynamically by deck engine -->
+      </div>
+    </div>
+
+  </div> <!-- /deck-container -->
+</div> <!-- /deck-viewport -->
+
+<script>
+/**
+ * Inception-of-Context (IoC) - Part 2 Presentation Deck Engine
+ * Zero external dependencies. 100% offline.
+ */
+(function () {
+  "use strict";
+
+  const slides = document.querySelectorAll(".slide");
+  const totalSlides = slides.length;
+  let currentIndex = 0;
+
+  const counterEl = document.getElementById("slideCounter");
+  const progressBar = document.getElementById("progressBar");
+  const btnPrev = document.getElementById("btnPrev");
+  const btnNext = document.getElementById("btnNext");
+  const btnFullscreen = document.getElementById("btnFullscreen");
+  const btnOverview = document.getElementById("btnOverview");
+  const overviewModal = document.getElementById("overview-modal");
+  const overviewGrid = document.getElementById("overviewGrid");
+  const btnCloseOverview = document.getElementById("btnCloseOverview");
+
+  function buildOverviewGrid() {
+    if (!overviewGrid) return;
+    overviewGrid.innerHTML = "";
+    slides.forEach((slide, idx) => {
+      const card = document.createElement("div");
+      card.className = `thumb-card ${idx === currentIndex ? "active-thumb" : ""}`;
+      const title = slide.getAttribute("data-title") || `Slide ${idx + 1}`;
+      card.innerHTML = `
+        <div class="thumb-num">${String(idx + 1).padStart(2, "0")} / ${String(totalSlides).padStart(2, "0")}</div>
+        <div class="thumb-title">${title}</div>
+      `;
+      card.addEventListener("click", () => {
+        goToSlide(idx);
+        toggleOverview(false);
+      });
+      overviewGrid.appendChild(card);
+    });
+  }
+
+  function toggleOverview(forceState) {
+    if (!overviewModal) return;
+    const shouldOpen = typeof forceState === "boolean" 
+      ? forceState 
+      : !overviewModal.classList.contains("open");
+    
+    if (shouldOpen) {
+      buildOverviewGrid();
+      overviewModal.classList.add("open");
+    } else {
+      overviewModal.classList.remove("open");
+    }
+  }
+
+  function updateUI() {
+    slides.forEach((slide, idx) => {
+      if (idx === currentIndex) {
+        slide.classList.add("active");
+      } else {
+        slide.classList.remove("active");
+      }
+    });
+
+    if (counterEl) {
+      const cur = String(currentIndex + 1).padStart(2, "0");
+      const tot = String(totalSlides).padStart(2, "0");
+      counterEl.textContent = `${cur} / ${tot}`;
+    }
+
+    if (progressBar) {
+      const percent = ((currentIndex + 1) / totalSlides) * 100;
+      progressBar.style.width = `${percent}%`;
+    }
+
+    window.location.hash = `#${currentIndex + 1}`;
+
+    const thumbs = document.querySelectorAll(".thumb-card");
+    thumbs.forEach((t, i) => {
+      if (i === currentIndex) {
+        t.classList.add("active-thumb");
+      } else {
+        t.classList.remove("active-thumb");
+      }
+    });
+  }
+
+  function goToSlide(index) {
+    if (index < 0) index = 0;
+    if (index >= totalSlides) index = totalSlides - 1;
+    currentIndex = index;
+    updateUI();
+  }
+
+  function nextSlide() {
+    if (currentIndex < totalSlides - 1) {
+      goToSlide(currentIndex + 1);
+    }
+  }
+
+  function prevSlide() {
+    if (currentIndex > 0) {
+      goToSlide(currentIndex - 1);
+    }
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.warn("Fullscreen request error:", err);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (overviewModal && overviewModal.classList.contains("open")) {
+      if (e.key === "Escape" || e.key === "o" || e.key === "O") {
+        e.preventDefault();
+        toggleOverview(false);
+        return;
+      }
+    }
+
+    switch (e.key) {
+      case "ArrowRight":
+      case " ":
+      case "PageDown":
+        e.preventDefault();
+        nextSlide();
+        break;
+      case "ArrowLeft":
+      case "PageUp":
+        e.preventDefault();
+        prevSlide();
+        break;
+      case "Home":
+        e.preventDefault();
+        goToSlide(0);
+        break;
+      case "End":
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+        break;
+      case "f":
+      case "F":
+        e.preventDefault();
+        toggleFullscreen();
+        break;
+      case "o":
+      case "O":
+        e.preventDefault();
+        toggleOverview();
+        break;
+      case "Escape":
+        if (overviewModal && overviewModal.classList.contains("open")) {
+          toggleOverview(false);
+        }
+        break;
+      default:
+        break;
+    }
+  });
+
+  if (btnPrev) btnPrev.addEventListener("click", prevSlide);
+  if (btnNext) btnNext.addEventListener("click", nextSlide);
+  if (btnFullscreen) btnFullscreen.addEventListener("click", toggleFullscreen);
+  if (btnOverview) btnOverview.addEventListener("click", () => toggleOverview());
+  if (btnCloseOverview) btnCloseOverview.addEventListener("click", () => toggleOverview(false));
+
+  const initialHash = window.location.hash.replace("#", "");
+  const parsedSlideNum = parseInt(initialHash, 10);
+  if (!isNaN(parsedSlideNum) && parsedSlideNum >= 1 && parsedSlideNum <= totalSlides) {
+    currentIndex = parsedSlideNum - 1;
+  } else {
+    currentIndex = 0;
+  }
+
+  updateUI();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inception-of-Context - 2. resz: Architect API es RAG</title>
+  <style>
+/* ==========================================================================
+   Inception-of-Context (IoC) - Part 2 Presentation Stylesheet
+   Modern 16:9 Dark Technical Slide Deck (100% Local & Self-Contained)
+   ========================================================================== */
+
+:root {
+  --bg-canvas: #070a11;
+  --bg-slide: #0d1322;
+  --bg-card: #131c31;
+  --bg-card-hover: #192542;
+  --bg-code: #090d17;
+  
+  --border-subtle: #1e2c4a;
+  --border-strong: #2e4370;
+  --border-glow: rgba(56, 189, 248, 0.25);
+  
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  
+  --cyan: #38bdf8;
+  --cyan-glow: rgba(56, 189, 248, 0.15);
+  --emerald: #34d399;
+  --emerald-glow: rgba(52, 211, 153, 0.15);
+  --amber: #fbbf24;
+  --amber-glow: rgba(251, 191, 36, 0.15);
+  --rose: #f43f5e;
+  --rose-glow: rgba(244, 63, 94, 0.15);
+  --indigo: #818cf8;
+  --indigo-glow: rgba(129, 140, 248, 0.15);
+  
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-canvas);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#deck-viewport {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  background: radial-gradient(circle at 50% 30%, #111a33 0%, #070a11 85%);
+  padding: 16px;
+}
+
+#deck-container {
+  width: min(96vw, calc(92vh * 16 / 9));
+  height: min(92vh, calc(96vw * 9 / 16));
+  aspect-ratio: 16 / 9;
+  background-color: var(--bg-slide);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.progress-bar-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  z-index: 50;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--cyan), var(--emerald));
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 8px var(--cyan);
+}
+
+.slide-header {
+  height: 64px;
+  min-height: 64px;
+  padding: 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(13, 19, 34, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.slide-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ioc-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  background: var(--cyan-glow);
+  color: var(--cyan);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+.slide-title-group h2 {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+}
+
+.slide-title-group p {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.slide-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-tag {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.slides-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  padding: 24px 36px 14px;
+}
+
+.slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 24px 36px 14px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.985) translateY(8px);
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.28s;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.slide.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: scale(1) translateY(0);
+}
+
+.deck-footer {
+  height: 50px;
+  min-height: 50px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(10, 15, 27, 0.85);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.footer-left, .footer-center, .footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.key-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.kbd {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--cyan);
+}
+
+.slide-counter {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  letter-spacing: 1px;
+}
+
+.nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.nav-btn:hover {
+  background: var(--cyan-glow);
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.nav-btn:active {
+  transform: scale(0.95);
+}
+
+.nav-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  height: 100%;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  height: 100%;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  height: 100%;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.card.glow-cyan {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-emerald {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-amber {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-rose {
+  border-color: rgba(244, 63, 94, 0.4);
+  background: linear-gradient(180deg, rgba(244, 63, 94, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card.glow-indigo {
+  border-color: rgba(129, 140, 248, 0.4);
+  background: linear-gradient(180deg, rgba(129, 140, 248, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--cyan);
+}
+
+.card-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-cyan { background: var(--cyan-glow); color: var(--cyan); border: 1px solid rgba(56, 189, 248, 0.3); }
+.badge-emerald { background: var(--emerald-glow); color: var(--emerald); border: 1px solid rgba(52, 211, 153, 0.3); }
+.badge-amber { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.3); }
+.badge-rose { background: var(--rose-glow); color: var(--rose); border: 1px solid rgba(244, 63, 94, 0.3); }
+.badge-indigo { background: var(--indigo-glow); color: var(--indigo); border: 1px solid rgba(129, 140, 248, 0.3); }
+.badge-dim { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+.card-content {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  flex: 1;
+  word-spacing: normal;
+  letter-spacing: normal;
+  overflow-wrap: break-word;
+  hyphens: none;
+}
+
+.card-content ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.card-content li {
+  display: block;
+  position: relative;
+  padding-left: 14px;
+}
+
+.card-content li::before {
+  content: ">";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--cyan);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.card-content strong {
+  color: var(--text-main);
+}
+
+.card-content code,
+.slide code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: rgba(56, 189, 248, 0.10);
+  color: var(--cyan);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+  word-break: keep-all;
+  display: inline;
+  vertical-align: baseline;
+  line-height: 1.35;
+}
+
+.code-box {
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: #cbd5e1;
+  line-height: 1.45;
+  white-space: pre;
+  tab-size: 4;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.token-kw { color: #f43f5e; font-weight: 600; }
+.token-fn { color: #38bdf8; }
+.token-cm { color: #64748b; font-style: italic; }
+.token-str { color: #34d399; }
+.token-num { color: #fbbf24; }
+.token-comm { color: #64748b; font-style: italic; }
+.token-cls { color: #a78bfa; font-weight: 600; }
+
+.slide-title-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  gap: 18px;
+  padding: 10px 30px;
+}
+
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--cyan);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.hero-pill .pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--emerald);
+  box-shadow: 0 0 8px var(--emerald);
+}
+
+.hero-title {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--cyan);
+  letter-spacing: -0.3px;
+}
+
+.hero-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.hero-specs {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.spec-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  min-width: 140px;
+}
+
+.spec-item .spec-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.spec-item .spec-value {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-top: 2px;
+}
+
+.pipeline-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  justify-content: center;
+}
+
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.flow-node {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.flow-node:hover {
+  transform: translateY(-2px);
+  border-color: var(--cyan);
+}
+
+.flow-node .node-num {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--cyan);
+  text-transform: uppercase;
+}
+
+.flow-node .node-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.flow-node .node-file {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--emerald);
+  background: rgba(52, 211, 153, 0.08);
+  padding: 2px 5px;
+  border-radius: 4px;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.flow-node .node-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.flow-arrow {
+  color: var(--text-dim);
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.db-mock-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  background: #060913;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.db-mock-table th {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--cyan);
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.db-mock-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: #cbd5e1;
+}
+
+#overview-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(7, 10, 17, 0.94);
+  backdrop-filter: blur(12px);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  padding: 24px 30px;
+}
+
+#overview-modal.open {
+  display: flex;
+}
+
+.overview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.overview-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 6px;
+}
+
+.thumb-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.thumb-card:hover, .thumb-card.active-thumb {
+  border-color: var(--cyan);
+  background: var(--bg-card-hover);
+  box-shadow: 0 0 12px var(--cyan-glow);
+}
+
+.thumb-num {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+.thumb-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.callout-box {
+  background: rgba(56, 189, 248, 0.05);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.callout-box strong {
+  color: var(--cyan);
+}
+  </style>
+</head>
+<body>
+
+<div id="deck-viewport">
+  <div id="deck-container">
+    
+    <!-- Top Progress Bar -->
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Slides Wrapper -->
+    <div class="slides-wrapper">
+
+      <!-- SLIDE 1: Title Hero -->
+      <section class="slide active" data-title="Cim es attekintes">
+        <div class="slide-title-hero">
+          <div class="hero-pill">
+            <span class="pulse-dot"></span>
+            INCEPTION OF CONTEXT - 2. RESZ
+          </div>
+          <h1 class="hero-title">Architect API es RAG</h1>
+          <div class="hero-subtitle">Hibrid kereses, szimbolum-feloldas es 100% helyi Ollama LLM</div>
+          <p class="hero-desc">
+            A 2. reszben az 1. resz indexere egy FastAPI REST interfeszt epitunk.
+            A RAG folyamat egyesiti a ChromaDB szemantikus vektoros keresest a BM25Okapi lexikalis rangsorolassal,
+            mikozben dedikalt AST szimbolum-feloldassal kuszoboli ki a fuggvenyhallucinaciokat.
+          </p>
+          <div class="hero-specs">
+            <div class="spec-item">
+              <span class="spec-label">Backend</span>
+              <span class="spec-value">FastAPI + SSE</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Kereses</span>
+              <span class="spec-value">Dense + BM25Okapi</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Helyi LLM</span>
+              <span class="spec-value">qwen2.5:3b (Ollama)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Felhasznaloi felulet</span>
+              <span class="spec-value">3 fulu Dashboard</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 2: Goal of Part 2 -->
+      <section class="slide" data-title="A 2. resz celja">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>A 2. resz specifikacioja es kovetelmenyei</h2>
+              <p>Mit kovetel meg a hivatalos subject a masodik fazisban?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Subject Audit</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">HTTP API az index felett</span>
+              <span class="card-badge badge-cyan">FastAPI</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>REST vegpontok:</strong> Az index tartalmanak ellenorzesere es lekerdezesere alkalmas API interfesz.</li>
+                <li><strong>Elirt vegpontok:</strong> <code>/status</code>, <code>/files</code>, <code>/file</code>, <code>/chunks</code>, <code>/context</code>, <code>/ask</code>, <code>/events</code>.</li>
+                <li><strong>Statikus kiszolgalas:</strong> A webes dashboard integralt kiszolgalasa a bongeszo szamara.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">RAG es Hibrid kereses</span>
+              <span class="card-badge badge-emerald">Retrieval</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Kontextus kinyeres:</strong> A <code>POST /context</code> visszaadja a kerdeshez relevans forraskod darabokat.</li>
+                <li><strong>Hallucinaciomentesites:</strong> A szimbolumkerdesekre ("letezik-e X fuggveny?") pontos indexelt valasz adando.</li>
+                <li><strong>Hibrid mod:</strong> Dense (ChromaDB) + Sparse (BM25) re-ranking a tokeletes talalatokert.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">100% Helyi LLM (Ollama)</span>
+              <span class="card-badge badge-amber">Local AI</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Szigoru szabaly:</strong> Kulso felho API (OpenAI, Claude, Gemini) hivasa szigoruan tilos (0 XP).</li>
+                <li><strong>Modellosztaly:</strong> ~3B parameteres helyi modell (pl. <code>qwen2.5:3b</code> vagy <code>qwen2.5-coder:3b</code>).</li>
+                <li><strong>Megalapozott valasz:</strong> A modell csak a visszakeresett kodreszletekre tamaszkodhat.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 3: Architecture Pipeline -->
+      <section class="slide" data-title="Architektura-folyamat">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Architektura-folyamat: Kerdesbol megalapozott valasz</h2>
+              <p>Hogyan jut el a felhasznaloi kerdes a helyi LLM altal generalt valaszig?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Dataflow</span>
+          </div>
+        </div>
+        <div class="pipeline-flow" style="margin-top: 10px;">
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">1. Lepes</span>
+              <span class="node-title">Keres es Szimbolum-detekcio</span>
+              <span class="node-file">p2/api.py</span>
+              <span class="node-desc">POST /ask vagy /context fogadasa. AST szimbolumok pontos ellenorzese a memoriabol.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">2. Lepes</span>
+              <span class="node-title">Hibrid visszakereses</span>
+              <span class="node-file">p2/retriever.py</span>
+              <span class="node-desc">ChromaDB vektoros kereses (Dense) + BM25Okapi lexikalis pontozas (Sparse).</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">3. Lepes</span>
+              <span class="node-title">RRF es Re-ranking</span>
+              <span class="node-file">p2/retriever.py</span>
+              <span class="node-desc">Pontszam-fuzio es Top-K relevans darab kivalasztasa a kontextushoz.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">4. Lepes</span>
+              <span class="node-title">Prompt konstrukcio</span>
+              <span class="node-file">p2/llm.py</span>
+              <span class="node-desc">System prompt osszeallitasa a kinyert kodreszletekkel es szigoru megszoritasokkal.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">5. Lepes</span>
+              <span class="node-title">Helyi Ollama kiertekeles</span>
+              <span class="node-file">127.0.0.1:11435</span>
+              <span class="node-desc">qwen2.5:3b modell futtatasa streamelve vagy blokkolva az API-n keresztul.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">6. Lepes</span>
+              <span class="node-title">Valasz es SSE esemeny</span>
+              <span class="node-file">Dashboard UI</span>
+              <span class="node-desc">Megalapozott valasz kiirasa, forrasdarabok megjelenitese, esemeny sugarzasa.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 4: Hybrid Retrieval: Dense + Sparse -->
+      <section class="slide" data-title="Hibrid kereses: Dense es BM25">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Hibrid kereses: Dense vektorok es Sparse BM25Okapi</h2>
+              <p>Miert nem elegendo onmagaban a sima vektoros kereses a forraskodban?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Search Engine</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Dense kereses (ChromaDB + all-MiniLM)</span>
+              <span class="card-badge badge-cyan">Szemantika</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Hogyan mukodik:</strong> A szoveget 384 dimenzios vektorterbe kepezi le; koszinusz hasonlosagot szamol.</li>
+                <li><strong>Erosseg:</strong> Megerti a szandekot es szinonimakat (pl. "osszeadas muvelet" -&gt; megtalalja az <code>add</code> fuggvenyt).</li>
+                <li><strong>Gyengesege kodnal:</strong> Pontatlan az egzakt azonosito nevekre, fuggvenynevekre, rovid valtozokra.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 10px;">
+results = collection.query(
+    query_texts=[query],
+    n_results=top_k * 2
+)</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Sparse kereses (BM25Okapi)</span>
+              <span class="card-badge badge-emerald">Egzakt kulcsszavak</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Hogyan mukodik:</strong> Term Frequency - Inverse Document Frequency (TF-IDF) valtozat, szavak elofordulasat meri.</li>
+                <li><strong>Erosseg:</strong> Hibatlanul azonositja az egzakt fuggvenyneveket: <code>format_result</code>, <code>CalculatorError</code>.</li>
+                <li><strong>Gyengesege:</strong> Nem ert semmit a szemantikabol, ha nincs kozos szo a kerdesben es a kodban.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 10px;">
+tokenized_query = query.lower().split()
+bm25_scores = bm25.get_scores(tokenized_query)</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 5: Symbol Pre-Resolution -->
+      <section class="slide" data-title="Szimbolum elofeloldas">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Szimbolum elofeloldas: Hallucinaciok kikuszobolese</h2>
+              <p>Hogyan garantaljuk a 100%-os tenyszeru pontossagot a kodszimbolumoknal?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Anti-Hallucination</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">A problema: LLM szimbolum hallucinacio</span>
+              <span class="card-badge badge-rose">Kockazat</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>A subject kovetelmenye:</strong> "The /ask system must avoid hallucinating code symbols. Questions such as 'is there a function called X?' must be answered based on known indexed information."</li>
+                <li>Ha egy 3B-s modellnek csak annyit kerdezunk: "Letezik-e power() fuggveny?", konnyen azt mondhatja: "Igen, a calculator.py tartalmazza", holott nincs benne!</li>
+                <li>A tisztan statisztikai nyelvi modellek hajlamosak a "valoszinunek tuno" valaszokra a tenyek helyett.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Az IoC megoldas: Determinisztikus elofeloldas</span>
+              <span class="card-badge badge-emerald">Megoldas</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>1. Mintafelismeres:</strong> Kiszurjuk a szimbolumkerdeseket regex-szel (pl. <code>van-e X fuggveny?</code>, <code>what functions exist?</code>).</li>
+                <li><strong>2. AST szimbolumtar:</strong> Ellenorizzuk az indexelt szimbolumokat az AST metaadatokbol (fuggvenyek, osztalyok).</li>
+                <li><strong>3. Teny-injekcio:</strong> Ha a felhasznalo a <code>power</code>-rol kerdez, es az AST-ben nem szerepel, a rendszer explicit tenykent adja at az LLM-nek: <em>"A keresett szimbolum NEM letezik a kodbazisban."</em></li>
+              </ul>
+              <div class="callout-box" style="margin-top: 8px;">
+                <strong>Vedesi tipp:</strong> Ezzel a ketlepcsos megoldassal garantaljuk, hogy a 3B modell soha ne talaljon ki nem letezo fuggvenyeket!
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 6: Reciprocal Rank Fusion (RRF) -->
+      <section class="slide" data-title="RRF es pontszam-fuzio">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Reciprocal Rank Fusion (RRF) algoritmus</h2>
+              <p>Ket kulonbozo skalan mozg pontszam matematikai egyesitese</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Algorithm</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">A fuzios formula</span>
+              <span class="card-badge badge-cyan">Matematika</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 10px;">
+                A vektoros koszinusz hasonlosag (0 es 1 kozott) es a BM25 pontszam (0-tol vegtelenig terjedhet) nem adhato ossze kozvetlenul normalizalas nelkul. Az RRF a helyezesek (rangok) alapjan szamol:
+              </p>
+              <div class="code-box" style="font-size: 13px; text-align: center; padding: 14px;">
+RRF_Score(d) = SUM [ 1 / ( k + rank_i(d) ) ]
+k = 60 (standard simito konstans)</div>
+              <ul style="margin-top: 10px;">
+                <li>Ha egy kodreszlet mindket rangsorban elol vegez, az RRF pontszama maximalis lesz.</li>
+                <li>Ha csak az egyikben van elol, a kiegyensulyozott kiertekeles megakadalyozza a tulindexelest.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">Implementacio: p2/retriever.py</span>
+              <span class="card-badge badge-indigo">Kod</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+<span class="token-kw">def</span> <span class="token-fn">hybrid_retrieve</span>(query: str, top_k: int = <span class="token-num">4</span>):
+    dense_hits = chroma_client.query(query, n=top_k*<span class="token-num">2</span>)
+    sparse_scores = bm25.get_scores(query.split())
+    
+    rrf_scores = {}
+    <span class="token-kw">for</span> rank, doc_id <span class="token-kw">in</span> enumerate(dense_hits):
+        rrf_scores[doc_id] = rrf_scores.get(doc_id, <span class="token-num">0</span>) + <span class="token-num">1.0</span> / (<span class="token-num">60</span> + rank)
+        
+    <span class="token-kw">for</span> rank, (doc_id, _) <span class="token-kw">in</span> enumerate(sorted_bm25):
+        rrf_scores[doc_id] = rrf_scores.get(doc_id, <span class="token-num">0</span>) + <span class="token-num">1.0</span> / (<span class="token-num">60</span> + rank)
+        
+    <span class="token-kw">return</span> sorted(rrf_scores.items(), key=<span class="token-kw">lambda</span> x: x[<span class="token-num">1</span>], reverse=<span class="token-kw">True</span>)[:top_k]</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 7: Local LLM Integration (Ollama) -->
+      <section class="slide" data-title="Helyi LLM integracio">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Helyi LLM Integracio: Ollama es qwen2.5:3b</h2>
+              <p>Teljesen offline, gyors kiertekeles zero felhos adatveszteseggel</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Local Engine</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Miert qwen2.5:3b?</span>
+              <span class="card-badge badge-cyan">Valasztas</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>3B parameter:</strong> Gyorsan fut dedikalt GPU nelkul is barmely modern CPU-n (pl. a 42-es iMac-eken).</li>
+                <li><strong>Kivalo kodertes:</strong> Kiemelkedo teljesitmeny Python szintaxis ertelmezeseben es strukturalt JSON valaszokban.</li>
+                <li><strong>Hivatalos referencia:</strong> A subject kifejezetten megengedi a ~3B osztalyu modellek hasznalatat.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Ollama REST API</span>
+              <span class="card-badge badge-emerald">Kommunikacio</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A rendszer HTTP POST keressel fordul a helyi szerverhez: <code>http://127.0.0.1:11435/api/generate</code>.</li>
+                <li>Nem hasznal kulso Python SDK-t: tiszta <code>httpx</code> aszinkron klienssel kezeli a lekerdezeseket.</li>
+                <li>Tamogatja mind a teljes valaszt, mind az inkrementalis streaminget SSE esemenyekhez.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Biztonsagi izolacio</span>
+              <span class="card-badge badge-amber">Offline Rule</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Az alkalmazas Docker kontenerben fut, halozata csak a helyi gep localhost-javal beszelget.</li>
+                <li>Nincs API kulcs, nincs regisztracio, nincs internet-fuggoseg.</li>
+                <li>A vedesen barki ellenorizheti a halozati forgalmat: egyetlen csomag sem hagyja el a gepet.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 8: Prompt Engineering & Grounding -->
+      <section class="slide" data-title="Prompt felepites es megalapozas">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Prompt felepites es szigoru forraskod-megalapozas</h2>
+              <p>Hogyan kenyszeritjuk az LLM-et, hogy kizarolag a valos kontextusbol dolgozzon?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Prompt Engineering</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">A rendszerprompt anatomiaja</span>
+              <span class="card-badge badge-cyan">System Prompt</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 11px; height: 100%;">
+SYSTEM_PROMPT = """
+On egy specializalt szoftverarchitekt asszisztens.
+KIZAROLAG az alabbi KODRESZLETEK (Context) alapjan valaszoljon.
+
+SZIGORU SZABALYOK:
+1. Ha a kerdes egy szimbolumrol (fuggveny, osztaly) szol,
+   es az NEM szerepel a kontextusban, pontosan ezt valaszolja:
+   "A keresett szimbolum nem talalhato az indexelt kodban."
+2. Ne talaljon ki nem letezo fuggvenyeket vagy parametereket.
+3. A magyarazatokhoz hasznaljon pontos forraskod hivatkozasokat
+   (fajlnev, sorszamok).
+"""</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Kontextus injektalasa a felhasznaloi kerdes ele</span>
+              <span class="card-badge badge-emerald">User Prompt</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 11px; height: 100%;">
+USER_PROMPT = f"""
+--- KODRESZLETEK KEZDETE ---
+[FORRAS 1]: {chunk_1.file_path} ({chunk_1.type} {chunk_1.name}, L{chunk_1.start_line}-L{chunk_1.end_line})
+{chunk_1.code}
+
+[FORRAS 2]: {chunk_2.file_path} ({chunk_2.type} {chunk_2.name}, L{chunk_2.start_line}-L{chunk_2.end_line})
+{chunk_2.code}
+--- KODRESZLETEK VEGE ---
+
+KERDES: {user_query}
+VALASZ:
+"""</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 9: FastAPI REST Endpoints -->
+      <section class="slide" data-title="REST API vegpontok">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>FastAPI REST API vegpontok attekintese</h2>
+              <p>A p2/api.py altal biztositott interfeszek es felelossegi koreik</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">API Reference</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 15%;">Vegpont</th>
+                <th style="width: 10%;">Metodus</th>
+                <th style="width: 35%;">Leiras es felelosseg</th>
+                <th style="width: 40%;">Visszateresi ertek pelda</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>/status</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Index allapot, darabszamok, modellek neve es a figyeloi aktivitas.</td>
+                <td><code>{"status":"ready", "chunks":12, "files":3}</code></td>
+              </tr>
+              <tr>
+                <td><code>/files</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Indexelt fajlok listaja azok darabszamaval es meretevel.</td>
+                <td><code>[{"path":"calculator.py", "chunks":5}]</code></td>
+              </tr>
+              <tr>
+                <td><code>/file</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Egy adott fajl teljes forraskodja az AST darabhatarokkal egyutt.</td>
+                <td><code>{"path":"main.py", "content":"...", "chunks":[...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/chunks</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Az osszes tarolt darab metaadata szuresi lehetoseggel.</td>
+                <td><code>[{"id":"...", "name":"add", "type":"function"}]</code></td>
+              </tr>
+              <tr>
+                <td><code>/context</code></td>
+                <td><span class="card-badge badge-amber">POST</span></td>
+                <td>Hibrid kereses a kerdeshez tartozo legrelevansabb kodreszletekre.</td>
+                <td><code>{"query":"...", "chunks":[...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/ask</code></td>
+                <td><span class="card-badge badge-emerald">POST</span></td>
+                <td>Teljes RAG folyamat: kereses, helyi LLM generalas, megalapozott valasz.</td>
+                <td><code>{"answer":"...", "retrieved_chunks":[...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/events</code></td>
+                <td><span class="card-badge badge-indigo">GET</span></td>
+                <td>Server-Sent Events (SSE) folyam a dashboard elo frissitesehez.</td>
+                <td><code>event: index_update\ndata: {...}\n\n</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SLIDE 10: Walkthrough: POST /context -->
+      <section class="slide" data-title="Vegpont bemutato: POST /context">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Vegpont bemutato: POST /context</h2>
+              <p>Relevans forraskod kinyerese strukturalt formaban a RAG hatterekent</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">JSON Contract</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Keres JSON (Request)</span>
+              <span class="card-badge badge-cyan">Input</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+{
+  <span class="token-str">"query"</span>: <span class="token-str">"hogyan mukodik az eredmenyek formazasa?"</span>,
+  <span class="token-str">"top_k"</span>: <span class="token-num">2</span>
+}</div>
+              <p style="margin-top: 12px; font-size: 11.5px; color: var(--text-muted);">
+                A keresben atadhato a felhasznalo kerdese es a visszakerendo darabok maximalis szama (<code>top_k</code>, alapertelmezett: 4).
+              </p>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Valasz JSON (Response)</span>
+              <span class="card-badge badge-emerald">Output</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+{
+  <span class="token-str">"query"</span>: <span class="token-str">"hogyan mukodik az eredmenyek formazasa?"</span>,
+  <span class="token-str">"chunks"</span>: [
+    {
+      <span class="token-str">"id"</span>: <span class="token-str">"formatter.py:format_result:1:18"</span>,
+      <span class="token-str">"file_path"</span>: <span class="token-str">"formatter.py"</span>,
+      <span class="token-str">"name"</span>: <span class="token-str">"format_result"</span>,
+      <span class="token-str">"type"</span>: <span class="token-str">"function"</span>,
+      <span class="token-str">"start_line"</span>: <span class="token-num">1</span>,
+      <span class="token-str">"end_line"</span>: <span class="token-num">18</span>,
+      <span class="token-str">"score"</span>: <span class="token-num">0.894</span>,
+      <span class="token-str">"content"</span>: <span class="token-str">"def format_result(val, fmt=\"json\"): ..."</span>
+    }
+  ]
+}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 11: Walkthrough: POST /ask -->
+      <section class="slide" data-title="Vegpont bemutato: POST /ask">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Vegpont bemutato: POST /ask (Teljes RAG valasz)</h2>
+              <p>Megalapozott szoveges valasz es audit forrasok egyetlen hivassal</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Full RAG</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Keres JSON</span>
+              <span class="card-badge badge-cyan">Request</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+{
+  <span class="token-str">"question"</span>: <span class="token-str">"Milyen muveleteket tamogat a Calculator osztaly?"</span>,
+  <span class="token-str">"top_k"</span>: <span class="token-num">3</span>
+}</div>
+              <ul style="margin-top: 12px;">
+                <li>A vegpont automatikusan lefuttatja a hibrid keresot.</li>
+                <li>Osszegyujti a <code>calculator.py</code> metodusait (add, subtract, multiply, divide).</li>
+                <li>Atadja a helyi <code>qwen2.5:3b</code> modellnek a szigoruan korlatozott prompttal.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Valasz JSON</span>
+              <span class="card-badge badge-emerald">Response</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+{
+  <span class="token-str">"question"</span>: <span class="token-str">"Milyen muveleteket tamogat a Calculator osztaly?"</span>,
+  <span class="token-str">"answer"</span>: <span class="token-str">"A calculator.py fajlban levo Calculator osztaly negy alapmuveletet tamogat: add (osszeadas), subtract (kivonas), multiply (szorzas) es divide (osztas, nullaval valo osztas vedelemrel)."</span>,
+  <span class="token-str">"model"</span>: <span class="token-str">"qwen2.5:3b"</span>,
+  <span class="token-str">"duration_ms"</span>: <span class="token-num">482</span>,
+  <span class="token-str">"retrieved_chunks"</span>: [
+    <span class="token-str">"calculator.py:Calculator.add:10:14"</span>,
+    <span class="token-str">"calculator.py:Calculator.divide:25:30"</span>
+  ]
+}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 12: Server-Sent Events & Realtime -->
+      <section class="slide" data-title="Valos ideju esemenyek (SSE)">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Valos ideju esemenyfolyam (Server-Sent Events)</h2>
+              <p>GET /events vegpont: live ertesitesek a bongeszo reszere polling nelkul</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Reactivity</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Miert SSE a WebSocket vagy Polling helyett?</span>
+              <span class="card-badge badge-cyan">Architektura</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Egyszeruseg:</strong> Standard HTTP kapcsolat, nincs szukseg bonyolult ketiranyu handshake-re vagy WS konyvtarra.</li>
+                <li><strong>Auto-reconnect:</strong> A bongeszo beepitett <code>EventSource</code> API-ja automatikusan ujracsatlakozik megszakadas eseten.</li>
+                <li><strong>Zero halozati terheles:</strong> Nem general masodpercenkenti felesleges HTTP kereseket (nincs periodikus polling).</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">Esemenytipusok a rendszerben</span>
+              <span class="card-badge badge-indigo">Event Stream</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+<span class="token-comm"># 1. Index valtozas esemeny (amikor egy fajl modositva lett)</span>
+event: index_updated
+data: {"file": "calculator.py", "action": "modified", "chunks": 5}
+
+<span class="token-comm"># 2. RAG lekerdezes esemeny (audit naplohoz)</span>
+event: query_executed
+data: {"query": "osszeadas", "top_k": 3, "duration_ms": 120}
+
+<span class="token-comm"># 3. Rendszerallapot szivveres (heartbeat)</span>
+event: heartbeat
+data: {"status": "healthy", "timestamp": 1718000000}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 13: Files Browser & Chunk Gutter -->
+      <section class="slide" data-title="Fajlbongeszo es darab jelolok">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Fajlbongeszo es darab-jelolok (Chunk Gutter)</h2>
+              <p>A forraskod vizualis ellenorzese es az AST darabhatarok megjelenitese</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">UI Component</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">AST darabhatarok a sorszam savban</span>
+              <span class="card-badge badge-cyan">Vizualis elmeny</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 10px;">
+                A Files fulon kivalasztott forrasfajlnal a kodsorok mellett kis ikonok jelzik a kulonbozo AST egysegeket:
+              </p>
+              <ul>
+                <li><strong>Osztaly kezdet:</strong> Lila keret es cimke (<code>class Calculator</code>).</li>
+                <li><strong>Fuggveny kezdet:</strong> Ciankek nyil es funkciocimke (<code>def add()</code>).</li>
+                <li><strong>Interaktiv elonezet:</strong> Ha az ertekeles soran a vedo a darabra kattint, megjelenik annak egyedi hashe es embedding metaadata.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Pelda a kodmegjelenitesre</span>
+              <span class="card-badge badge-emerald">Mock View</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+<span class="token-num">1</span>  <span class="token-kw">class</span> <span class="token-cls">Calculator</span>:  <span style="color: #a78bfa;">[AST CLASS: Calculator]</span>
+<span class="token-num">2</span>      <span class="token-str">"""Alapmuveleteket vegzo osztaly."""</span>
+<span class="token-num">3</span>      
+<span class="token-num">4</span>      <span class="token-kw">def</span> <span class="token-fn">add</span>(self, a: float, b: float) -> float:  <span style="color: var(--cyan);">[AST FN: add]</span>
+<span class="token-num">5</span>          <span class="token-kw">return</span> a + b
+<span class="token-num">6</span>          
+<span class="token-num">7</span>      <span class="token-kw">def</span> <span class="token-fn">subtract</span>(self, a: float, b: float) -> float:  <span style="color: var(--cyan);">[AST FN: subtract]</span>
+<span class="token-num">8</span>          <span class="token-kw">return</span> a - b</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 14: Subject Compliance -->
+      <section class="slide" data-title="Subject megfeleles">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Subject megfeleles es ellenorzesi lista</h2>
+              <p>Hogyan teljesiti az implementacionk a hivatalos subject osszes pontjat?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Audit 100%</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 35%;">Subject kovetelmeny</th>
+                <th style="width: 25%;">Megvalositas a kodban</th>
+                <th style="width: 15%;">Allapot</th>
+                <th style="width: 25%;">Hogyan ellenorizheto?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>FastAPI HTTP API az index felett</td>
+                <td><code>p2/api.py</code> (FastAPI app)</td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td><code>curl http://localhost:8000/status</code></td>
+              </tr>
+              <tr>
+                <td>POST /context relevans kodreszletekre</td>
+                <td><code>p2/retriever.py</code> (Hibrid kereso)</td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td><code>curl -X POST /context -d '{"query":"add"}'</code></td>
+              </tr>
+              <tr>
+                <td>POST /ask Retrieval-Augmented Generation</td>
+                <td><code>p2/llm.py</code> + <code>p2/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>Dashboard "Ask &amp; Retrieve" fulon keresztul</td>
+              </tr>
+              <tr>
+                <td>100% helyi modell futtatas (Ollama ~3B)</td>
+                <td><code>qwen2.5:3b</code> helyi szerveren</td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>Offline mukodes internetkabel kihuzasaval</td>
+              </tr>
+              <tr>
+                <td>Kodszimbolumok hallucinaciojanak tiltasa</td>
+                <td>AST szimbolum elofeloldas a prompt elott</td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>"Letezik-e power() fuggveny?" tesztelese</td>
+              </tr>
+              <tr>
+                <td>Ask &amp; Retrieve felhasznaloi felulet</td>
+                <td>FastAPI HTML/JS iranyitopult</td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>Bongeszoben: <code>http://localhost:8000</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SLIDE 15: Summary & Defense Tips -->
+      <section class="slide" data-title="Osszefoglalo es vedesi tippek">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Osszefoglalo es vedesi utmutato</h2>
+              <p>Mire fognak rakérdezni az ertekelok a Part 2 defense soran?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Defense Ready</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">1. Miert hibrid a kereso?</span>
+              <span class="card-badge badge-cyan">Kereses</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Valasz:</strong> A tiszta vektoros kereses elteveszti az egzakt valtozo- es fuggvenyneveket, a BM25 viszont nem erti a jelentest.</li>
+                <li>A kettot RRF (Reciprocal Rank Fusion) algoritmussal kombinaljuk a tokeletes talalati aranyert.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">2. Hogyan vedekezel a hallucinacio ellen?</span>
+              <span class="card-badge badge-emerald">Biztonsag</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Valasz:</strong> Determinisztikus AST szimbolum elofeloldassal.</li>
+                <li>Ha a kerdes egy szimbolum letezestere iranyul, az AST metaadatokbol azonnal tenykent injektaljuk a promptba, igy az LLM nem talalhat ki valaszt.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">3. Bizonyitsd, hogy offline!</span>
+              <span class="card-badge badge-amber">Offline</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Valasz:</strong> Allitsd le a wifit vagy mutasd meg a Docker kornyezet beallitasait.</li>
+                <li>Az Ollama a <code>127.0.0.1:11435</code> cimen helyben szamol, nincs kulso kulcs vagy API kapcsolat.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div> <!-- /slides-wrapper -->
+
+    <!-- Deck Footer -->
+    <footer class="deck-footer">
+      <div class="footer-left">
+        <span class="slide-counter" id="slideCounter">01 / 15</span>
+        <span class="key-hint"><span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> Diak</span>
+        <span class="key-hint"><span class="kbd">Space</span> Tovabb</span>
+      </div>
+      <div class="footer-center">
+        <span style="color: var(--text-dim); font-size: 11px;">Inception-of-Context - 2. resz: Architect API es RAG</span>
+      </div>
+      <div class="footer-right">
+        <button class="nav-btn" id="btnOverview" title="Diaattekintes (O)">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </button>
+        <button class="nav-btn" id="btnFullscreen" title="Teljes kepernyo (F)">
+          <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+        </button>
+        <button class="nav-btn" id="btnPrev" title="Elozo dia">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <button class="nav-btn" id="btnNext" title="Kovetkezo dia">
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+    </footer>
+
+    <!-- Slide Overview Modal -->
+    <div id="overview-modal">
+      <div class="overview-header">
+        <h3>Diaattekintes (Esc vagy O a bezarashoz)</h3>
+        <button class="nav-btn" id="btnCloseOverview" title="Attekintes bezarasa">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="overview-grid" id="overviewGrid">
+        <!-- Injected dynamically by deck engine -->
+      </div>
+    </div>
+
+  </div> <!-- /deck-container -->
+</div> <!-- /deck-viewport -->
+
+<script>
+/**
+ * Inception-of-Context (IoC) - Part 2 Presentation Deck Engine
+ * Zero external dependencies. 100% offline.
+ */
+(function () {
+  "use strict";
+
+  const slides = document.querySelectorAll(".slide");
+  const totalSlides = slides.length;
+  let currentIndex = 0;
+
+  const counterEl = document.getElementById("slideCounter");
+  const progressBar = document.getElementById("progressBar");
+  const btnPrev = document.getElementById("btnPrev");
+  const btnNext = document.getElementById("btnNext");
+  const btnFullscreen = document.getElementById("btnFullscreen");
+  const btnOverview = document.getElementById("btnOverview");
+  const overviewModal = document.getElementById("overview-modal");
+  const overviewGrid = document.getElementById("overviewGrid");
+  const btnCloseOverview = document.getElementById("btnCloseOverview");
+
+  function buildOverviewGrid() {
+    if (!overviewGrid) return;
+    overviewGrid.innerHTML = "";
+    slides.forEach((slide, idx) => {
+      const card = document.createElement("div");
+      card.className = `thumb-card ${idx === currentIndex ? "active-thumb" : ""}`;
+      const title = slide.getAttribute("data-title") || `Dia ${idx + 1}`;
+      card.innerHTML = `
+        <div class="thumb-num">${String(idx + 1).padStart(2, "0")} / ${String(totalSlides).padStart(2, "0")}</div>
+        <div class="thumb-title">${title}</div>
+      `;
+      card.addEventListener("click", () => {
+        goToSlide(idx);
+        toggleOverview(false);
+      });
+      overviewGrid.appendChild(card);
+    });
+  }
+
+  function toggleOverview(forceState) {
+    if (!overviewModal) return;
+    const shouldOpen = typeof forceState === "boolean" 
+      ? forceState 
+      : !overviewModal.classList.contains("open");
+    
+    if (shouldOpen) {
+      buildOverviewGrid();
+      overviewModal.classList.add("open");
+    } else {
+      overviewModal.classList.remove("open");
+    }
+  }
+
+  function updateUI() {
+    slides.forEach((slide, idx) => {
+      if (idx === currentIndex) {
+        slide.classList.add("active");
+      } else {
+        slide.classList.remove("active");
+      }
+    });
+
+    if (counterEl) {
+      const cur = String(currentIndex + 1).padStart(2, "0");
+      const tot = String(totalSlides).padStart(2, "0");
+      counterEl.textContent = `${cur} / ${tot}`;
+    }
+
+    if (progressBar) {
+      const percent = ((currentIndex + 1) / totalSlides) * 100;
+      progressBar.style.width = `${percent}%`;
+    }
+
+    window.location.hash = `#${currentIndex + 1}`;
+
+    const thumbs = document.querySelectorAll(".thumb-card");
+    thumbs.forEach((t, i) => {
+      if (i === currentIndex) {
+        t.classList.add("active-thumb");
+      } else {
+        t.classList.remove("active-thumb");
+      }
+    });
+  }
+
+  function goToSlide(index) {
+    if (index < 0) index = 0;
+    if (index >= totalSlides) index = totalSlides - 1;
+    currentIndex = index;
+    updateUI();
+  }
+
+  function nextSlide() {
+    if (currentIndex < totalSlides - 1) {
+      goToSlide(currentIndex + 1);
+    }
+  }
+
+  function prevSlide() {
+    if (currentIndex > 0) {
+      goToSlide(currentIndex - 1);
+    }
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.warn("Fullscreen request error:", err);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (overviewModal && overviewModal.classList.contains("open")) {
+      if (e.key === "Escape" || e.key === "o" || e.key === "O") {
+        e.preventDefault();
+        toggleOverview(false);
+        return;
+      }
+    }
+
+    switch (e.key) {
+      case "ArrowRight":
+      case " ":
+      case "PageDown":
+        e.preventDefault();
+        nextSlide();
+        break;
+      case "ArrowLeft":
+      case "PageUp":
+        e.preventDefault();
+        prevSlide();
+        break;
+      case "Home":
+        e.preventDefault();
+        goToSlide(0);
+        break;
+      case "End":
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+        break;
+      case "f":
+      case "F":
+        e.preventDefault();
+        toggleFullscreen();
+        break;
+      case "o":
+      case "O":
+        e.preventDefault();
+        toggleOverview();
+        break;
+      case "Escape":
+        if (overviewModal && overviewModal.classList.contains("open")) {
+          toggleOverview(false);
+        }
+        break;
+      default:
+        break;
+    }
+  });
+
+  if (btnPrev) btnPrev.addEventListener("click", prevSlide);
+  if (btnNext) btnNext.addEventListener("click", nextSlide);
+  if (btnFullscreen) btnFullscreen.addEventListener("click", toggleFullscreen);
+  if (btnOverview) btnOverview.addEventListener("click", () => toggleOverview());
+  if (btnCloseOverview) btnCloseOverview.addEventListener("click", () => toggleOverview(false));
+
+  const initialHash = window.location.hash.replace("#", "");
+  const parsedSlideNum = parseInt(initialHash, 10);
+  if (!isNaN(parsedSlideNum) && parsedSlideNum >= 1 && parsedSlideNum <= totalSlides) {
+    currentIndex = parsedSlideNum - 1;
+  } else {
+    currentIndex = 0;
+  }
+
+  updateUI();
+})();
+</script>
+</body>
+</html>
