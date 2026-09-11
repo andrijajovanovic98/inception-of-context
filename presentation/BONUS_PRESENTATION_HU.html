@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hu">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inception-of-Context - Part 3: Patch Generation, Application & Validation Loop</title>
+  <title>Inception-of-Context - Bonusz: Halado fejlesztoi eszkozok</title>
   <style>
 /* ==========================================================================
-   Inception-of-Context (IoC) - Part 3 Presentation Stylesheet
+   Inception-of-Context (IoC) - Bonus Presentation Stylesheet
    Modern 16:9 Dark Technical Slide Deck (100% Local & Self-Contained)
    ========================================================================== */
 
@@ -19,7 +19,7 @@
   
   --border-subtle: #1e2c4a;
   --border-strong: #2e4370;
-  --border-glow: rgba(56, 189, 248, 0.25);
+  --border-glow: rgba(168, 85, 247, 0.25);
   
   --text-main: #f1f5f9;
   --text-muted: #94a3b8;
@@ -35,6 +35,8 @@
   --rose-glow: rgba(244, 63, 94, 0.15);
   --indigo: #818cf8;
   --indigo-glow: rgba(129, 140, 248, 0.15);
+  --purple: #c084fc;
+  --purple-glow: rgba(192, 132, 252, 0.15);
   
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
@@ -70,7 +72,7 @@ html, body {
   justify-content: center;
   align-items: center;
   position: relative;
-  background: radial-gradient(circle at 50% 30%, #111a33 0%, #070a11 85%);
+  background: radial-gradient(circle at 50% 30%, #17112e 0%, #070a11 85%);
   padding: 16px;
 }
 
@@ -101,9 +103,9 @@ html, body {
 .progress-bar {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, var(--rose), var(--amber), var(--emerald));
+  background: linear-gradient(90deg, var(--purple), var(--cyan), var(--emerald));
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 8px var(--amber);
+  box-shadow: 0 0 8px var(--purple);
 }
 
 .slide-header {
@@ -131,9 +133,9 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 1px;
   padding: 3px 8px;
-  background: var(--amber-glow);
-  color: var(--amber);
-  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: var(--purple-glow);
+  color: var(--purple);
+  border: 1px solid rgba(192, 132, 252, 0.3);
   border-radius: var(--radius-sm);
 }
 
@@ -233,7 +235,7 @@ html, body {
   padding: 1px 5px;
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--amber);
+  color: var(--purple);
 }
 
 .slide-counter {
@@ -263,9 +265,9 @@ html, body {
 }
 
 .nav-btn:hover {
-  background: var(--amber-glow);
-  border-color: var(--amber);
-  color: var(--amber);
+  background: var(--purple-glow);
+  border-color: var(--purple);
+  color: var(--purple);
 }
 
 .nav-btn:active {
@@ -314,6 +316,11 @@ html, body {
   flex-direction: column;
 }
 
+.card.glow-purple {
+  border-color: rgba(192, 132, 252, 0.4);
+  background: linear-gradient(180deg, rgba(192, 132, 252, 0.06) 0%, var(--bg-card) 60%);
+}
+
 .card.glow-cyan {
   border-color: rgba(56, 189, 248, 0.4);
   background: linear-gradient(180deg, rgba(56, 189, 248, 0.06) 0%, var(--bg-card) 60%);
@@ -327,16 +334,6 @@ html, body {
 .card.glow-amber {
   border-color: rgba(251, 191, 36, 0.4);
   background: linear-gradient(180deg, rgba(251, 191, 36, 0.06) 0%, var(--bg-card) 60%);
-}
-
-.card.glow-rose {
-  border-color: rgba(244, 63, 94, 0.4);
-  background: linear-gradient(180deg, rgba(244, 63, 94, 0.06) 0%, var(--bg-card) 60%);
-}
-
-.card.glow-indigo {
-  border-color: rgba(129, 140, 248, 0.4);
-  background: linear-gradient(180deg, rgba(129, 140, 248, 0.06) 0%, var(--bg-card) 60%);
 }
 
 .card-header {
@@ -358,7 +355,7 @@ html, body {
 .card-title svg {
   width: 16px;
   height: 16px;
-  stroke: var(--amber);
+  stroke: var(--purple);
 }
 
 .card-badge {
@@ -370,11 +367,10 @@ html, body {
   text-transform: uppercase;
 }
 
+.badge-purple { background: var(--purple-glow); color: var(--purple); border: 1px solid rgba(192, 132, 252, 0.3); }
 .badge-cyan { background: var(--cyan-glow); color: var(--cyan); border: 1px solid rgba(56, 189, 248, 0.3); }
 .badge-emerald { background: var(--emerald-glow); color: var(--emerald); border: 1px solid rgba(52, 211, 153, 0.3); }
 .badge-amber { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.3); }
-.badge-rose { background: var(--rose-glow); color: var(--rose); border: 1px solid rgba(244, 63, 94, 0.3); }
-.badge-indigo { background: var(--indigo-glow); color: var(--indigo); border: 1px solid rgba(129, 140, 248, 0.3); }
 .badge-dim { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1); }
 
 .card-content {
@@ -406,7 +402,7 @@ html, body {
   position: absolute;
   left: 0;
   top: 0;
-  color: var(--amber);
+  color: var(--purple);
   font-weight: 700;
   font-size: 13px;
   line-height: 1.5;
@@ -420,9 +416,9 @@ html, body {
 .slide code {
   font-family: var(--font-mono);
   font-size: 0.92em;
-  background: rgba(251, 191, 36, 0.10);
-  color: var(--amber);
-  border: 1px solid rgba(251, 191, 36, 0.22);
+  background: rgba(192, 132, 252, 0.10);
+  color: var(--purple);
+  border: 1px solid rgba(192, 132, 252, 0.22);
   border-radius: 4px;
   padding: 0 5px;
   white-space: nowrap;
@@ -471,12 +467,12 @@ html, body {
   align-items: center;
   gap: 8px;
   padding: 6px 16px;
-  background: rgba(251, 191, 36, 0.08);
-  border: 1px solid rgba(251, 191, 36, 0.25);
+  background: rgba(192, 132, 252, 0.08);
+  border: 1px solid rgba(192, 132, 252, 0.25);
   border-radius: 9999px;
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--amber);
+  color: var(--purple);
   font-weight: 600;
   letter-spacing: 0.5px;
 }
@@ -485,8 +481,8 @@ html, body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--amber);
-  box-shadow: 0 0 8px var(--amber);
+  background: var(--purple);
+  box-shadow: 0 0 8px var(--purple);
 }
 
 .hero-title {
@@ -494,7 +490,7 @@ html, body {
   font-weight: 800;
   letter-spacing: -1.2px;
   line-height: 1.1;
-  background: linear-gradient(135deg, #ffffff 30%, #fbbf24 100%);
+  background: linear-gradient(135deg, #ffffff 30%, #c084fc 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -502,7 +498,7 @@ html, body {
 .hero-subtitle {
   font-size: 20px;
   font-weight: 600;
-  color: var(--amber);
+  color: var(--purple);
   letter-spacing: -0.3px;
 }
 
@@ -575,14 +571,14 @@ html, body {
 
 .flow-node:hover {
   transform: translateY(-2px);
-  border-color: var(--amber);
+  border-color: var(--purple);
 }
 
 .flow-node .node-num {
   font-family: var(--font-mono);
   font-size: 9.5px;
   font-weight: 700;
-  color: var(--amber);
+  color: var(--purple);
   text-transform: uppercase;
 }
 
@@ -630,7 +626,7 @@ html, body {
 
 .db-mock-table th {
   background: rgba(255, 255, 255, 0.05);
-  color: var(--amber);
+  color: var(--purple);
   padding: 6px 10px;
   text-align: left;
   border-bottom: 1px solid var(--border-subtle);
@@ -697,15 +693,15 @@ html, body {
 }
 
 .thumb-card:hover, .thumb-card.active-thumb {
-  border-color: var(--amber);
+  border-color: var(--purple);
   background: var(--bg-card-hover);
-  box-shadow: 0 0 12px var(--amber-glow);
+  box-shadow: 0 0 12px var(--purple-glow);
 }
 
 .thumb-num {
   font-family: var(--font-mono);
   font-size: 10.5px;
-  color: var(--amber);
+  color: var(--purple);
   font-weight: 700;
 }
 
@@ -716,8 +712,8 @@ html, body {
 }
 
 .callout-box {
-  background: rgba(251, 191, 36, 0.05);
-  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: rgba(192, 132, 252, 0.05);
+  border: 1px solid rgba(192, 132, 252, 0.2);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   font-size: 11.5px;
@@ -726,7 +722,7 @@ html, body {
 }
 
 .callout-box strong {
-  color: var(--amber);
+  color: var(--purple);
 }
   </style>
 </head>
@@ -744,686 +740,665 @@ html, body {
     <div class="slides-wrapper">
 
       <!-- SLIDE 1: Title Hero -->
-      <section class="slide active" data-title="Title & Overview">
+      <section class="slide active" data-title="Cim es attekintes">
         <div class="slide-title-hero">
           <div class="hero-pill">
             <span class="pulse-dot"></span>
-            INCEPTION OF CONTEXT - PART 3
+            INCEPTION OF CONTEXT - BONUSZ RESZ
           </div>
-          <h1 class="hero-title">Patch Generation & Self-Healing Loop</h1>
-          <div class="hero-subtitle">Structured JSON, 6 AST Sanity Checks, Atomic Staging, and Rollback Guarantee</div>
+          <h1 class="hero-title">Halado Fejlesztoi Eszkozok</h1>
+          <div class="hero-subtitle">Dinamikus Reindex, Vizualis Diff, Automata Git Commit es Dry-Run</div>
           <p class="hero-desc">
-            In Part 3, IoC evolves into an autonomous coding agent.
-            Driven by user intent, it gathers project context, produces structured file modifications,
-            rigorously audits them prior to disk writes, executes project test suites,
-            and autonomously self-heals over 3 attempts - or executes a 100% atomic rollback.
+            A bonus/ modulban az IoC egy teljes erteku, ipari szintu autonom fejlesztoi asszisztensse bovul.
+            Ujratelepites nelkuli dinamikus adatbazis-ujraepites (POST /reindex),
+            szintaxissal szinezett unified diff motor, helyi LLM altal irt konvencionalis git commitok,
+            es kockazatmentes szimulacios mod (Dry-Run).
           </p>
           <div class="hero-specs">
             <div class="spec-item">
-              <span class="spec-label">Execution Model</span>
-              <span class="spec-value">Autonomous Loop</span>
+              <span class="spec-label">Reindexalas</span>
+              <span class="spec-value">POST /reindex</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Pre-Validation</span>
-              <span class="spec-value">6 AST Sanity Checks</span>
+              <span class="spec-label">Diff Megjelenites</span>
+              <span class="spec-value">Unified Line Engine</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Self-Healing</span>
-              <span class="spec-value">Max 3 Retry Attempts</span>
+              <span class="spec-label">Verziokezeles</span>
+              <span class="spec-value">LLM Git Committer</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Safety</span>
-              <span class="spec-value">100% Atomic Rollback</span>
+              <span class="spec-label">Biztonsagos Teszt</span>
+              <span class="spec-value">Dry-Run Mod</span>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- SLIDE 2: Goal of Part 3 -->
-      <section class="slide" data-title="Goal of Part 3">
+      <!-- SLIDE 2: Goal of Bonus -->
+      <section class="slide" data-title="A bonusz celja">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">Bonus</span>
             <div class="slide-title-group">
-              <h2>Part 3 Specification: This is a LOOP</h2>
-              <p>What does the official subject mandate for the third phase?</p>
+              <h2>A Bonusz modul celja es szerepe</h2>
+              <p>Miert szukseges a kotelezo reszeken feluli kiegeszites a professzionalis hasznalathoz?</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Subject Audit</span>
+            <span class="header-tag">Developer Experience</span>
           </div>
         </div>
         <div class="grid-3" style="margin-top: 14px;">
-          <div class="card glow-amber">
+          <div class="card glow-purple">
             <div class="card-header">
-              <span class="card-title">Not Merely Separate Endpoints</span>
-              <span class="card-badge badge-amber">The Loop</span>
+              <span class="card-title">1. Dinamikus eletciklus</span>
+              <span class="card-badge badge-purple">Reindex</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Core Subject Sentence:</strong> <em>"This is a LOOP, not merely separate endpoints."</em></li>
-                <li>A single high-level intent (e.g. "add healthcheck route") initiates the complete autonomous flow.</li>
-                <li>The system independently drives forward until verified success or safe restoration.</li>
+                <li>A Part 1-ben a ChromaDB index az inditaskor epul fel, a watcher figyeli a valtozasokat.</li>
+                <li>De mi tortenik, ha a lemezen egy kulso git pull lefut vagy az adatbazis korrupttá válik?</li>
+                <li>A <code>POST /reindex</code> vegpont lehetove teszi a teljes adatbazis ujrageneralasat a szerver ujrainditasa nelkul.</li>
               </ul>
             </div>
           </div>
-          <div class="card glow-rose">
+          <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">Strict Pre-Flight Validation</span>
-              <span class="card-badge badge-rose">Sanity Checks</span>
+              <span class="card-title">2. Lathato valtozasok</span>
+              <span class="card-badge badge-cyan">Visual Diff</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Zero Blind Disk Writes:</strong> Raw LLM generated patches must never directly overwrite source files.</li>
-                <li><strong>6 Mandatory Refusals:</strong> Stub functions, severe shrinkage, leaking retrieval prompt headers, etc.</li>
-                <li>Enforced via AST inspection before filesystem contact.</li>
+                <li>A Part 3 teljes fajlcserevel dolgozik. De a fejleszto latni akarja, <em>pontosan mi</em> valtozott!</li>
+                <li>A vizualis diff motor soronkenti, szines unified diff nezetet general a felhasznaloi felulet szamara.</li>
+                <li>Zold (+) a hozzaadott, piros (-) a torolt sorokhoz.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Validation & Rollback Guarantee</span>
-              <span class="card-badge badge-emerald">Safety First</span>
+              <span class="card-title">3. Zárt CI/CD ciklus</span>
+              <span class="card-badge badge-emerald">Git Commit</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>ioc.config.yml:</strong> External configuration specifies compilation and testing routines.</li>
-                <li><strong>3 Self-Healing Retries:</strong> Error tracebacks are fed back to the local model to correct mistakes.</li>
-                <li><strong>100% Rollback:</strong> Complete state restoration if all 3 attempts fail.</li>
+                <li>A sikeres kodgeneralas es validacio utan a kód automatikusan bekerul a Git repozitoriumba.</li>
+                <li>A helyi LLM elemezi a modositast, es szabvanyos konvencionalis uzenetet general (pl. <code>feat(calculator): add power method</code>).</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- SLIDE 3: The Autonomous Loop Pipeline -->
-      <section class="slide" data-title="Autonomous Loop Pipeline">
+      <!-- SLIDE 3: Bonus Architecture -->
+      <section class="slide" data-title="Bonusz architektura">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">Bonus</span>
             <div class="slide-title-group">
-              <h2>The Autonomous Patch Loop Step by Step</h2>
-              <p>How execution flows from high-level intent to atomic repository updates</p>
+              <h2>A bonus/ konyvtar moduljai es kapcsolatai</h2>
+              <p>Hogyan epulnek a bonusz funkciok a P1, P2 es P3 retegekre?</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Control Flow</span>
+            <span class="header-tag">Folder Structure</span>
           </div>
         </div>
         <div class="pipeline-flow" style="margin-top: 10px;">
           <div class="flow-row">
             <div class="flow-node">
-              <span class="node-num">Step 1</span>
-              <span class="node-title">Intent & Retrieval</span>
-              <span class="node-file">p3/generator.py</span>
-              <span class="node-desc">Retrieve relevant code context and targeted source files using hybrid search.</span>
+              <span class="node-num">Modul 1</span>
+              <span class="node-title">bonus/api.py</span>
+              <span class="node-file">FastAPI Router</span>
+              <span class="node-desc">Kiterjesztett REST vegpontok: POST /reindex, POST /patch?dry_run=true, esemeny folyam.</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
-              <span class="node-num">Step 2</span>
-              <span class="node-title">Structured JSON Patch</span>
-              <span class="node-file">qwen2.5:3b</span>
-              <span class="node-desc">Generate complete post-change file contents in structured JSON rather than brittle diffs.</span>
-            </div>
-            <div class="flow-arrow">-&gt;</div>
-            <div class="flow-node">
-              <span class="node-num">Step 3</span>
-              <span class="node-title">6 Sanity Checks</span>
-              <span class="node-file">p3/validator.py</span>
-              <span class="node-desc">AST and heuristic validation. If any check fails, trigger an immediate refusal.</span>
+              <span class="node-num">Modul 2</span>
+              <span class="node-title">bonus/diff_engine.py</span>
+              <span class="node-file">Diff Engine</span>
+              <span class="node-desc">Python difflib alapu vizualis diff generator strukturált HTML/JSON kimenettel.</span>
             </div>
           </div>
           <div class="flow-row">
             <div class="flow-node">
-              <span class="node-num">Step 4</span>
-              <span class="node-title">Snapshots & *.ioc.tmp</span>
-              <span class="node-file">p3/applier.py</span>
-              <span class="node-desc">Capture baseline snapshots. Stage writes to temporary files before atomic swap.</span>
+              <span class="node-num">Modul 3</span>
+              <span class="node-title">bonus/git_committer.py</span>
+              <span class="node-file">Git Automation</span>
+              <span class="node-desc">Ollama LLM prompt a commit uzenethez + Git subprocess futtato (git add, git commit).</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
-              <span class="node-num">Step 5</span>
-              <span class="node-title">Validation (ioc.config.yml)</span>
-              <span class="node-file">Subprocess</span>
-              <span class="node-desc">Execute test command. Exit code 0 signals verified success!</span>
-            </div>
-            <div class="flow-arrow">-&gt;</div>
-            <div class="flow-node">
-              <span class="node-num">Step 6</span>
-              <span class="node-title">Self-Healing or Rollback</span>
-              <span class="node-file">Self-Healing</span>
-              <span class="node-desc">Inject compiler traceback for retry (up to 3x). If exhausted, trigger 100% Rollback.</span>
+              <span class="node-num">Modul 4</span>
+              <span class="node-title">bonus/dashboard.py</span>
+              <span class="node-file">4-Tab UI</span>
+              <span class="node-desc">Egyesitett iranyitopult: Overview, Files, Ask &amp; Retrieve, Patch &amp; Git Commit feed.</span>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- SLIDE 4: Structured JSON Format -->
-      <section class="slide" data-title="Structured JSON Patch Format">
+      <!-- SLIDE 4: POST /reindex Deep Dive -->
+      <section class="slide" data-title="Dinamikus ujraindexeles (POST /reindex)">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">Bonus</span>
             <div class="slide-title-group">
-              <h2>Why Structured JSON and NOT Free-Form Diffs?</h2>
-              <p>Addressing small language model limitations through deterministic representation</p>
+              <h2>Dinamikus Ujraindexeles: POST /reindex</h2>
+              <p>A vektoradatbazis teljes ujraepitese anelkul, hogy leallitank a kiszolgalot</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">JSON Schema</span>
+            <span class="header-tag">Dynamic Lifecycle</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
-          <div class="card glow-rose">
+          <div class="card glow-purple">
             <div class="card-header">
-              <span class="card-title">Failure of Free-Form Diffs</span>
-              <span class="card-badge badge-rose">Problematic</span>
+              <span class="card-title">A mukodes lepesei</span>
+              <span class="card-badge badge-purple">Execution Flow</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Small 3B models frequently miscalculate hunk header line counts: <code>@@ -14,6 +14,8 @@</code>.</li>
-                <li>A single misplaced whitespace or indentation tab causes <code>patch</code> or <code>git apply</code> to fail.</li>
-                <li>Explicit subject rule: <em>"The patch must NOT be a free-form diff."</em></li>
+                <li><strong>1. Gyujtemeny uritese:</strong> Torli a meglevo ChromaDB kollekciot es az in-memory BM25 indexet.</li>
+                <li><strong>2. Ujbóli AST bejaras:</strong> Ujra vegigfut a célkonyvtar osszes forrasfajljan.</li>
+                <li><strong>3. Uj embeddingek generálása:</strong> Lokalis <code>all-MiniLM-L6-v2</code> segitsegevel ujraszámolja a vektorokat.</li>
+                <li><strong>4. SSE esemeny sugarzasa:</strong> A dashboard feluleten azonnal frissul a darabszam jelzo.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">API Kontraktus pelda</span>
+              <span class="card-badge badge-cyan">Request / Response</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+<span class="token-comm"># Hivas terminalbol:</span>
+$ curl -X POST http://localhost:8000/reindex
+
+<span class="token-comm"># Valasz JSON:</span>
+{
+  <span class="token-str">"status"</span>: <span class="token-str">"success"</span>,
+  <span class="token-str">"message"</span>: <span class="token-str">"Target directory reindexed successfully."</span>,
+  <span class="token-str">"files_indexed"</span>: <span class="token-num">3</span>,
+  <span class="token-str">"total_chunks"</span>: <span class="token-num">12</span>,
+  <span class="token-str">"duration_ms"</span>: <span class="token-num">345</span>
+}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 5: Visual Diff Engine -->
+      <section class="slide" data-title="Vizualis Diff Motor">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Vizualis Diff Motor: bonus/diff_engine.py</h2>
+              <p>Strukturált, ember altal azonnal auditálható valtozas-megjelenites a bongeszoben</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Diff Engine</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Hogyan epul fel a diff?</span>
+              <span class="card-badge badge-cyan">Működés</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A Python beepitett <code>difflib.unified_diff</code> algoritmusat hasznalja referencia alapként.</li>
+                <li>Minden sort kategorizal: hozzaadott (<code>+</code>), torolt (<code>-</code>), valtozatlan (szokasos kontextus).</li>
+                <li>Elkuloniti a fajlok fejlecet, es kiszamolja a modositott sorok szamat (<code>+3 / -1</code>).</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Subject-Mandated JSON Schema</span>
-              <span class="card-badge badge-emerald">Mandatory Schema</span>
+              <span class="card-title">Diff Megjelenites pelda</span>
+              <span class="card-badge badge-emerald">UI Előnézet</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
-{
-  <span class="token-str">"summary"</span>: <span class="token-str">"Add divide method with zero-check"</span>,
-  <span class="token-str">"files"</span>: [
-    {
-      <span class="token-str">"path"</span>: <span class="token-str">"calculator.py"</span>,
-      <span class="token-str">"op"</span>: <span class="token-str">"modify"</span>,
-      <span class="token-str">"content"</span>: <span class="token-str">"class Calculator:\n    def add..."</span>
-    }
-  ]
-}</div>
-              <p style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
-                For <code>modify</code> operations, <code>content</code> represents the <strong>complete, post-change file</strong>, not an ambiguous partial fragment!
-              </p>
+--- a/calculator.py
++++ b/calculator.py
+@@ -10,6 +10,10 @@
+     def subtract(self, a: float, b: float) -> float:
+         return a - b
+ 
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+   def power(self, base: float, exp: float) -> float:</span>
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+       """Hatvanyozas muvelet."""</span>
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+       return base ** exp</span>
++</div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- SLIDE 5: The 6 Hard Refusals -->
-      <section class="slide" data-title="The 6 Hard Refusal Sanity Checks">
+      <!-- SLIDE 6: Automated Git Committer -->
+      <section class="slide" data-title="Automata Git Committer">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">Bonus</span>
             <div class="slide-title-group">
-              <h2>The 6 Mandatory Sanity Checks (Immediate Refusal)</h2>
-              <p>Rigorous AST and heuristic pre-flight checks executed by p3/validator.py prior to disk writes</p>
+              <h2>Automata Git Committer: bonus/git_committer.py</h2>
+              <p>Validalt valtozasok veglegesitese helyi LLM altal irt konvencionalis commit uzenettel</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Hard Refusals</span>
+            <span class="header-tag">Git Automation</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Konvencionalis commit prompt</span>
+              <span class="card-badge badge-amber">LLM Generation</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 8px;">A helyi Ollama modell elemzi a diffet, es general egy rovid commit uzenetet:</p>
+              <div class="code-box" style="font-size: 11px;">
+COMMIT_PROMPT = """
+Elemezze az alabbi diffet es irjon egy szabvanyos
+Conventional Commit uzenetet (feat, fix, refactor):
+
+{diff_content}
+
+Formátum:
+feat(scope): rovid osszefoglalo
+"""</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Biztonsagos Git muvelet</span>
+              <span class="card-badge badge-emerald">Subprocess</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Csak siker eseten:</strong> A commit <em>kizarolag</em> akkor fut le, ha a validacio (tesztek) hibatlanul befejezodott.</li>
+                <li><strong>Csak az erintett fajlok:</strong> A <code>git add</code> nem mindent ad hozza (nincs <code>git add .</code>), hanem csak a patchben szereplo fajlokat!</li>
+                <li>Visszaadja a commit hasht es a naplobejegyzest a feluletre.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 7: Dry-Run Simulation Mode -->
+      <section class="slide" data-title="Dry-Run szimulacios mod">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Dry-Run Szimulacios Mod: Kockazatmentes elonezet</h2>
+              <p>Patch generalas, diff kalkulacio es sanity check ellenorzes a lemez erintese nelkul</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Safety Mode</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Miert fontos a Dry-Run?</span>
+              <span class="card-badge badge-cyan">Hasznosság</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A fejleszto vagy ertekelo elore latni akarja, hogy a modell milyen szinten ertette meg a feladatot.</li>
+                <li>Tesztelheto a kod generalasa lemeziras, fajlzarlat vagy a tesztfuttato terhelese nelkul.</li>
+                <li>A webes feluleten 1 kattintassal kapcsolhato az <em>"Enable Dry-Run"</em> kapcsoloval.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">Hogyan mukodik a motorban?</span>
+              <span class="card-badge badge-purple">Logika</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A modell legeneralja a strukturalt JSON patchet.</li>
+                <li>Lefutnak a <strong>6 Sanity Check</strong> ellenorzesek az in-memory tartalmon.</li>
+                <li>A diff motor generalja a unified diff elonezetet a memoriaban levo eredeti es generalt kodbol.</li>
+                <li>A folyamat itt <strong>megall</strong>: nincs fájliras, nincs <code>*.ioc.tmp</code>, nincs subprocess futtatas.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 8: Bonus REST API -->
+      <section class="slide" data-title="Bonusz REST API vegpontok">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Bonusz REST API Vegpontok attekintese</h2>
+              <p>A bonus/api.py altal kinalt bovitett interfesz</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">API Reference</span>
           </div>
         </div>
         <div style="margin-top: 14px;">
           <table class="db-mock-table">
             <thead>
               <tr>
-                <th style="width: 8%;">#</th>
-                <th style="width: 27%;">Sanity Check</th>
-                <th style="width: 40%;">Why It Fails (Subject Rationale)</th>
-                <th style="width: 25%;">Detection Technique</th>
+                <th style="width: 18%;">Vegpont</th>
+                <th style="width: 10%;">Metodus</th>
+                <th style="width: 40%;">Leiras es felelosseg</th>
+                <th style="width: 32%;">Visszateresi pelda</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>1</strong></td>
-                <td>Retrieval marker leakage</td>
-                <td>Model echoes prompt headers like <code>[SOURCE 1]:</code> or <code>--- CODE CHUNKS ---</code> into code.</td>
-                <td>Regex pattern scanning on generated file content.</td>
+                <td><code>/reindex</code></td>
+                <td><span class="card-badge badge-purple">POST</span></td>
+                <td>A teljes adatbazis torlese es ujraepitese futasidoben.</td>
+                <td><code>{"status":"success", "total_chunks":12}</code></td>
               </tr>
               <tr>
-                <td><strong>2</strong></td>
-                <td>Creating existing file</td>
-                <td>Using <code>create</code> on a file that already exists on disk risks silent overwrite.</td>
-                <td>Filesystem check: <code>os.path.exists(path)</code>.</td>
+                <td><code>/patch</code></td>
+                <td><span class="card-badge badge-amber">POST</span></td>
+                <td>Autonom patch ciklus inditasa (tamogatja a <code>?dry_run=true</code> parametert).</td>
+                <td><code>{"status":"success", "diff":"...", "commit":{...}}</code></td>
               </tr>
               <tr>
-                <td><strong>3</strong></td>
-                <td>Empty or null replacement</td>
-                <td>Replacing non-empty code with <code>""</code>, <code>"None"</code>, or <code>"null"</code> causes file loss.</td>
-                <td>Length and literal keyword check.</td>
+                <td><code>/diff</code></td>
+                <td><span class="card-badge badge-cyan">POST</span></td>
+                <td>Ket szoveg kozotti unified diff azonnali kiszamolasa.</td>
+                <td><code>{"diff":"@@ -1,4 +1,5 @@\n..."}</code></td>
               </tr>
               <tr>
-                <td><strong>4</strong></td>
-                <td>Stub-only functions</td>
-                <td>Model emits lazy placeholder bodies: <code>pass</code> or <code>raise NotImplementedError</code>.</td>
-                <td>AST analysis: function body must not contain only Pass/Raise nodes.</td>
-              </tr>
-              <tr>
-                <td><strong>5</strong></td>
-                <td>File shrinkage (> 60%)</td>
-                <td>Drastic unexpected size reduction signals code loss or truncated output.</td>
-                <td>Check: <code>len(new) &lt; len(old) * 0.4</code>.</td>
-              </tr>
-              <tr>
-                <td><strong>6</strong></td>
-                <td>More than 3 files modified</td>
-                <td>Preventing runaway hallucinations: 1 patch is limited to at most 3 source files.</td>
-                <td>Check: <code>len(patch["files"]) &gt; 3</code>.</td>
+                <td><code>/git/status</code></td>
+                <td><span class="card-badge badge-emerald">GET</span></td>
+                <td>A celalkalmazas munkakonyvtaranak aktualis Git allapota.</td>
+                <td><code>{"clean":true, "branch":"main", "last_commit":"..."}</code></td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- SLIDE 6: Atomic Staging & Snapshotting -->
-      <section class="slide" data-title="Atomic Staging & Snapshots">
-        <div class="slide-header">
-          <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
-            <div class="slide-title-group">
-              <h2>Atomic Staging and Snapshotting</h2>
-              <p>Guaranteeing filesystem integrity against crashes and partial write failures</p>
-            </div>
-          </div>
-          <div class="slide-header-right">
-            <span class="header-tag">Atomic Safety</span>
-          </div>
-        </div>
-        <div class="grid-2" style="margin-top: 14px;">
-          <div class="card glow-cyan">
-            <div class="card-header">
-              <span class="card-title">Step 1: In-Memory Baseline Snapshot</span>
-              <span class="card-badge badge-cyan">Snapshot</span>
-            </div>
-            <div class="card-content">
-              <ul>
-                <li>Before touching disk, exact contents of all targeted files are cached in memory.</li>
-                <li>For newly created files, the system records that rollback must delete the file.</li>
-              </ul>
-              <div class="code-box" style="margin-top: 10px;">
-snapshots[file_path] = file_path.read_text()</div>
-            </div>
-          </div>
-          <div class="card glow-emerald">
-            <div class="card-header">
-              <span class="card-title">Step 2: *.ioc.tmp Staging & os.replace</span>
-              <span class="card-badge badge-emerald">Atomicity</span>
-            </div>
-            <div class="card-content">
-              <ul>
-                <li>Generated content is first written to temporary sibling files: <code>calculator.py.ioc.tmp</code>.</li>
-                <li>Only after <strong>all</strong> files stage successfully does the system execute POSIX atomic swaps: <code>os.replace(tmp_path, target_path)</code>.</li>
-                <li>There is never a corrupted intermediate state on disk if a process terminates abruptly!</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- SLIDE 7: Validation Engine & ioc.config.yml -->
-      <section class="slide" data-title="Validation: ioc.config.yml">
-        <div class="slide-header">
-          <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
-            <div class="slide-title-group">
-              <h2>Validation Engine & ioc.config.yml</h2>
-              <p>Decoupling project-specific build and test routines from the IoC core engine</p>
-            </div>
-          </div>
-          <div class="slide-header-right">
-            <span class="header-tag">Config Driven</span>
-          </div>
-        </div>
-        <div class="grid-2" style="margin-top: 14px;">
-          <div class="card glow-cyan">
-            <div class="card-header">
-              <span class="card-title">Configuration: demo_app/ioc.config.yml</span>
-              <span class="card-badge badge-cyan">YAML Spec</span>
-            </div>
-            <div class="card-content">
-              <div class="code-box" style="height: 100%;">
-version: 1
-validation:
-  command: "python3 -m py_compile {files} &amp;&amp; python3 main.py"
-  timeout_seconds: 15
-  stop_on_first_failure: true</div>
-              <ul style="margin-top: 10px;">
-                <li>The <code>{files}</code> token is dynamically populated with modified target paths.</li>
-                <li>Chains compilation (<code>py_compile</code>) with execution checks (<code>main.py</code>).</li>
-              </ul>
-            </div>
-          </div>
-          <div class="card glow-emerald">
-            <div class="card-header">
-              <span class="card-title">Execution: p3/validator.py</span>
-              <span class="card-badge badge-emerald">Subprocess</span>
-            </div>
-            <div class="card-content">
-              <ul>
-                <li>Executed via asynchronous subprocess: <code>asyncio.create_subprocess_shell</code>.</li>
-                <li>Enforces a strict timeout guard against infinite loops in generated code.</li>
-                <li>Captures the exit code, stdout, and detailed stderr traceback for the recovery loop.</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- SLIDE 8: Self-Healing Retry Loop -->
-      <section class="slide" data-title="Self-Healing Retry Loop">
-        <div class="slide-header">
-          <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
-            <div class="slide-title-group">
-              <h2>Self-Healing Retry Loop: Autonomous Error Feedback</h2>
-              <p>Feeding compiler tracebacks directly back to the local model to correct mistakes</p>
-            </div>
-          </div>
-          <div class="slide-header-right">
-            <span class="header-tag">Retry Engine</span>
-          </div>
-        </div>
-        <div class="grid-2" style="margin-top: 14px;">
-          <div class="card glow-rose">
-            <div class="card-header">
-              <span class="card-title">Attempt 1 Fails (Traceback Intercepted)</span>
-              <span class="card-badge badge-rose">Failure</span>
-            </div>
-            <div class="card-content">
-              <p style="margin-bottom: 8px;">
-                Suppose Attempt 1 introduces a typo in an exception identifier:
-              </p>
-              <div class="code-box" style="font-size: 10.5px;">
-Traceback (most recent call last):
-  File "calculator.py", line 18
-    except ZeroDivisionErrorr:
-                           ^
-SyntaxError: invalid syntax</div>
-              <p style="margin-top: 8px; font-size: 11.5px;">
-                Rather than aborting, this exact compiler diagnostic is captured and structured into the retry prompt!
-              </p>
-            </div>
-          </div>
-          <div class="card glow-emerald">
-            <div class="card-header">
-              <span class="card-title">Attempt 2: Targeted Correction Prompt</span>
-              <span class="card-badge badge-emerald">Correction</span>
-            </div>
-            <div class="card-content">
-              <div class="code-box" style="font-size: 10.5px; height: 100%;">
-RETRY_PROMPT = f"""
-The previous patch failed project validation!
-ERROR OUTPUT:
-{captured_stderr}
-
-TASK: Fix the reported error and return the corrected complete
-file contents in the required JSON format!
-"""</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- SLIDE 9: 100% Rollback Guarantee -->
-      <section class="slide" data-title="100% Rollback Guarantee">
-        <div class="slide-header">
-          <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
-            <div class="slide-title-group">
-              <h2>100% Rollback Guarantee: Zero Code Corruption</h2>
-              <p>A non-negotiable peer evaluation requirement: the repository must never be left in a broken state</p>
-            </div>
-          </div>
-          <div class="slide-header-right">
-            <span class="header-tag">Fail-Safe</span>
-          </div>
-        </div>
-        <div class="grid-3" style="margin-top: 14px;">
-          <div class="card glow-rose">
-            <div class="card-header">
-              <span class="card-title">When Does Rollback Trigger?</span>
-              <span class="card-badge badge-rose">Triggers</span>
-            </div>
-            <div class="card-content">
-              <ul>
-                <li>Attempts 1, 2, and 3 all fail project validation.</li>
-                <li>Sanity check hard refusal cannot be resolved.</li>
-                <li>Unexpected runtime exception occurs during file staging.</li>
-              </ul>
-            </div>
-          </div>
-          <div class="card glow-amber">
-            <div class="card-header">
-              <span class="card-title">How Does Rollback Execute?</span>
-              <span class="card-badge badge-amber">Mechanism</span>
-            </div>
-            <div class="card-content">
-              <ul>
-                <li>Snapshotted content is atomically restored via <code>os.replace</code>.</li>
-                <li>Created files (<code>op: create</code>) are deleted from disk.</li>
-                <li>All leftover <code>*.ioc.tmp</code> artifacts are removed.</li>
-              </ul>
-            </div>
-          </div>
-          <div class="card glow-emerald">
-            <div class="card-header">
-              <span class="card-title">Peer Evaluation Proof</span>
-              <span class="card-badge badge-emerald">Audit</span>
-            </div>
-            <div class="card-content">
-              <ul>
-                <li>Running <code>git status</code> and <code>git diff</code> demonstrates an entirely clean working tree.</li>
-                <li>Zero stray files or altered source lines remain after failed attempts!</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- SLIDE 10: Walkthrough: Successful Patch -->
-      <section class="slide" data-title="Walkthrough: Successful Patch">
-        <div class="slide-header">
-          <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
-            <div class="slide-title-group">
-              <h2>Walkthrough: Successful Patch Application</h2>
-              <p>Example: 'Add power method to Calculator class'</p>
-            </div>
-          </div>
-          <div class="slide-header-right">
-            <span class="header-tag">Happy Path</span>
-          </div>
-        </div>
-        <div class="grid-2" style="margin-top: 14px;">
-          <div class="card glow-cyan">
-            <div class="card-header">
-              <span class="card-title">Execution Log</span>
-              <span class="card-badge badge-cyan">Status Log</span>
-            </div>
-            <div class="card-content">
-              <div class="code-box" style="height: 100%; font-size: 11px;">
-[10:00:01] Intent received: "Add power method to Calculator"
-[10:00:02] Context retrieved: calculator.py (4 chunks)
-[10:00:04] LLM patch generated (qwen2.5:3b)
-[10:00:04] Sanity check: PASSED (No stubs, no marker leak)
-[10:00:04] Baseline snapshot captured for calculator.py
-[10:00:05] Staged to calculator.py.ioc.tmp
-[10:00:05] Atomic replacement executed
-[10:00:06] Running validation: python3 -m py_compile...
-[10:00:07] Validation PASSED (Exit code: 0)
-[10:00:07] Status: SUCCESS (Attempts: 1/3)</div>
-            </div>
-          </div>
-          <div class="card glow-emerald">
-            <div class="card-header">
-              <span class="card-title">Modified Code Preview</span>
-              <span class="card-badge badge-emerald">calculator.py</span>
-            </div>
-            <div class="card-content">
-              <div class="code-box" style="height: 100%; font-size: 11px;">
-<span class="token-kw">class</span> <span class="token-cls">Calculator</span>:
-    <span class="token-comm"># ... existing arithmetic methods preserved ...</span>
-    
-    <span class="token-kw">def</span> <span class="token-fn">power</span>(self, base: float, exp: float) -> float:
-        <span class="token-str">"""Calculate base raised to the power of exp."""</span>
-        <span class="token-kw">return</span> base ** exp</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- SLIDE 11: Walkthrough: Self-Healing in Action -->
-      <section class="slide" data-title="Walkthrough: Self-Healing in Action">
-        <div class="slide-header">
-          <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
-            <div class="slide-title-group">
-              <h2>Walkthrough: Self-Healing in Action (Retry Loop)</h2>
-              <p>How the autonomous system repairs errors without human intervention</p>
-            </div>
-          </div>
-          <div class="slide-header-right">
-            <span class="header-tag">Self-Healing Trace</span>
-          </div>
-        </div>
-        <div class="grid-2" style="margin-top: 14px;">
-          <div class="card glow-rose">
-            <div class="card-header">
-              <span class="card-title">Attempt 1: Failure</span>
-              <span class="card-badge badge-rose">Attempt 1 (Fail)</span>
-            </div>
-            <div class="card-content">
-              <ul>
-                <li>The model generates the <code>divide</code> method but leaves an unclosed docstring quotation.</li>
-                <li>Validation aborts: <code>SyntaxError: unterminated string literal</code>.</li>
-                <li>The system captures the traceback and constructs a targeted corrective retry prompt.</li>
-              </ul>
-            </div>
-          </div>
-          <div class="card glow-emerald">
-            <div class="card-header">
-              <span class="card-title">Attempt 2: Recovery</span>
-              <span class="card-badge badge-emerald">Attempt 2 (Success)</span>
-            </div>
-            <div class="card-content">
-              <ul>
-                <li>The model analyzes the SyntaxError location from the feedback.</li>
-                <li>Closes the string literal and emits corrected complete file contents.</li>
-                <li>Validation re-executes: <strong>EXIT CODE 0</strong>. The patch is verified and applied!</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- SLIDE 12: Part 3 Dashboard & UI -->
-      <section class="slide" data-title="Part 3 Dashboard & UI">
-        <div class="slide-header">
-          <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
-            <div class="slide-title-group">
-              <h2>Part 3 Dashboard: Patch &amp; Self-Healing Interface</h2>
-              <p>Interactive web components for triggering, monitoring, and auditing patch loops</p>
-            </div>
-          </div>
-          <div class="slide-header-right">
-            <span class="header-tag">Web UI</span>
-          </div>
-        </div>
-        <div class="grid-2" style="margin-top: 14px;">
-          <div class="card glow-cyan">
-            <div class="card-header">
-              <span class="card-title">User Controls</span>
-              <span class="card-badge badge-cyan">Controls</span>
-            </div>
-            <div class="card-content">
-              <ul>
-                <li><strong>Intent Input Box:</strong> Natural language prompt describing desired code modifications.</li>
-                <li><strong>Dry-Run Toggle:</strong> Simulation mode testing patch generation without writing to disk.</li>
-                <li><strong>Attempt Stepper:</strong> Real-time visual progress counter (1/3, 2/3, 3/3).</li>
-              </ul>
-            </div>
-          </div>
-          <div class="card glow-indigo">
-            <div class="card-header">
-              <span class="card-title">Live Terminal & Diff Inspector</span>
-              <span class="card-badge badge-indigo">Audit</span>
-            </div>
-            <div class="card-content">
-              <ul>
-                <li><strong>Embedded Terminal:</strong> Displays live compiler and test output streamed via SSE.</li>
-                <li><strong>Unified Diff Viewer:</strong> Color-coded additions (+) and deletions (-) illustrating changes.</li>
-                <li><strong>Final Status Badge:</strong> <code>APPLIED</code> (green) or <code>ROLLED_BACK</code> (red).</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- SLIDE 13: Bonus Features Overview -->
-      <section class="slide" data-title="Bonus Features Overview">
+      <!-- SLIDE 9: Bonus 4-Tab Dashboard -->
+      <section class="slide" data-title="Bonusz Iranyitopult (4-Tab UI)">
         <div class="slide-header">
           <div class="slide-header-left">
             <span class="ioc-badge">Bonus</span>
             <div class="slide-title-group">
-              <h2>Bonus Features Overview</h2>
-              <p>Production-grade architectural additions implemented in the root bonus/ module</p>
+              <h2>Egyesitett 4-Fulu Iranyitopult: bonus/dashboard.py</h2>
+              <p>Minden kepesseg egyetlen attekintheto, valos ideju webes feluleten</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Bonus XP</span>
+            <span class="header-tag">All-in-One</span>
           </div>
         </div>
         <div class="grid-4" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">POST /reindex</span>
-              <span class="card-badge badge-cyan">API</span>
+              <span class="card-title">1. Overview</span>
+              <span class="card-badge badge-cyan">P1</span>
             </div>
             <div class="card-content">
-              Explicit HTTP endpoint to wipe and rebuild the vector database dynamically at runtime.
+              Statisztikak, indexelt darabszam, figyeloi esemenyek es a Reindex gomb.
+            </div>
+          </div>
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">2. Files</span>
+              <span class="card-badge badge-purple">P1 / P2</span>
+            </div>
+            <div class="card-content">
+              Forraskod bongeszo AST darabhatar jelolokkel es interaktiv inspectorral.
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Visual Diff</span>
-              <span class="card-badge badge-emerald">Engine</span>
+              <span class="card-title">3. Ask &amp; RAG</span>
+              <span class="card-badge badge-emerald">P2</span>
             </div>
             <div class="card-content">
-              Unified diff calculator with colorized line-by-line inspection on the web dashboard.
+              Keresesi es kerdezesi felulet Top-K allitasi lehetoseggel es forras audit kártyákkal.
             </div>
           </div>
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">Git Committer</span>
-              <span class="card-badge badge-amber">Git</span>
+              <span class="card-title">4. Patch Loop</span>
+              <span class="card-badge badge-amber">P3 + Bonus</span>
             </div>
             <div class="card-content">
-              Automatic git commit with conventional commit messages authored by the local LLM.
-            </div>
-          </div>
-          <div class="card glow-indigo">
-            <div class="card-header">
-              <span class="card-title">Dry-Run Mode</span>
-              <span class="card-badge badge-indigo">Safety</span>
-            </div>
-            <div class="card-content">
-              Simulation mode previewing patch diffs and sanity checks without altering the filesystem.
+              Szandek beiras, Dry-Run kapcsolo, live terminal, szines diff es automatikus Git commit infok.
             </div>
           </div>
         </div>
       </section>
 
-      <!-- SLIDE 14: Subject Compliance -->
-      <section class="slide" data-title="Subject Compliance">
+      <!-- SLIDE 10: Walkthrough: POST /reindex in Action -->
+      <section class="slide" data-title="Bemutato: POST /reindex mukodes kozben">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">Bonus</span>
             <div class="slide-title-group">
-              <h2>Subject Compliance & Verification Checklist</h2>
-              <p>Verifying full compliance with all Part 3 mandatory requirements</p>
+              <h2>Bemutato: POST /reindex mukodes kozben</h2>
+              <p>Hogyan all helyre az index egyetlen kattintasra vagy API hivasra?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Live Rebuild</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">A folyamat logjai</span>
+              <span class="card-badge badge-purple">Server Log</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+[11:15:00] POST /reindex keres erkezett
+[11:15:00] ChromaDB kollekcio uritese: 'ioc_chunks'
+[11:15:01] demo_app konyvtar bejarasa: 3 fajl talalva
+[11:15:01] calculator.py feldolgozasa (AST: 5 chunk)
+[11:15:02] formatter.py feldolgozasa (AST: 3 chunk)
+[11:15:02] main.py feldolgozasa (AST: 4 chunk)
+[11:15:03] 12 darab beagyazasa (all-MiniLM-L6-v2)
+[11:15:03] ChromaDB es BM25 index frissitve
+[11:15:03] SSE esemeny kisugarozva: 'index_reloaded'</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">A vegeredmeny a feluleten</span>
+              <span class="card-badge badge-emerald">Dashboard</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Az Overview fülön az <em>Indexed Chunks</em> szamlalo azonnal frissul.</li>
+                <li>A felhasznalonak vagy a tesztelonek nem kell a szerver kontenerhez nyulnia.</li>
+                <li>Idealis demonstralni a vedesen a gyors helyreallitasi kepesseget!</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 11: Walkthrough: Automated Git Commit -->
+      <section class="slide" data-title="Bemutato: Automata Git Commit">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Bemutato: Automata Git Commit a sikeres validacio utan</h2>
+              <p>Egy teljes autonom lepes: Intenttol a verziovezerelt commitig</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Git Trace</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">A ciklus befejezese es commit</span>
+              <span class="card-badge badge-cyan">Folyamat</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+[Patch Loop] Validation PASSED (Exit code: 0)
+[Git Committer] Diff osszeallitasa az LLM szamara...
+[Git Committer] qwen2.5:3b altal generalt commit uzenet:
+"feat(calculator): implement power method"
+[Git Committer] Futtatas: git add demo_app/calculator.py
+[Git Committer] Futtatas: git commit -m "feat(calculator): implement power method"
+[Git Committer] Sikeres commit: hash c89f142</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Git naplobejegyzes</span>
+              <span class="card-badge badge-emerald">git log -1</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+commit c89f142d591b9201a0bc5e8a719280a911
+Author: Inception-of-Context &lt;ioc@42.fr&gt;
+Date:   Fri Sep 11 11:20:00 2026 +0200
+
+    feat(calculator): implement power method
+    
+    Validated with python3 -m py_compile &amp;&amp; python3 main.py.
+    Patch loop attempt: 1/3.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 12: Walkthrough: Dry-Run Simulation -->
+      <section class="slide" data-title="Bemutato: Dry-Run szimulacio">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Bemutato: Dry-Run szimulacio a gyakorlatban</h2>
+              <p>Hogyan vizsgalhato meg a modell tervezett modositasa lemeziras nelkul?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Simulation Trace</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Keres kuldese Dry-Run modban</span>
+              <span class="card-badge badge-amber">Kérés</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+POST /patch?dry_run=true
+{
+  <span class="token-str">"intent"</span>: <span class="token-str">"Add divide method with zero check"</span>
+}</div>
+              <ul style="margin-top: 12px;">
+                <li>A felhasznalo a kapcsoloval bekapcsolta a szimulaciot.</li>
+                <li>A szerver feldolgozza a generalast, de a fájlrendszerhez nem nyul.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Valasz: Diff es Sanity audit</span>
+              <span class="card-badge badge-emerald">Válasz</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+{
+  <span class="token-str">"dry_run"</span>: <span class="token-kw">true</span>,
+  <span class="token-str">"status"</span>: <span class="token-str">"SIMULATED"</span>,
+  <span class="token-str">"sanity_checks"</span>: <span class="token-str">"PASSED (6/6)"</span>,
+  <span class="token-str">"diff"</span>: <span class="token-str">"--- a/calculator.py\n+++ b/calculator.py..."</span>,
+  <span class="token-str">"files_touched"</span>: [<span class="token-str">"calculator.py"</span>]
+}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 13: Docker & Execution Modes -->
+      <section class="slide" data-title="Docker es futtatasi modok">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Dockerizacio es futtatasi modok (Makefile)</h2>
+              <p>Egyetlen paranccsal indithato kontenerizalt infrastruktura</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Deployment</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">make bonus</span>
+              <span class="card-badge badge-cyan">Parancs</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Elinditja a <code>bonus/dashboard.py</code> szervert a <code>8000</code>-es porton.</li>
+                <li>Elerheto a 4-fulu iranyitopult az osszes halado funkcioval.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 8px;">make bonus</div>
+            </div>
+          </div>
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">make up / down</span>
+              <span class="card-badge badge-purple">Docker Compose</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A <code>docker-compose.yml</code> felhuzza a zart kornyezetet.</li>
+                <li>Host géprol a localhost:8000 cimen keresztul elerheto.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 8px;">make up</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Halozati izolacio</span>
+              <span class="card-badge badge-emerald">Offline</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A kontener belulrol nem latja az internetet.</li>
+                <li>Kizarolag a megosztott demo_app kotettel es a helyi Ollamaval kommunikal.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 14: Bonus Compliance Matrix -->
+      <section class="slide" data-title="Bonusz megfelelesi matrix">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Bonusz kepessegek ellenorzesi listaja</h2>
+              <p>A bonusz pontokert felelos modulok ellenorzesi leirasa</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1434,102 +1409,96 @@ file contents in the required JSON format!
           <table class="db-mock-table">
             <thead>
               <tr>
-                <th style="width: 35%;">Subject Requirement</th>
-                <th style="width: 25%;">Codebase Implementation</th>
-                <th style="width: 15%;">Status</th>
-                <th style="width: 25%;">Verification Command</th>
+                <th style="width: 30%;">Bonusz kepesseg</th>
+                <th style="width: 25%;">Megvalositas a kodban</th>
+                <th style="width: 15%;">Allapot</th>
+                <th style="width: 30%;">Hogyan ellenorizheto?</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Autonomous patch loop (Loop)</td>
-                <td><code>p3/loop.py</code> engine</td>
-                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
-                <td><code>make p3-cli</code> with coding intent</td>
+                <td>POST /reindex vegpont</td>
+                <td><code>bonus/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td><code>curl -X POST http://localhost:8000/reindex</code></td>
               </tr>
               <tr>
-                <td>Structured JSON patch (not diff)</td>
-                <td>Pydantic models (<code>op, path, content</code>)</td>
-                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
-                <td>Audit LLM patch output format</td>
+                <td>Visual Unified Diff Engine</td>
+                <td><code>bonus/diff_engine.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>Dashboard Patch fülön a szines sorok ellenorzese</td>
               </tr>
               <tr>
-                <td>6 mandatory Sanity Refusal checks</td>
-                <td><code>p3/validator.py</code> AST inspection</td>
-                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
-                <td>Stub and file-shrinkage unit tests</td>
+                <td>Automata LLM Git Committer</td>
+                <td><code>bonus/git_committer.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>Patch lefutasa utan <code>git log -1</code> vizsgalata</td>
               </tr>
               <tr>
-                <td>ioc.config.yml validation command</td>
-                <td><code>demo_app/ioc.config.yml</code></td>
-                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
-                <td>Subprocess test command execution</td>
+                <td>Dry-Run szimulacios mod</td>
+                <td><code>bonus/api.py</code> + UI kapcsoló</td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td><code>POST /patch?dry_run=true</code> hivasa</td>
               </tr>
               <tr>
-                <td>Max 3 self-healing retry attempts</td>
-                <td><code>p3/loop.py</code> retry engine</td>
-                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
-                <td>Trigger syntax error and monitor recovery</td>
-              </tr>
-              <tr>
-                <td>100% Rollback on failure</td>
-                <td>Snapshots and atomic <code>os.replace</code></td>
-                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
-                <td>Verify clean <code>git status</code> after failure</td>
+                <td>4-Fulu Egyesitett Dashboard</td>
+                <td><code>bonus/dashboard.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>Bongeszoben: <code>http://localhost:8000</code></td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- SLIDE 15: Summary & Defense Guide -->
-      <section class="slide" data-title="Summary & Defense Demonstration">
+      <!-- SLIDE 15: Summary & Defense Tips -->
+      <section class="slide" data-title="Osszefoglalo es vedesi forgatokonyv">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">Bonus</span>
             <div class="slide-title-group">
-              <h2>Summary & Defense Demonstration</h2>
-              <p>Step-by-step evaluation walkthrough for peer evaluators</p>
+              <h2>Osszefoglalo es Bonusz vedesi forgatokonyv</h2>
+              <p>Hogyan mutasd be a bonuszt a maximális XP megszerzesehez?</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Defense Demo</span>
+            <span class="header-tag">Bonus XP 125%</span>
           </div>
         </div>
         <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">1. Lepes: Reindex</span>
+              <span class="card-badge badge-purple">Demo 1</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Kattints a feluleten a <strong>Reindex</strong> gombra, vagy futtasd le a curl parancsot.</li>
+                <li>Mutasd meg az ertekelonek a logokban, hogy az adatbazis urulese es ujraepitese 0.3 masodperc alatt megtortent.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">2. Lepes: Dry-Run &amp; Diff</span>
+              <span class="card-badge badge-cyan">Demo 2</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Kapcsold be az <strong>Enable Dry-Run</strong> kapcsolot es indits el egy patch feladatot.</li>
+                <li>Mutasd meg a szines diffet, majd fuss le egy <code>git status</code>-t a terminalban, bizonyitva, hogy semmi sem valtozott!</li>
+              </ul>
+            </div>
+          </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">1. Successful Patch Generation</span>
-              <span class="card-badge badge-emerald">Demo 1</span>
+              <span class="card-title">3. Lepes: Valos Commit</span>
+              <span class="card-badge badge-emerald">Demo 3</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Intent:</strong> "Add multiply method to Calculator".</li>
-                <li><strong>Show Evaluator:</strong> Green status badge on dashboard, unified diff view, and execute <code>python3 main.py</code> to prove functionality!</li>
-              </ul>
-            </div>
-          </div>
-          <div class="card glow-amber">
-            <div class="card-header">
-              <span class="card-title">2. Sanity Check Interception</span>
-              <span class="card-badge badge-amber">Demo 2</span>
-            </div>
-            <div class="card-content">
-              <ul>
-                <li><strong>Intent:</strong> "Add dummy stub function with pass".</li>
-                <li><strong>Show Evaluator:</strong> The validator immediately triggers Hard Refusal #4, preventing any disk write!</li>
-              </ul>
-            </div>
-          </div>
-          <div class="card glow-rose">
-            <div class="card-header">
-              <span class="card-title">3. Rollback Demonstration</span>
-              <span class="card-badge badge-rose">Demo 3</span>
-            </div>
-            <div class="card-content">
-              <ul>
-                <li><strong>Intent:</strong> Request an impossible or invalid syntax task.</li>
-                <li><strong>Show Evaluator:</strong> 3 retry attempts execute, all fail, and the system restores the exact original files. <code>git status</code> is 100% clean!</li>
+                <li>Kapcsold ki a Dry-Runt, futtasd le a patchet.</li>
+                <li>A sikeres validacio utan mutasd meg a frissen letrejott Git commitot az LLM altal megfogalmazott uzenettel!</li>
               </ul>
             </div>
           </div>
@@ -1542,23 +1511,23 @@ file contents in the required JSON format!
     <footer class="deck-footer">
       <div class="footer-left">
         <span class="slide-counter" id="slideCounter">01 / 15</span>
-        <span class="key-hint"><span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> Slides</span>
-        <span class="key-hint"><span class="kbd">Space</span> Next</span>
+        <span class="key-hint"><span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> Diak</span>
+        <span class="key-hint"><span class="kbd">Space</span> Tovabb</span>
       </div>
       <div class="footer-center">
-        <span style="color: var(--text-dim); font-size: 11px;">Inception-of-Context - Part 3: Patch Generation & Self-Healing Loop</span>
+        <span style="color: var(--text-dim); font-size: 11px;">Inception-of-Context - Bonusz: Halado fejlesztoi eszkozok</span>
       </div>
       <div class="footer-right">
-        <button class="nav-btn" id="btnOverview" title="Slide Overview (O)">
+        <button class="nav-btn" id="btnOverview" title="Diaattekintes (O)">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
         </button>
-        <button class="nav-btn" id="btnFullscreen" title="Fullscreen (F)">
+        <button class="nav-btn" id="btnFullscreen" title="Teljes kepernyo (F)">
           <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
         </button>
-        <button class="nav-btn" id="btnPrev" title="Previous Slide">
+        <button class="nav-btn" id="btnPrev" title="Elozo dia">
           <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
-        <button class="nav-btn" id="btnNext" title="Next Slide">
+        <button class="nav-btn" id="btnNext" title="Kovetkezo dia">
           <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </div>
@@ -1567,8 +1536,8 @@ file contents in the required JSON format!
     <!-- Slide Overview Modal -->
     <div id="overview-modal">
       <div class="overview-header">
-        <h3>Slide Overview (Press Esc or O to close)</h3>
-        <button class="nav-btn" id="btnCloseOverview" title="Close Overview">
+        <h3>Diaattekintes (Esc vagy O a bezarashoz)</h3>
+        <button class="nav-btn" id="btnCloseOverview" title="Attekintes bezarasa">
           <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
@@ -1582,7 +1551,7 @@ file contents in the required JSON format!
 
 <script>
 /**
- * Inception-of-Context (IoC) - Part 3 Presentation Deck Engine
+ * Inception-of-Context (IoC) - Bonus Presentation Deck Engine
  * Zero external dependencies. 100% offline.
  */
 (function () {
@@ -1608,7 +1577,7 @@ file contents in the required JSON format!
     slides.forEach((slide, idx) => {
       const card = document.createElement("div");
       card.className = `thumb-card ${idx === currentIndex ? "active-thumb" : ""}`;
-      const title = slide.getAttribute("data-title") || `Slide ${idx + 1}`;
+      const title = slide.getAttribute("data-title") || `Dia ${idx + 1}`;
       card.innerHTML = `
         <div class="thumb-num">${String(idx + 1).padStart(2, "0")} / ${String(totalSlides).padStart(2, "0")}</div>
         <div class="thumb-title">${title}</div>
@@ -1766,4 +1735,3 @@ file contents in the required JSON format!
 </script>
 </body>
 </html>
-
