@@ -21,6 +21,7 @@ PY_VER       := $(shell $(PYTHON) -c 'import sys; print(f"{sys.version_info.majo
 SITE_PACKAGES:= $(VENV)/lib/python$(PY_VER)/site-packages
 REQ          := p1/requirements.txt
 REQ_P2       := p2/requirements.txt
+REQ_P3       := p3/requirements.txt
 LLM_MODEL    := qwen2.5:3b
 EMBED_MODEL  := all-MiniLM-L6-v2
 PORT         := 8000
@@ -39,22 +40,23 @@ export PYTHONPATH      := $(CURDIR):$(SITE_PACKAGES)
 export OLLAMA_MODELS   := $(OLLAMA_DIR)
 export OLLAMA_HOST
 
-.PHONY: all setup p1 p2 p3 bonus stop clean fclean re help \
+.PHONY: all setup p1 p2 p3 p3-cli bonus stop clean fclean re help \
 	ensure-dirs ensure-venv ensure-deps ensure-ready ensure-ollama \
 	ensure-ollama-quick ensure-embed
 
 all: setup
 
 help:
-	@echo "make setup  - prepare /tmp/ioc (venv, pip, embeddings, ollama $(LLM_MODEL))"
-	@echo "make p1     - run Part 1 Overview dashboard on http://127.0.0.1:$(PORT)"
-	@echo "make p2     - run Part 2 Architect API & RAG dashboard on http://127.0.0.1:$(PORT)"
-	@echo "make p3     - (stub) Part 3 Patch Loop"
-	@echo "make bonus  - (stub) bonus features"
-	@echo "make stop   - stop background ollama started by this Makefile (if any)"
-	@echo "make clean  - remove chroma db / pip+hf caches (keep venv)"
-	@echo "make fclean - full wipe of /tmp/ioc"
-	@echo "make re     - fclean + setup"
+	@echo "make setup   - prepare /tmp/ioc (venv, pip, embeddings, ollama $(LLM_MODEL))"
+	@echo "make p1      - run Part 1 Overview dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make p2      - run Part 2 Architect API & RAG dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make p3      - run Part 3 Patch Loop & Dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make p3-cli  - run headless patch loop: make p3-cli INTENT=\"your intent\""
+	@echo "make bonus   - (stub) bonus features"
+	@echo "make stop    - stop background ollama started by this Makefile (if any)"
+	@echo "make clean   - remove chroma db / pip+hf caches (keep venv)"
+	@echo "make fclean  - full wipe of /tmp/ioc"
+	@echo "make re      - fclean + setup"
 
 ensure-dirs:
 	@mkdir -p $(IOC_DIR) $(PIP_CACHE) $(HF_HOME) $(CHROMA_DIR) $(OLLAMA_DIR)
@@ -73,15 +75,15 @@ ensure-venv: ensure-dirs
 	fi
 
 ensure-deps: ensure-venv
-	@if [ -f "$(IOC_DIR)/.deps-ok" ] && [ "$(IOC_DIR)/.deps-ok" -nt "$(REQ)" ] && [ "$(IOC_DIR)/.deps-ok" -nt "$(REQ_P2)" ] \
-		&& $(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers,rank_bm25,httpx" 2>/dev/null; then \
+	@if [ -f "$(IOC_DIR)/.deps-ok" ] && [ "$(IOC_DIR)/.deps-ok" -nt "$(REQ)" ] && [ "$(IOC_DIR)/.deps-ok" -nt "$(REQ_P2)" ] && [ "$(IOC_DIR)/.deps-ok" -nt "$(REQ_P3)" ] \
+		&& $(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers,rank_bm25,httpx,yaml" 2>/dev/null; then \
 		echo "[*] Dependencies already ready (skip pip)"; \
 	else \
-		echo "[*] Installing CPU torch + Part 1 & Part 2 dependencies"; \
+		echo "[*] Installing CPU torch + Part 1, 2 & 3 dependencies"; \
 		$(VENV)/bin/pip install --upgrade pip setuptools wheel; \
 		$(VENV)/bin/pip install --cache-dir $(PIP_CACHE) \
 			torch --index-url https://download.pytorch.org/whl/cpu; \
-		$(VENV)/bin/pip install --cache-dir $(PIP_CACHE) -r $(REQ) -r $(REQ_P2) pillow; \
+		$(VENV)/bin/pip install --cache-dir $(PIP_CACHE) -r $(REQ) -r $(REQ_P2) -r $(REQ_P3) pillow; \
 		touch "$(IOC_DIR)/.deps-ok"; \
 	fi
 	@printf '%s\n' \
@@ -98,13 +100,13 @@ ensure-deps: ensure-venv
 		> $(IOC_DIR)/run.sh
 	@chmod +x $(IOC_DIR)/run.sh
 
-# Fast preflight for make p1 (no pip install, no empty venv creation)
+# Fast preflight for make p1, p2, p3 (no pip install, no empty venv creation)
 ensure-ready:
 	@if [ ! -x "$(VENV)/bin/pip" ] \
-		|| ! $(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers,rank_bm25,httpx" 2>/dev/null; then \
+		|| ! $(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers,rank_bm25,httpx,yaml" 2>/dev/null; then \
 		echo "[!] IoC runtime not ready under $(IOC_DIR) (missing after fclean, or never set up)."; \
 		echo "    1) make setup"; \
-		echo "    2) make p1 or make p2"; \
+		echo "    2) make p1, make p2, or make p3"; \
 		exit 1; \
 	fi
 	@echo "[*] Runtime ready: $(VENV)"
@@ -171,10 +173,25 @@ p2: ensure-ready ensure-ollama-quick
 		--llm-model $(LLM_MODEL) \
 		--ollama-host $(OLLAMA_HOST)
 
-p3:
-	@echo "[!] Part 3 (Patch Loop) is not implemented yet."
-	@echo "    Planned: structured patch JSON, validation, atomic rollback."
-	@exit 1
+p3: ensure-ready ensure-ollama-quick
+	@echo "[*] Part 3 - Autonomous Patch Loop & Dashboard on :$(PORT)"
+	@$(PYTHON) p3/index.py $(TARGET) \
+		--db-dir $(CHROMA_DIR) \
+		--watch --dashboard \
+		--host 127.0.0.1 --port $(PORT) \
+		--llm-model $(LLM_MODEL) \
+		--ollama-host $(OLLAMA_HOST)
+
+p3-cli: ensure-ready ensure-ollama-quick
+	@if [ -z "$(INTENT)" ]; then \
+		echo "Usage: make p3-cli INTENT=\"your coding intent\""; \
+		exit 1; \
+	fi
+	@$(PYTHON) p3/index.py $(TARGET) \
+		--db-dir $(CHROMA_DIR) \
+		--intent "$(INTENT)" \
+		--llm-model $(LLM_MODEL) \
+		--ollama-host $(OLLAMA_HOST)
 
 bonus:
 	@echo "[!] Bonus features are not implemented yet."

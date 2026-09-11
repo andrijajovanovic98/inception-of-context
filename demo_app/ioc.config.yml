@@ -1,0 +1,12 @@
+# Inception-of-Context (IoC) Target Project Configuration
+# Configures the validation command executed during the Part 3 Patch Loop.
+#
+# Available Tokens:
+#   {files} - Relative paths of files modified or created by the patch attempt.
+#
+# Subject Requirement (VI.3):
+#   Validation must be configurable through an ioc.config.yml file at the target
+#   project root. The command can be compilation, tests, linting, or chained checks.
+
+validation_command: "python3 -m py_compile {files} && python3 main.py"
+
