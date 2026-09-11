@@ -711,7 +711,7 @@ def setup_p3_dashboard(
             statusBadge.className = 'badge badge-amber';
             statusBadge.innerText = 'RUNNING';
             statusTitle.innerText = 'Autonomous Patch Loop in progress...';
-            statusMsg.innerText = 'Retrieving context &rarr; Generating JSON patch &rarr; Checking sanity &rarr; Applying &rarr; Validating';
+            statusMsg.innerHTML = 'Retrieving context &rarr; Generating JSON patch &rarr; Checking sanity &rarr; Applying &rarr; Validating';
             container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--accent);">Executing autonomous patch and self-healing loop... Please wait.</div>';
 
             try {{
