@@ -792,6 +792,9 @@ def setup_p3_dashboard(
                             ${{sPassed ? '✓' : '✗'}} Non-Empty Content
                         </div>
                         <div class="sanity-pill ${{sPassed ? 'passed' : 'failed'}}">
+                            ${{sPassed ? '✓' : '✗'}} Python Syntax Parse
+                        </div>
+                        <div class="sanity-pill ${{sPassed ? 'passed' : 'failed'}}">
                             ${{sPassed ? '✓' : '✗'}} AST No-Stub Body
                         </div>
                         <div class="sanity-pill ${{sPassed ? 'passed' : 'failed'}}">

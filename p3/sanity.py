@@ -38,6 +38,14 @@ class SanityCheckResult:
         }
 
 
+def describe_syntax_error(content: str, err: SyntaxError) -> str:
+    """Render the offending source line so the retry prompt gets actionable feedback."""
+    lines = content.splitlines()
+    if err.lineno and 1 <= err.lineno <= len(lines):
+        return repr(lines[err.lineno - 1].rstrip())
+    return "<line unavailable>"
+
+
 def is_stub_function(node: Any) -> bool:
     """
     Check if a Python AST function or async function body is only a stub.
@@ -204,22 +212,29 @@ class SanityChecker:
 
             # -----------------------------------------------------------------
             # RULE 4: Defines a function whose body is only a stub (pass, ..., return None)
+            # Parsing the AST is also the syntax gate: a patch that does not even
+            # compile must be refused here, before it is written to disk, so the
+            # retry loop is fed a precise error instead of a generic py_compile dump.
             # -----------------------------------------------------------------
             if op in ("create", "modify") and isinstance(content, str):
                 # If Python file, parse AST and check for stub functions
                 if rel_path.endswith(".py"):
                     try:
                         tree = ast.parse(content, filename=rel_path)
-                        for node in ast.walk(tree):
-                            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                                if is_stub_function(node):
-                                    errors.append(
-                                        f"Rule 4 Violation: Function '{node.name}' in '{rel_path}' (line {node.lineno}) "
-                                        f"is only a stub body (pass, ..., or return None). Implementation is required."
-                                    )
-                    except SyntaxError:
-                        # Syntax errors are caught during validation command, but if AST fails to parse, note it
-                        pass
+                    except SyntaxError as e:
+                        errors.append(
+                            f"Rule 0 Violation: Generated content for '{rel_path}' is not valid Python. "
+                            f"{e.msg} at line {e.lineno}: {describe_syntax_error(content, e)}"
+                        )
+                        continue
+
+                    for node in ast.walk(tree):
+                        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                            if is_stub_function(node):
+                                errors.append(
+                                    f"Rule 4 Violation: Function '{node.name}' in '{rel_path}' (line {node.lineno}) "
+                                    f"is only a stub body (pass, ..., or return None). Implementation is required."
+                                )
 
             # -----------------------------------------------------------------
             # RULE 5: Would shrink an existing file by more than 60%

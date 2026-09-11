@@ -4,6 +4,7 @@ Prompts the local Ollama LLM to generate structured JSON patches strictly confor
 Handles robust JSON extraction, schema enforcement, and error-feedback retry prompting.
 """
 
+import ast
 import json
 import os
 import re
@@ -28,10 +29,17 @@ CRITICAL NON-NEGOTIABLE RULES:
    - NEVER output a dictionary or JSON mapping of methods (e.g. NEVER {"add": "..."}).
    - You MUST keep all existing methods intact; only modify or add what was requested. Omitting existing code violates the file shrinkage rule!
 4. JSON ESCAPING: The "content" value must be a valid JSON string. Inside Python code in "content", prefer single quotes '...' for strings (e.g. f'{val:.2f}'), or escape double quotes as \\". Never put markdown fences inside "content".
-5. Do NOT define stub functions whose body is only 'pass', '...', or 'return None'. Write full, working implementations.
-6. Do NOT include any prompt markers (e.g. '=== RETRIEVED CHUNK ===') in the code content.
-7. Touch a MAXIMUM of 3 files at once.
-8. Schema:
+5. DOCSTRING TOKEN RULE (absolutely critical):
+   Every Python docstring delimiter (three double-quote characters) in the source you are shown
+   has been replaced by the token @@DOC@@, so you never have to escape it inside JSON.
+   - Copy @@DOC@@ into your "content" EXACTLY as-is, character for character.
+   - NEVER turn @@DOC@@ back into quote characters, and NEVER drop one of its '@' signs.
+   - Delimit any NEW docstring you write with @@DOC@@ as well.
+   Example of a line inside "content": "    @@DOC@@Return the sum of a and b.@@DOC@@"
+6. Do NOT define stub functions whose body is only 'pass', '...', or 'return None'. Write full, working implementations.
+7. Do NOT include any prompt markers (e.g. '=== RETRIEVED CHUNK ===') in the code content.
+8. Touch a MAXIMUM of 3 files at once.
+9. Schema:
 {
   "summary": "Clear description of changes made",
   "files": [
@@ -42,6 +50,58 @@ CRITICAL NON-NEGOTIABLE RULES:
     }
   ]
 }"""
+
+
+# ---------------------------------------------------------------------------
+# Docstring masking
+# ---------------------------------------------------------------------------
+# Small local models (qwen2.5:3b in particular) reliably corrupt triple-quoted
+# docstrings when they have to emit them JSON-escaped inside the "content"
+# string: the closing delimiter comes back one quote short, or with a stray ':'
+# glued to it, and the patched file no longer compiles. The model copies the
+# rest of the file faithfully, so we simply never show it a raw delimiter --
+# it is masked with a token that needs no JSON escaping at all, copied through
+# verbatim, and restored here before the patch is sanity checked.
+DOCSTRING_SENTINEL = "@@DOC@@"
+
+# Tolerant on the way back: the model occasionally emits "@@DOC@" or "@DOC@@".
+_SENTINEL_RE = re.compile(r"@{1,3}\s*DOC\s*@{1,3}")
+
+
+def mask_docstrings(text: str) -> str:
+    """Replace triple-quote delimiters with the escape-free sentinel token."""
+    return text.replace('"' * 3, DOCSTRING_SENTINEL)
+
+
+def unmask_docstrings(text: str) -> str:
+    """Restore triple-quote delimiters from sentinel tokens, tolerating typos."""
+    return _SENTINEL_RE.sub('"' * 3, text)
+
+
+def repair_python_content(content: str) -> str:
+    """
+    Deterministic last-resort repair of docstring delimiters the model mangled
+    despite the sentinel (a lone '""' where a closing delimiter belongs, or a
+    stray ':' after one). A candidate repair is accepted only if it actually
+    makes the file parse, so content that is already valid is never touched.
+    """
+    try:
+        ast.parse(content)
+        return content
+    except SyntaxError:
+        pass
+
+    lone = re.sub(r'(?m)^(\s*)""(\s*)$', r'\1"""\2', content)
+    colon = re.sub(r'(?m)"""\s*:\s*$', '"""', content)
+    both = re.sub(r'(?m)"""\s*:\s*$', '"""', lone)
+
+    for candidate in (lone, colon, both):
+        try:
+            ast.parse(candidate)
+            return candidate
+        except SyntaxError:
+            continue
+    return content
 
 
 def _normalize_patch_data(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -59,6 +119,11 @@ def _normalize_patch_data(data: Dict[str, Any]) -> Dict[str, Any]:
             # Strip accidental markdown code fences inside content
             c = re.sub(r"^```(?:python|py)?\s*\n?", "", c.strip(), flags=re.IGNORECASE)
             c = re.sub(r"\n?```\s*$", "", c.strip())
+            # Restore the masked docstring delimiters, then repair what the
+            # model still managed to break, before anything reaches the disk.
+            c = unmask_docstrings(c)
+            if str(p).endswith(".py"):
+                c = repair_python_content(c)
         elif isinstance(c, dict):
             # In case the model output a dict mapping method names to code
             method_lines = []
@@ -186,7 +251,7 @@ class PatchGenerator:
                 sym = c.get("symbol_name", "")
                 s_line = c.get("start_line", "")
                 e_line = c.get("end_line", "")
-                content = c.get("content", "").strip()
+                content = mask_docstrings(c.get("content", "").strip())
                 sections.append(
                     f"--- File: {fpath} | Symbol: {sym} (Lines {s_line}-{e_line}) ---\n"
                     f"{content}\n"
@@ -201,7 +266,7 @@ class PatchGenerator:
             if os.path.isfile(full_path):
                 try:
                     with open(full_path, "r", encoding="utf-8", errors="replace") as f:
-                        file_text = f.read()
+                        file_text = mask_docstrings(f.read())
                     existing_files_text.append(
                         f"=== EXISTING CURRENT CONTENT OF: {rel_path} ===\n"
                         f"{file_text}\n\n"
