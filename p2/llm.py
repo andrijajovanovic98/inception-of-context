@@ -6,7 +6,6 @@ to prevent hallucinations as required by the Subject.
 """
 
 import os
-import sys
 from typing import Any, Dict, List, Optional
 
 try:
@@ -21,12 +20,15 @@ DEFAULT_LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5:3b")
 
 
 GROUNDED_SYSTEM_PROMPT = """You are an expert AI software architect and codebase assistant for this project.
-Your task is to answer the user's question accurately and truthfully based strictly on the provided codebase context and verified facts.
+Your task is to answer the user's question accurately and truthfully based strictly \
+on the provided codebase context and verified facts.
 
 CRITICAL NON-NEGOTIABLE RULES:
 1. Be truthful, concise, and grounded in the provided code context.
-2. Under NO circumstances should you hallucinate, invent, or assume functions, methods, classes, or files that do not appear in the context or verified facts.
-3. If a symbol or function does not exist in the codebase, you MUST explicitly and clearly state that it does not exist.
+2. Under NO circumstances should you hallucinate, invent, or assume functions, methods, \
+classes, or files that do not appear in the context or verified facts.
+3. If a symbol or function does not exist in the codebase, you MUST explicitly and clearly \
+state that it does not exist.
 4. Reference file paths and line numbers when citing code.
 5. Do not include unnecessary conversational filler; focus on technical precision."""
 
@@ -183,7 +185,8 @@ def build_rag_prompt(
             e_line = c.get("end_line", "?")
             content = c.get("content", "").strip()
             sections.append(
-                f"--- [Chunk {idx}] File: {fpath} | Symbol: {sym} (Lines {s_line}-{e_line}) | Relevance: {score:.4f} ---\n"
+                f"--- [Chunk {idx}] File: {fpath} | Symbol: {sym} "
+                f"(Lines {s_line}-{e_line}) | Relevance: {score:.4f} ---\n"
                 f"{content}\n"
             )
     else:

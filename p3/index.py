@@ -142,7 +142,7 @@ async def run_headless_patch(engine: PatchLoopEngine, intent: str, k: int) -> in
             print("  [+] Sanity Checks: PASSED")
 
         if att.get("applied"):
-            print(f"  [+] Atomi apply: Succeeded")
+            print("  [+] Atomi apply: Succeeded")
 
         val_cmd = att.get("validation_command")
         if val_cmd:
@@ -272,7 +272,10 @@ def main() -> int:
         print("    • Files Browser  : / (tab: Files)")
         print("    • Ask & Retrieve : / (tab: Ask & Retrieve)")
         print("    • Patch Loop     : / (tab: Patch Loop (Part 3))")
-        print("    • Patch Endpoints: /patch/run, /patch/status, /patch/history, /patch/rollback, /patch/config")
+        print(
+            "    • Patch Endpoints: /patch/run, /patch/status, /patch/history, "
+            "/patch/rollback, /patch/config"
+        )
         print("    Press Ctrl+C to stop.")
 
         try:
@@ -324,4 +327,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n[*] Interrupted.", file=sys.stderr)
         sys.exit(0)
-

@@ -169,7 +169,8 @@ class Retriever:
         func_match = re.search(
             r"(?:is\s+there\s+a\s+(?:function|method|class)\s+(?:called|named)\s+['\"]?([A-Za-z0-9_]+)['\"]?|"
             r"does\s+(?:function|method|class)\s+['\"]?([A-Za-z0-9_]+)['\"]?\s+exist|"
-            r"(?:van|letezik)[-\s]e\s+['\"]?([A-Za-z0-9_]+)['\"]?\s+(?:nevu\s+)?(?:fuggveny|metodus|osztaly))",
+            r"(?:van|letezik)[-\s]e\s+['\"]?([A-Za-z0-9_]+)['\"]?\s+"
+            r"(?:nevu\s+)?(?:fuggveny|metodus|osztaly))",
             q,
             re.IGNORECASE,
         )
@@ -199,11 +200,14 @@ class Retriever:
                 "summary": summary,
             }
 
-        # 2. Detect: "what functions exist in this file?" / "what functions are in X?" / "milyen fuggvenyek vannak..."
+        # 2. Detect: "what functions exist in this file?" / "what functions are in X?"
+        #    / "milyen fuggvenyek vannak..."
         file_match = re.search(
-            r"(?:what\s+functions\s+(?:exist\s+in|are\s+in)\s+(?:this\s+file|['\"]?([A-Za-z0-9_\.\/\-]+)['\"]?)|"
+            r"(?:what\s+functions\s+(?:exist\s+in|are\s+in)\s+"
+            r"(?:this\s+file|['\"]?([A-Za-z0-9_\.\/\-]+)['\"]?)|"
             r"list\s+functions\s+in\s+['\"]?([A-Za-z0-9_\.\/\-]+)['\"]?|"
-            r"milyen\s+(?:fuggvenyek|metodusok)\s+vannak\s+(?:ebben\s+a\s+fajlban|a\(z\)\s+['\"]?([A-Za-z0-9_\.\/\-]+)['\"]?\s+fajlban))",
+            r"milyen\s+(?:fuggvenyek|metodusok)\s+vannak\s+"
+            r"(?:ebben\s+a\s+fajlban|a\(z\)\s+['\"]?([A-Za-z0-9_\.\/\-]+)['\"]?\s+fajlban))",
             q,
             re.IGNORECASE,
         )
@@ -214,7 +218,10 @@ class Retriever:
             if target_file:
                 target_clean = os.path.basename(target_file).lower()
                 for fpath in self.symbol_inventory.get("all_files", []):
-                    if os.path.basename(fpath).lower() == target_clean or fpath.lower() == target_file.lower():
+                    if (
+                        os.path.basename(fpath).lower() == target_clean
+                        or fpath.lower() == target_file.lower()
+                    ):
                         matched_fpath = fpath
                         break
 
@@ -315,13 +322,13 @@ class Retriever:
         id_to_idx = {cid: idx for idx, cid in enumerate(self.chunk_ids)}
         scored_candidates: List[Tuple[float, Dict[str, Any]]] = []
 
-        query_lower = query.lower()
         query_words = set(query_tokens)
 
         for cid in candidate_ids:
-            idx = id_to_idx.get(cid)
-            if idx is None:
+            maybe_idx = id_to_idx.get(cid)
+            if maybe_idx is None:
                 continue
+            idx = maybe_idx
 
             meta = self.metadatas[idx]
             doc = self.documents[idx]

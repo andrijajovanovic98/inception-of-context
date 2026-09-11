@@ -5,7 +5,7 @@ Figures VI.1, VI.2, and VI.3 of the official 42 Subject.
 100% local, zero external network or CDN dependencies.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
@@ -63,6 +63,10 @@ def setup_dashboard(
         file_options = "".join(
             f'<option value="{f}">{f}</option>'
             for f in sorted(stats["files"].keys())
+        )
+
+        query_placeholder = (
+            "e.g. how does calculate_tax work? OR is there a function called authenticate?"
         )
 
         return f"""<!DOCTYPE html>
@@ -399,10 +403,14 @@ def setup_dashboard(
         <div class="header-title">
             <h1>Inception-of-Context</h1>
             <span style="color:var(--text-muted);">|</span>
-            <span style="font-weight:600; font-size:14px; color:var(--text-muted);">Part 2: Architect API & RAG</span>
+            <span style="font-weight:600; font-size:14px; color:var(--text-muted);">
+                Part 2: Architect API & RAG
+            </span>
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
-            <span id="ollama-status-badge" class="badge" style="background:rgba(56, 189, 248, 0.15); color:var(--accent); border-color:rgba(56, 189, 248, 0.3);">
+            <span id="ollama-status-badge" class="badge"
+                  style="background:rgba(56, 189, 248, 0.15); color:var(--accent);
+                         border-color:rgba(56, 189, 248, 0.3);">
                 Ollama: Checking...
             </span>
             <span id="watcher-badge" class="badge">Watcher: Active</span>
@@ -424,7 +432,8 @@ def setup_dashboard(
         <div class="grid">
             <div class="card">
                 <div class="title">Target Codebase</div>
-                <div class="val highlight" style="font-size:16px; word-break:break-all;">{indexer.target_dir}</div>
+                <div class="val highlight"
+                     style="font-size:16px; word-break:break-all;">{indexer.target_dir}</div>
             </div>
             <div class="card">
                 <div class="title">Indexed Chunks</div>
@@ -436,7 +445,8 @@ def setup_dashboard(
             </div>
             <div class="card">
                 <div class="title">Local Embedding</div>
-                <div class="val" style="font-size:15px; color:var(--accent-green);">{stats['embedding_model']}</div>
+                <div class="val"
+                     style="font-size:15px; color:var(--accent-green);">{stats['embedding_model']}</div>
             </div>
             <div class="card">
                 <div class="title">Local LLM</div>
@@ -505,7 +515,8 @@ def setup_dashboard(
             <div class="form-row">
                 <div class="form-group flex-1">
                     <label for="query-input">Intent / Question about Codebase:</label>
-                    <textarea id="query-input" placeholder="e.g. how does calculate_tax work? OR is there a function called authenticate?"></textarea>
+                    <textarea id="query-input" placeholder="{query_placeholder}">
+                    </textarea>
                 </div>
                 <div class="form-group" style="width:90px;">
                     <label for="k-input">Top-k:</label>
@@ -543,7 +554,9 @@ def setup_dashboard(
 
             <!-- Chunks That Fed It (Figure VI.3) -->
             <div style="margin-top:20px;">
-                <div class="title" style="margin-bottom:12px; font-size:13px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
+                <div class="title"
+                     style="margin-bottom:12px; font-size:13px; font-weight:700;
+                            color:var(--text-muted); text-transform:uppercase;">
                     Retrieved Chunks (Ranked by Hybrid Similarity)
                 </div>
                 <div id="retrieved-chunks-list"></div>
@@ -656,21 +669,25 @@ def setup_dashboard(
         function renderChunks(chunks) {{
             const container = document.getElementById('retrieved-chunks-list');
             if (!chunks || chunks.length === 0) {{
-                container.innerHTML = '<div style="color:var(--text-muted); padding:16px;">No chunks retrieved.</div>';
+                container.innerHTML =
+                    '<div style="color:var(--text-muted); padding:16px;">No chunks retrieved.</div>';
                 return;
             }}
 
             let html = '';
             chunks.forEach((c, idx) => {{
-                const score = c.similarity_score !== undefined ? (c.similarity_score * 100).toFixed(1) + '% match' : '';
+                const score = c.similarity_score !== undefined
+                    ? (c.similarity_score * 100).toFixed(1) + '% match' : '';
                 html += `
                 <div class="chunk-card">
                     <div class="chunk-header">
                         <div class="chunk-meta">
                             <span style="font-weight:700; color:var(--accent);">▶ Chunk #${{idx + 1}}</span>
                             <span style="color:var(--text); font-family:monospace;">${{c.file_path}}</span>
-                            <span style="color:var(--text-muted);">[${{c.symbol_type || 'code'}}: ${{c.symbol_name || 'block'}}]</span>
-                            <span style="color:var(--text-muted); font-size:12px;">Lines ${{c.start_line}}-${{c.end_line}}</span>
+                            <span style="color:var(--text-muted);">[${{c.symbol_type || 'code'}}: \
+${{c.symbol_name || 'block'}}]</span>
+                            <span style="color:var(--text-muted); font-size:12px;">\
+Lines ${{c.start_line}}-${{c.end_line}}</span>
                         </div>
                         <span class="score-pill">${{score}}</span>
                     </div>
@@ -688,7 +705,8 @@ def setup_dashboard(
             if (!filePath) return;
 
             const container = document.getElementById('file-chunks-container');
-            container.innerHTML = '<div style="color:var(--accent); text-align:center; padding:20px;">Loading chunks...</div>';
+            container.innerHTML =
+                '<div style="color:var(--accent); text-align:center; padding:20px;">Loading chunks...</div>';
 
             try {{
                 const res = await fetch('/file?path=' + encodeURIComponent(filePath));
@@ -705,9 +723,11 @@ def setup_dashboard(
                             <div class="chunk-meta">
                                 <span class="gutter-marker">▶</span>
                                 <span style="font-weight:700; color:var(--accent);">${{c.symbol_name}}</span>
-                                <span style="color:var(--text-muted); font-size:12px;">(${{c.symbol_type}}, lines ${{c.start_line}}-${{c.end_line}})</span>
+                                <span style="color:var(--text-muted); font-size:12px;">\
+(${{c.symbol_type}}, lines ${{c.start_line}}-${{c.end_line}})</span>
                             </div>
-                            <span style="font-size:11px; color:var(--text-muted); font-family:monospace;">${{c.content_hash.substring(0, 10)}}...</span>
+                            <span style="font-size:11px; color:var(--text-muted); font-family:monospace;">\
+${{c.content_hash.substring(0, 10)}}...</span>
                         </div>
                         <pre class="code-pre"><code>${{escapeHtml(c.content)}}</code></pre>
                     </div>
@@ -715,7 +735,9 @@ def setup_dashboard(
                 }});
                 container.innerHTML = html;
             }} catch (err) {{
-                container.innerHTML = '<div style="color:var(--accent-red); padding:20px;">Error loading file: ' + err.message + '</div>';
+                container.innerHTML =
+                    '<div style="color:var(--accent-red); padding:20px;">Error loading file: '
+                    + err.message + '</div>';
             }}
         }}
 

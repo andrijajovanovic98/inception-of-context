@@ -18,38 +18,47 @@ if PROJECT_ROOT not in sys.path:
 from p2.llm import OllamaClient  # noqa: E402
 
 
-PATCH_SYSTEM_PROMPT = """You are an autonomous AI software engineer.
-Your task is to write code modifications by generating a SINGLE structured JSON patch.
-
-CRITICAL NON-NEGOTIABLE RULES:
-1. Output ONLY valid, raw JSON. Do NOT include markdown code fences (no ```json, no ```py), explanations, or conversational notes.
-2. The patch must NEVER be a unified diff or git diff.
-3. FOR "modify" OPERATIONS:
-   - The "content" field MUST contain the ENTIRE, COMPLETE post-change Python file from line 1 (all imports, class definitions, and unchanged methods) to the end.
-   - NEVER output a dictionary or JSON mapping of methods (e.g. NEVER {"add": "..."}).
-   - You MUST keep all existing methods intact; only modify or add what was requested. Omitting existing code violates the file shrinkage rule!
-4. JSON ESCAPING: The "content" value must be a valid JSON string. Inside Python code in "content", prefer single quotes '...' for strings (e.g. f'{val:.2f}'), or escape double quotes as \\". Never put markdown fences inside "content".
-5. DOCSTRING TOKEN RULE (absolutely critical):
-   Every Python docstring delimiter (three double-quote characters) in the source you are shown
-   has been replaced by the token @@DOC@@, so you never have to escape it inside JSON.
-   - Copy @@DOC@@ into your "content" EXACTLY as-is, character for character.
-   - NEVER turn @@DOC@@ back into quote characters, and NEVER drop one of its '@' signs.
-   - Delimit any NEW docstring you write with @@DOC@@ as well.
-   Example of a line inside "content": "    @@DOC@@Return the sum of a and b.@@DOC@@"
-6. Do NOT define stub functions whose body is only 'pass', '...', or 'return None'. Write full, working implementations.
-7. Do NOT include any prompt markers (e.g. '=== RETRIEVED CHUNK ===') in the code content.
-8. Touch a MAXIMUM of 3 files at once.
-9. Schema:
-{
-  "summary": "Clear description of changes made",
-  "files": [
-    {
-      "path": "relative/path/to/file.py",
-      "op": "modify",
-      "content": "from typing import Union\n\nclass Calculator:\n    def __init__(self, precision: int = 2) -> None:\n        self.precision = precision\n..."
-    }
-  ]
-}"""
+PATCH_SYSTEM_PROMPT = (
+    "You are an autonomous AI software engineer.\n"
+    "Your task is to write code modifications by generating a SINGLE structured JSON patch.\n\n"
+    "CRITICAL NON-NEGOTIABLE RULES:\n"
+    "1. Output ONLY valid, raw JSON. Do NOT include markdown code fences "
+    "(no ```json, no ```py), explanations, or conversational notes.\n"
+    "2. The patch must NEVER be a unified diff or git diff.\n"
+    "3. FOR \"modify\" OPERATIONS:\n"
+    "   - The \"content\" field MUST contain the ENTIRE, COMPLETE post-change Python file "
+    "from line 1 (all imports, class definitions, and unchanged methods) to the end.\n"
+    "   - NEVER output a dictionary or JSON mapping of methods (e.g. NEVER {\"add\": \"...\"}).\n"
+    "   - You MUST keep all existing methods intact; only modify or add what was requested. "
+    "Omitting existing code violates the file shrinkage rule!\n"
+    "4. JSON ESCAPING: The \"content\" value must be a valid JSON string. "
+    "Inside Python code in \"content\", prefer single quotes '...' for strings "
+    "(e.g. f'{val:.2f}'), or escape double quotes as \\\". "
+    "Never put markdown fences inside \"content\".\n"
+    "5. DOCSTRING TOKEN RULE (absolutely critical):\n"
+    "   Every Python docstring delimiter (three double-quote characters) in the source you are shown\n"
+    "   has been replaced by the token @@DOC@@, so you never have to escape it inside JSON.\n"
+    "   - Copy @@DOC@@ into your \"content\" EXACTLY as-is, character for character.\n"
+    "   - NEVER turn @@DOC@@ back into quote characters, and NEVER drop one of its '@' signs.\n"
+    "   - Delimit any NEW docstring you write with @@DOC@@ as well.\n"
+    "   Example of a line inside \"content\": \"    @@DOC@@Return the sum of a and b.@@DOC@@\"\n"
+    "6. Do NOT define stub functions whose body is only 'pass', '...', or 'return None'. "
+    "Write full, working implementations.\n"
+    "7. Do NOT include any prompt markers (e.g. '=== RETRIEVED CHUNK ===') in the code content.\n"
+    "8. Touch a MAXIMUM of 3 files at once.\n"
+    "9. Schema:\n"
+    "{\n"
+    "  \"summary\": \"Clear description of changes made\",\n"
+    "  \"files\": [\n"
+    "    {\n"
+    "      \"path\": \"relative/path/to/file.py\",\n"
+    "      \"op\": \"modify\",\n"
+    "      \"content\": \"from typing import Union\\n\\nclass Calculator:\\n"
+    "    def __init__(self, precision: int = 2) -> None:\\n        self.precision = precision\\n...\"\n"
+    "    }\n"
+    "  ]\n"
+    "}"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -167,7 +176,7 @@ def extract_json_patch(raw_text: str) -> Dict[str, Any]:
     first_brace = text.find("{")
     last_brace = text.rfind("}")
     if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
-        json_candidate = text[first_brace : last_brace + 1]
+        json_candidate = text[first_brace:last_brace + 1]
         try:
             data = json.loads(json_candidate, strict=False)
             if isinstance(data, dict) and "files" in data:
@@ -262,6 +271,8 @@ class PatchGenerator:
         seen_files = {c.get("file_path") for c in context_chunks if c.get("file_path")}
         existing_files_text: List[str] = []
         for rel_path in seen_files:
+            if not rel_path:
+                continue
             full_path = os.path.join(self.target_dir, rel_path)
             if os.path.isfile(full_path):
                 try:
@@ -271,7 +282,12 @@ class PatchGenerator:
                         f"=== EXISTING CURRENT CONTENT OF: {rel_path} ===\n"
                         f"{file_text}\n\n"
                         f"CRITICAL INSTRUCTION FOR '{rel_path}':\n"
-                        f"If modifying '{rel_path}', the 'content' field in your JSON MUST contain the FULL updated file, from the first line (imports) to the very end (all classes, methods, and functions). Preserve all unchanged code. DO NOT return a dictionary of methods, DO NOT return only the changed function, and DO NOT use placeholder comments like '# ... existing code ...'."
+                        f"If modifying '{rel_path}', the 'content' field in your JSON MUST contain "
+                        f"the FULL updated file, from the first line (imports) to the very end "
+                        f"(all classes, methods, and functions). Preserve all unchanged code. "
+                        f"DO NOT return a dictionary of methods, DO NOT return only the changed "
+                        f"function, and DO NOT use placeholder comments like "
+                        f"'# ... existing code ...'."
                     )
                 except Exception:
                     pass
@@ -299,7 +315,9 @@ class PatchGenerator:
         sections.append(
             "=== OUTPUT FORMAT ===\n"
             "Return a valid JSON object conforming to the schema:\n"
-            '{\n  "summary": "Brief description of changes",\n  "files": [\n    {\n      "path": "path/to/file.py",\n      "op": "modify",\n      "content": "FULL_PYTHON_FILE_CONTENT_HERE"\n    }\n  ]\n}\n'
+            '{\n  "summary": "Brief description of changes",\n  "files": [\n    {\n'
+            '      "path": "path/to/file.py",\n      "op": "modify",\n'
+            '      "content": "FULL_PYTHON_FILE_CONTENT_HERE"\n    }\n  ]\n}\n'
             "CRITICAL: The 'content' string must contain the COMPLETE Python file."
         )
 

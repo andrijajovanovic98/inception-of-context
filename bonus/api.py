@@ -6,33 +6,38 @@ Extends Part 3 API with:
   - GET  /diff          - Inspect diff between candidate patch and disk state
 """
 
-import asyncio
 import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from fastapi import FastAPI, HTTPException, Request
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException  # noqa: E402
+from pydantic import BaseModel, Field  # noqa: E402
 
-from bonus.diff_engine import compute_patch_diff
-from bonus.git_committer import commit_validated_patch, generate_commit_message
-from p1.indexer import CodebaseIndexer
-from p1.watcher import CodebaseWatcher
-from p2.llm import OllamaClient
-from p2.retriever import Retriever
-from p3.api import create_patch_api
-from p3.loop import PatchLoopEngine, PatchLoopResult
+from bonus.diff_engine import compute_patch_diff  # noqa: E402
+from bonus.git_committer import commit_validated_patch, generate_commit_message  # noqa: E402
+from p1.indexer import CodebaseIndexer  # noqa: E402
+from p1.watcher import CodebaseWatcher  # noqa: E402
+from p2.llm import OllamaClient  # noqa: E402
+from p2.retriever import Retriever  # noqa: E402
+from p3.api import create_patch_api  # noqa: E402
+from p3.loop import PatchLoopEngine  # noqa: E402
 
 
 class BonusPatchRunRequest(BaseModel):
     intent: str = Field(..., description="Coding intent to generate, validate, and apply")
     k: Optional[int] = Field(default=3, ge=1, le=10, description="Context chunks to retrieve")
-    dry_run: Optional[bool] = Field(default=False, description="Compute diff and validate sanity without touching disk")
-    auto_commit: Optional[bool] = Field(default=False, description="Automatically Git commit on validated patch")
+    dry_run: Optional[bool] = Field(
+        default=False,
+        description="Compute diff and validate sanity without touching disk",
+    )
+    auto_commit: Optional[bool] = Field(
+        default=False,
+        description="Automatically Git commit on validated patch",
+    )
 
 
 def create_bonus_api(
@@ -57,7 +62,10 @@ def create_bonus_api(
     )
 
     app.title = "Inception-of-Context (IoC) - Bonus Extended API"
-    app.description = "Autonomous Codebase Engine with On-demand Reindex, Visual Diff, Dry-Run, and Git Commits"
+    app.description = (
+        "Autonomous Codebase Engine with On-demand Reindex, Visual Diff, "
+        "Dry-Run, and Git Commits"
+    )
     app.version = "3.1.0-bonus"
 
     patch_engine: PatchLoopEngine = app.state.engine
@@ -74,7 +82,11 @@ def create_bonus_api(
             retriever.refresh_index()
 
             if watcher:
-                watcher.log_activity("REINDEX", indexer.target_dir, f"On-demand reindex: {summary['total_chunks']} chunks")
+                watcher.log_activity(
+                    "REINDEX",
+                    indexer.target_dir,
+                    f"On-demand reindex: {summary['total_chunks']} chunks",
+                )
 
             return {
                 "status": "success",
@@ -181,4 +193,3 @@ def create_bonus_api(
         return res_dict
 
     return app
-

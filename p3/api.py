@@ -1,7 +1,8 @@
 """
 Patch Loop HTTP API for Inception-of-Context (IoC) Part 3: Generation, Application, and Validation Loop.
 Extends the Part 2 Architect API with endpoints to trigger and monitor autonomous coding patches:
-  POST /patch/run       - Execute the full autonomous patch loop (intent -> retrieve -> patch -> sanity -> apply -> validate -> retry/rollback)
+  POST /patch/run       - Execute the full autonomous patch loop
+                          (intent -> retrieve -> patch -> sanity -> apply -> validate -> retry/rollback)
   GET  /patch/status    - Inspect current loop status (idle/running), configuration, and latest result
   GET  /patch/history   - Retrieve the audit trail of all patch runs and attempts
   POST /patch/rollback  - Manually trigger rollback to pre-patch snapshot
@@ -20,23 +21,31 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 try:
-    from fastapi import FastAPI, HTTPException, Request
+    from fastapi import FastAPI, HTTPException
     from pydantic import BaseModel, Field
     FASTAPI_AVAILABLE = True
 except ImportError:
     FASTAPI_AVAILABLE = False
 
-from p1.indexer import CodebaseIndexer
-from p1.watcher import CodebaseWatcher
-from p2.api import create_architect_api
-from p2.llm import OllamaClient
-from p2.retriever import Retriever
-from p3.loop import PatchLoopEngine, PatchLoopResult, load_validation_command
+from p1.indexer import CodebaseIndexer  # noqa: E402
+from p1.watcher import CodebaseWatcher  # noqa: E402
+from p2.api import create_architect_api  # noqa: E402
+from p2.llm import OllamaClient  # noqa: E402
+from p2.retriever import Retriever  # noqa: E402
+from p3.loop import PatchLoopEngine, PatchLoopResult, load_validation_command  # noqa: E402
 
 if FASTAPI_AVAILABLE:
     class PatchRunRequest(BaseModel):
-        intent: str = Field(..., description="Coding intent to generate, validate, and apply autonomously")
-        k: Optional[int] = Field(default=3, ge=1, le=10, description="Top-k context chunks to retrieve for prompt")
+        intent: str = Field(
+            ...,
+            description="Coding intent to generate, validate, and apply autonomously",
+        )
+        k: Optional[int] = Field(
+            default=3,
+            ge=1,
+            le=10,
+            description="Top-k context chunks to retrieve for prompt",
+        )
 
 
 def create_patch_api(
@@ -52,7 +61,9 @@ def create_patch_api(
     Integrates indexer, retriever, LLM client, watcher, and autonomous PatchLoopEngine.
     """
     if not FASTAPI_AVAILABLE:
-        raise ImportError("FastAPI is required. Please install dependencies: pip install -r p3/requirements.txt")
+        raise ImportError(
+            "FastAPI is required. Please install dependencies: pip install -r p3/requirements.txt"
+        )
 
     # 1. Base Architect API app with all Part 1 and Part 2 endpoints
     app: FastAPI = create_architect_api(
@@ -63,7 +74,9 @@ def create_patch_api(
     )
 
     app.title = "Inception-of-Context (IoC) - Part 3 Autonomous Patch Loop API"
-    app.description = "Autonomous Codebase Patch Loop with Structured JSON, AST Sanity Checks, and 100% Rollback"
+    app.description = (
+        "Autonomous Codebase Patch Loop with Structured JSON, AST Sanity Checks, and 100% Rollback"
+    )
     app.version = "3.0.0"
 
     # 2. Instantiate PatchLoopEngine if not provided
@@ -193,7 +206,8 @@ def create_patch_api(
             )
 
         success = engine.applier.rollback()
-        _broadcast_event("PATCH_ROLLBACK", "manual", f"Manual rollback triggered: {'ok' if success else 'no-op'}")
+        rollback_status = "ok" if success else "no-op"
+        _broadcast_event("PATCH_ROLLBACK", "manual", f"Manual rollback triggered: {rollback_status}")
 
         # Reindex in case files were rolled back
         if indexer:
@@ -249,4 +263,3 @@ def create_patch_api(
         return await _handle_patch_config()
 
     return app
-
