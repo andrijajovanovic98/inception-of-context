@@ -13,6 +13,9 @@ VENV         := $(IOC_DIR)/venv
 PIP_CACHE    := $(IOC_DIR)/pip-cache
 HF_HOME      := $(IOC_DIR)/hf-cache
 CHROMA_DIR   := $(IOC_DIR)/chroma_db
+OLLAMA_DIR   := $(IOC_DIR)/ollama
+# Private port so we do not reuse the campus server that writes to /opt/ollama
+OLLAMA_HOST  := 127.0.0.1:11435
 PYTHON       := /usr/bin/python3
 PY_VER       := $(shell $(PYTHON) -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 SITE_PACKAGES:= $(VENV)/lib/python$(PY_VER)/site-packages
@@ -31,6 +34,9 @@ export TRANSFORMERS_CACHE := $(HF_HOME)
 export TMPDIR          := /tmp
 export PYTHONNOUSERSITE:= 1
 export PYTHONPATH      := $(CURDIR):$(SITE_PACKAGES)
+# Writable models dir (overrides campus OLLAMA_MODELS=/opt/ollama)
+export OLLAMA_MODELS   := $(OLLAMA_DIR)
+export OLLAMA_HOST
 
 .PHONY: all setup p1 p2 p3 bonus stop clean fclean re help \
 	ensure-dirs ensure-venv ensure-deps ensure-ready ensure-ollama \
@@ -50,7 +56,7 @@ help:
 	@echo "make re     - fclean + setup"
 
 ensure-dirs:
-	@mkdir -p $(IOC_DIR) $(PIP_CACHE) $(HF_HOME) $(CHROMA_DIR)
+	@mkdir -p $(IOC_DIR) $(PIP_CACHE) $(HF_HOME) $(CHROMA_DIR) $(OLLAMA_DIR)
 
 ensure-venv: ensure-dirs
 	@if [ ! -x "$(VENV)/bin/pip" ]; then \
@@ -104,27 +110,34 @@ ensure-ready:
 
 ensure-ollama: ensure-dirs
 	@command -v ollama >/dev/null 2>&1 || { echo "ollama not found in PATH"; exit 1; }
-	@if ! ollama list >/dev/null 2>&1; then \
-		echo "[*] Starting ollama serve in background"; \
-		mkdir -p $(IOC_DIR)/logs; \
-		nohup ollama serve >$(IOC_DIR)/logs/ollama.log 2>&1 & echo $$! > $(IOC_DIR)/ollama.pid; \
+	@if [ -f $(IOC_DIR)/ollama.pid ] && kill -0 $$(cat $(IOC_DIR)/ollama.pid) 2>/dev/null; then \
+		echo "[*] Ollama already running (pid $$(cat $(IOC_DIR)/ollama.pid), $(OLLAMA_HOST))"; \
+	else \
+		echo "[*] Starting ollama serve (models=$(OLLAMA_DIR), host=$(OLLAMA_HOST))"; \
+		mkdir -p $(IOC_DIR)/logs $(OLLAMA_DIR); \
+		nohup env OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" \
+			ollama serve >$(IOC_DIR)/logs/ollama.log 2>&1 & echo $$! > $(IOC_DIR)/ollama.pid; \
 		sleep 2; \
 	fi
 	@echo "[*] Ensuring Ollama model $(LLM_MODEL)"
-	@ollama pull $(LLM_MODEL)
+	@OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" ollama pull $(LLM_MODEL)
 
 # Only start server if needed; pull model only when missing
 ensure-ollama-quick: ensure-dirs
 	@command -v ollama >/dev/null 2>&1 || { echo "ollama not found in PATH"; exit 1; }
-	@if ! ollama list >/dev/null 2>&1; then \
-		echo "[*] Starting ollama serve in background"; \
-		mkdir -p $(IOC_DIR)/logs; \
-		nohup ollama serve >$(IOC_DIR)/logs/ollama.log 2>&1 & echo $$! > $(IOC_DIR)/ollama.pid; \
+	@if [ -f $(IOC_DIR)/ollama.pid ] && kill -0 $$(cat $(IOC_DIR)/ollama.pid) 2>/dev/null; then \
+		true; \
+	else \
+		echo "[*] Starting ollama serve (models=$(OLLAMA_DIR), host=$(OLLAMA_HOST))"; \
+		mkdir -p $(IOC_DIR)/logs $(OLLAMA_DIR); \
+		nohup env OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" \
+			ollama serve >$(IOC_DIR)/logs/ollama.log 2>&1 & echo $$! > $(IOC_DIR)/ollama.pid; \
 		sleep 2; \
 	fi
-	@if ! ollama show $(LLM_MODEL) >/dev/null 2>&1; then \
+	@if ! OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" \
+		ollama show $(LLM_MODEL) >/dev/null 2>&1; then \
 		echo "[*] Pulling missing model $(LLM_MODEL)"; \
-		ollama pull $(LLM_MODEL); \
+		OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" ollama pull $(LLM_MODEL); \
 	fi
 
 ensure-embed: ensure-deps
