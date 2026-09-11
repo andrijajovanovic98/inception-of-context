@@ -41,7 +41,7 @@ class OllamaClient:
         self,
         host: str = DEFAULT_OLLAMA_HOST,
         model: str = DEFAULT_LLM_MODEL,
-        timeout: float = 60.0,
+        timeout: float = 240.0,
     ) -> None:
         # Standardize base URL
         if not host.startswith("http://") and not host.startswith("https://"):
@@ -77,6 +77,7 @@ class OllamaClient:
         prompt: str,
         system: Optional[str] = None,
         temperature: float = 0.1,
+        format: Optional[str] = None,
     ) -> str:
         """
         Send a generation request to the local Ollama /api/generate endpoint.
@@ -94,6 +95,8 @@ class OllamaClient:
                 "temperature": temperature,
             },
         }
+        if format:
+            payload["format"] = format
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -122,6 +125,7 @@ class OllamaClient:
         prompt: str,
         system: Optional[str] = None,
         temperature: float = 0.1,
+        format: Optional[str] = None,
     ) -> str:
         """Synchronous wrapper for generate when running in non-async contexts."""
         if not HTTPX_AVAILABLE:
@@ -136,6 +140,9 @@ class OllamaClient:
                 "temperature": temperature,
             },
         }
+        if format:
+            payload["format"] = format
+
         try:
             with httpx.Client(timeout=self.timeout) as client:
                 res = client.post(f"{self.base_url}/api/generate", json=payload)

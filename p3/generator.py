@@ -20,11 +20,14 @@ from p2.llm import OllamaClient  # noqa: E402
 PATCH_SYSTEM_PROMPT = """You are an autonomous AI software engineer.
 Your task is to write code modifications by generating a SINGLE structured JSON patch.
 
-CRITICAL RULES:
+CRITICAL NON-NEGOTIABLE RULES:
 1. Output ONLY valid, raw JSON. Do NOT include markdown code fences (no ```json, no ```py), explanations, or conversational notes.
 2. The patch must NEVER be a unified diff or git diff.
-3. For "modify" operations, the "content" field MUST contain the COMPLETE post-change file content.
-4. JSON ESCAPING: The "content" value must be a single valid JSON string. Inside Python code in "content", prefer single quotes '...' for strings (e.g. f'{val:.2f}'), or escape double quotes as \\". Never put markdown fences inside "content".
+3. FOR "modify" OPERATIONS:
+   - The "content" field MUST contain the ENTIRE, COMPLETE post-change Python file from line 1 (all imports, class definitions, and unchanged methods) to the end.
+   - NEVER output a dictionary or JSON mapping of methods (e.g. NEVER {"add": "..."}).
+   - You MUST keep all existing methods intact; only modify or add what was requested. Omitting existing code violates the file shrinkage rule!
+4. JSON ESCAPING: The "content" value must be a valid JSON string. Inside Python code in "content", prefer single quotes '...' for strings (e.g. f'{val:.2f}'), or escape double quotes as \\". Never put markdown fences inside "content".
 5. Do NOT define stub functions whose body is only 'pass', '...', or 'return None'. Write full, working implementations.
 6. Do NOT include any prompt markers (e.g. '=== RETRIEVED CHUNK ===') in the code content.
 7. Touch a MAXIMUM of 3 files at once.
@@ -34,30 +37,64 @@ CRITICAL RULES:
   "files": [
     {
       "path": "relative/path/to/file.py",
-      "op": "create | modify | delete",
-      "content": "complete file content as a string"
+      "op": "modify",
+      "content": "from typing import Union\n\nclass Calculator:\n    def __init__(self, precision: int = 2) -> None:\n        self.precision = precision\n..."
     }
   ]
 }"""
 
 
+def _normalize_patch_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Clean up extracted patch data, removing accidentally nested fences and normalizing content."""
+    if not isinstance(data, dict) or "files" not in data:
+        return data
+    cleaned_files: List[Dict[str, Any]] = []
+    for f in data.get("files", []):
+        if not isinstance(f, dict):
+            continue
+        p = f.get("path", "")
+        op = f.get("op", "modify")
+        c = f.get("content", "")
+        if isinstance(c, str):
+            # Strip accidental markdown code fences inside content
+            c = re.sub(r"^```(?:python|py)?\s*\n?", "", c.strip(), flags=re.IGNORECASE)
+            c = re.sub(r"\n?```\s*$", "", c.strip())
+        elif isinstance(c, dict):
+            # In case the model output a dict mapping method names to code
+            method_lines = []
+            for k, v in c.items():
+                if isinstance(v, str):
+                    v_str = v.strip()
+                    if v_str.startswith("def "):
+                        method_lines.append(v_str)
+                    else:
+                        method_lines.append(f"def {k}(self, *args, **kwargs):\n    {v_str}")
+                else:
+                    method_lines.append(f"{k} = {v}")
+            c = "\n\n".join(method_lines)
+        cleaned_files.append({"path": p, "op": op, "content": c})
+    data["files"] = cleaned_files
+    return data
+
+
 def extract_json_patch(raw_text: str) -> Dict[str, Any]:
     """
     Safely extract and parse JSON patch from LLM output.
-    Handles markdown fences (```json ... ```), trailing commas, or surrounding text.
+    Handles outer markdown fences (```json ... ```), nested fences, trailing commas, or surrounding text.
     """
     text = raw_text.strip()
 
-    # 1. Remove markdown code fences if present
-    fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.DOTALL)
-    if fence_match:
-        text = fence_match.group(1).strip()
+    # 1. Remove OUTER markdown code fences ONLY if the entire text is wrapped in them
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json|python|py)?\s*\n?", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\n?```\s*$", "", text)
+        text = text.strip()
 
-    # 2. Try direct parsing with strict=False
+    # 2. Try direct parsing with strict=False (allows raw newlines in string values)
     try:
         data = json.loads(text, strict=False)
         if isinstance(data, dict) and "files" in data:
-            return data
+            return _normalize_patch_data(data)
     except Exception:
         pass
 
@@ -69,7 +106,7 @@ def extract_json_patch(raw_text: str) -> Dict[str, Any]:
         try:
             data = json.loads(json_candidate, strict=False)
             if isinstance(data, dict) and "files" in data:
-                return data
+                return _normalize_patch_data(data)
         except Exception:
             pass
 
@@ -78,35 +115,39 @@ def extract_json_patch(raw_text: str) -> Dict[str, Any]:
             repaired = re.sub(r'"\s*\n\s*"', r"\\n", json_candidate)
             data = json.loads(repaired, strict=False)
             if isinstance(data, dict) and "files" in data:
-                return data
+                return _normalize_patch_data(data)
         except Exception:
             pass
 
-    # 5. Regex-based resilient fallback extraction (handles inner braces, f-strings, unescaped quotes)
+    # 5. Resilient structural fallback extraction (handles unescaped inner quotes and docstrings)
     try:
         sum_m = re.search(r'"summary"\s*:\s*"([^"]+)"', text)
         summary = sum_m.group(1) if sum_m else "Patch generated by local LLM"
 
-        file_pattern = re.compile(
-            r'\{\s*"path"\s*:\s*"([^"]+)"\s*,\s*"op"\s*:\s*"([^"]+)"\s*,\s*"content"\s*:\s*([\s\S]+?)\s*\}\s*(?=\s*,\s*\{\s*"path"|\s*\])',
-            re.DOTALL,
-        )
-        matches = list(file_pattern.finditer(text))
-        if matches:
-            file_entries: List[Dict[str, Any]] = []
-            for m in matches:
-                p, op, c = m.groups()
-                c = c.strip()
-                if c.startswith('"') and c.endswith('"'):
-                    c = c[1:-1]
-                # Strip markdown fences if LLM wrapped code
-                c = re.sub(r"^```(?:[a-zA-Z0-9_\-]+)?\s*", "", c)
-                c = re.sub(r"\s*```$", "", c)
+        file_entries: List[Dict[str, Any]] = []
+        for m in re.finditer(r'"path"\s*:\s*"([^"]+)"[\s\S]*?"op"\s*:\s*"([^"]+)"', text):
+            p, op = m.group(1), m.group(2)
+            content_start_m = re.search(r'"content"\s*:\s*', text[m.end():])
+            if not content_start_m:
+                continue
+            start_pos = m.end() + content_start_m.end()
+            rest = text[start_pos:]
+            if rest.startswith('"'):
+                rest = rest[1:]
+            elif rest.startswith("```"):
+                rest = re.sub(r"^```(?:python|py)?\s*\n?", "", rest, flags=re.IGNORECASE)
+
+            end_m = re.search(r'"?\s*\}\s*(?:,\s*\{|\s*\])', rest)
+            if end_m:
+                c = rest[:end_m.start()].strip()
+                if c.endswith('"'):
+                    c = c[:-1]
+                c = re.sub(r"\n?```\s*$", "", c)
                 c = c.replace('\\n', '\n').replace('\\t', '\t').replace('\\"', '"')
                 file_entries.append({"path": p, "op": op, "content": c})
 
-            if file_entries:
-                return {"summary": summary, "files": file_entries}
+        if file_entries:
+            return _normalize_patch_data({"summary": summary, "files": file_entries})
     except Exception:
         pass
 
@@ -163,7 +204,9 @@ class PatchGenerator:
                         file_text = f.read()
                     existing_files_text.append(
                         f"=== EXISTING CURRENT CONTENT OF: {rel_path} ===\n"
-                        f"{file_text}\n"
+                        f"{file_text}\n\n"
+                        f"CRITICAL INSTRUCTION FOR '{rel_path}':\n"
+                        f"If modifying '{rel_path}', the 'content' field in your JSON MUST contain the FULL updated file, from the first line (imports) to the very end (all classes, methods, and functions). Preserve all unchanged code. DO NOT return a dictionary of methods, DO NOT return only the changed function, and DO NOT use placeholder comments like '# ... existing code ...'."
                     )
                 except Exception:
                     pass
@@ -190,8 +233,9 @@ class PatchGenerator:
         # 5. Output Instructions
         sections.append(
             "=== OUTPUT FORMAT ===\n"
-            "Return ONLY the JSON object conforming to the schema:\n"
-            '{\n  "summary": "...",\n  "files": [{"path": "...", "op": "modify", "content": "..."}]\n}'
+            "Return a valid JSON object conforming to the schema:\n"
+            '{\n  "summary": "Brief description of changes",\n  "files": [\n    {\n      "path": "path/to/file.py",\n      "op": "modify",\n      "content": "FULL_PYTHON_FILE_CONTENT_HERE"\n    }\n  ]\n}\n'
+            "CRITICAL: The 'content' string must contain the COMPLETE Python file."
         )
 
         return "\n\n".join(sections)
@@ -216,10 +260,12 @@ class PatchGenerator:
         )
 
         # Low temperature for deterministic JSON output and syntax correctness
+        # Use format="json" for grammar-constrained JSON decoding by Ollama
         raw_response = await self.llm_client.generate(
             prompt=prompt,
             system=PATCH_SYSTEM_PROMPT,
             temperature=0.1,
+            format="json",
         )
 
         patch = extract_json_patch(raw_response)
@@ -245,5 +291,6 @@ class PatchGenerator:
             prompt=prompt,
             system=PATCH_SYSTEM_PROMPT,
             temperature=0.1,
+            format="json",
         )
         return extract_json_patch(raw_response)
