@@ -76,7 +76,7 @@ After reboot, `/tmp` is empty  run `make setup` again.
 ### Manual equivalent (same layout)
 
 ```bash
-mkdir -p /tmp/ioc/{venv,pip-cache,hf-cache,chroma_db}
+mkdir -p /tmp/ioc/{venv,pip-cache,hf-cache,chroma_db,ollama}
 
 # venv (use virtualenv on campus images without ensurepip)
 virtualenv /tmp/ioc/venv
@@ -84,9 +84,12 @@ virtualenv /tmp/ioc/venv
 /tmp/ioc/venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
 /tmp/ioc/venv/bin/pip install -r p1/requirements.txt pillow
 
-# LLM
-ollama serve &          # if not already running
-ollama pull qwen2.5:3b
+# LLM (writable models dir — campus /opt/ollama is often not writable)
+mkdir -p /tmp/ioc/ollama
+export OLLAMA_MODELS=/tmp/ioc/ollama
+export OLLAMA_HOST=127.0.0.1:11435
+OLLAMA_MODELS=/tmp/ioc/ollama OLLAMA_HOST=127.0.0.1:11435 ollama serve &
+OLLAMA_MODELS=/tmp/ioc/ollama OLLAMA_HOST=127.0.0.1:11435 ollama pull qwen2.5:3b
 
 # run dashboard (one short env block)
 export PYTHONNOUSERSITE=1
