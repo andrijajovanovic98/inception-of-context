@@ -8,7 +8,7 @@ symbol existence and file-function inventory queries as required by the Subject.
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 # Ensure 100% offline HuggingFace operation
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
@@ -86,9 +86,9 @@ class Retriever:
             return
 
         all_data = self.db.collection.get(include=["metadatas", "documents"])
-        self.chunk_ids = all_data.get("ids", [])
-        self.documents = all_data.get("documents", [])
-        self.metadatas = all_data.get("metadatas", [])
+        self.chunk_ids = list(all_data.get("ids") or [])
+        self.documents = cast(List[str], all_data.get("documents") or [])
+        self.metadatas = cast(List[Dict[str, Any]], all_data.get("metadatas") or [])
 
         # Build tokenized corpus for BM25
         self.tokenized_corpus = [tokenize_code(doc) for doc in self.documents]

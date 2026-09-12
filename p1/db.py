@@ -5,7 +5,7 @@ Supports incremental upserting, file-level chunk deletion, and collection statis
 """
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from p1.chunker import CodeChunk
 
 # Enable offline mode automatically if weights already exist in local cache
@@ -63,7 +63,7 @@ class VectorDB:
         # Get or create collection
         self.collection = self.client.get_or_create_collection(
             name=self.collection_name,
-            embedding_function=self.embedding_fn,
+            embedding_function=cast(Any, self.embedding_fn),
             metadata={"hnsw:space": "cosine"},
         )
 
@@ -73,9 +73,12 @@ class VectorDB:
 
     def get_file_chunks(self, file_path: str) -> Dict[str, Any]:
         """Fetch all stored chunks and metadata for a specific file."""
-        return self.collection.get(
-            where={"file_path": file_path},
-            include=["metadatas", "documents"],
+        return cast(
+            Dict[str, Any],
+            self.collection.get(
+                where={"file_path": file_path},
+                include=["metadatas", "documents"],
+            ),
         )
 
     def delete_file_chunks(self, file_path: str) -> int:
@@ -83,9 +86,12 @@ class VectorDB:
         Delete all chunks associated with the specified file.
         Used when a file is deleted or before replacing its modified chunks.
         """
-        existing = self.collection.get(
-            where={"file_path": file_path},
-            include=["metadatas"],
+        existing = cast(
+            Dict[str, Any],
+            self.collection.get(
+                where={"file_path": file_path},
+                include=["metadatas"],
+            ),
         )
         ids_to_delete = existing.get("ids", [])
         if ids_to_delete:
@@ -102,7 +108,7 @@ class VectorDB:
 
         ids = [c.chunk_id for c in chunks]
         documents = [c.content for c in chunks]
-        metadatas = [
+        metadatas: List[Dict[str, Any]] = [
             {
                 "file_path": c.file_path,
                 "symbol_name": c.symbol_name,
@@ -117,7 +123,7 @@ class VectorDB:
         self.collection.upsert(
             ids=ids,
             documents=documents,
-            metadatas=metadatas,
+            metadatas=cast(Any, metadatas),
         )
         return len(chunks)
 
@@ -137,12 +143,12 @@ class VectorDB:
             }
 
         # Retrieve all metadatas to compute per-file breakdown
-        all_data = self.collection.get(include=["metadatas"])
-        metadatas = all_data.get("metadatas", [])
+        all_data = cast(Dict[str, Any], self.collection.get(include=["metadatas"]))
+        metadatas = cast(List[Dict[str, Any]], all_data.get("metadatas") or [])
 
         file_counts: Dict[str, int] = {}
         for meta in metadatas:
-            fpath = meta.get("file_path", "unknown")
+            fpath = str(meta.get("file_path", "unknown"))
             file_counts[fpath] = file_counts.get(fpath, 0) + 1
 
         return {
@@ -170,4 +176,4 @@ class VectorDB:
         if where:
             kwargs["where"] = where
 
-        return self.collection.query(**kwargs)
+        return cast(Dict[str, Any], self.collection.query(**kwargs))
