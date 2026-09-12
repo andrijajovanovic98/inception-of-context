@@ -6,17 +6,37 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: ioc-app
-    ports:
-      - "8000:8000"
+    # Host network: required on campus Linux so the container can reach
+    # Ollama on 127.0.0.1:11435 (bridge + host.docker.internal is refused).
+    network_mode: host
     volumes:
       # Mount demo_app so autonomous patches reflect on the host filesystem
       - ./demo_app:/app/demo_app
+      # Reuse host embedding cache from `make setup` (required when HF_*_OFFLINE=1)
+      - /tmp/ioc/hf-cache:/tmp/ioc/hf-cache
+      # Persist ChromaDB across container restarts
+      - /tmp/ioc/chroma_db:/tmp/ioc/chroma_db
     environment:
       - PYTHONUNBUFFERED=1
-      - OLLAMA_HOST=http://host.docker.internal:11435
+      - OLLAMA_HOST=http://127.0.0.1:11435
+      - HF_HOME=/tmp/ioc/hf-cache
+      - TRANSFORMERS_CACHE=/tmp/ioc/hf-cache
       - HF_HUB_OFFLINE=1
       - TRANSFORMERS_OFFLINE=1
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    command:
+      [
+        "python3",
+        "bonus/index.py",
+        "demo_app",
+        "--dashboard",
+        "--watch",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000",
+        "--db-dir",
+        "/tmp/ioc/chroma_db",
+        "--ollama-host",
+        "127.0.0.1:11435",
+      ]
     restart: unless-stopped
-

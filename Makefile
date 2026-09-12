@@ -5,6 +5,9 @@
 #   make p2      # stub  Part 2 (Ask & Retrieve)
 #   make p3      # stub  Part 3 (Patch Loop)
 #   make bonus   # stub  bonus features
+#   make flake   # run flake8 on Python packages
+#   make mypy    # run mypy on Python packages
+#   make lint    # run flake8 + mypy
 #   make clean   # remove chroma db / caches under /tmp/ioc (keep venv)
 #   make fclean  # full wipe of /tmp/ioc (venv + models cache + db)
 
@@ -14,7 +17,10 @@ PIP_CACHE    := $(IOC_DIR)/pip-cache
 HF_HOME      := $(IOC_DIR)/hf-cache
 CHROMA_DIR   := $(IOC_DIR)/chroma_db
 OLLAMA_DIR   := $(IOC_DIR)/ollama
-# Private port so we do not reuse the campus server that writes to /opt/ollama
+# Private port so we do not reuse the campus server that writes to /opt/ollama.
+# Listen on all interfaces so Docker (host.docker.internal) can reach Ollama.
+OLLAMA_BIND  := 0.0.0.0:11435
+# Clients (local make p1/p2/p3/bonus + ollama CLI) still use loopback.
 OLLAMA_HOST  := 127.0.0.1:11435
 PYTHON       := /usr/bin/python3
 PY_VER       := $(shell $(PYTHON) -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
@@ -26,6 +32,7 @@ LLM_MODEL    := qwen2.5:3b
 EMBED_MODEL  := all-MiniLM-L6-v2
 PORT         := 8000
 TARGET       := demo_app
+LINT_DIRS    := p1 p2 p3 bonus demo_app
 
 # Campus image: python3 -m venv often lacks ensurepip; virtualenv is available.
 VIRTUALENV   := $(shell command -v virtualenv 2>/dev/null)
@@ -42,7 +49,7 @@ export OLLAMA_HOST
 
 .PHONY: all up down setup p1 p2 p3 p3-cli bonus stop clean fclean re help \
 	ensure-dirs ensure-venv ensure-deps ensure-ready ensure-ollama \
-	ensure-ollama-quick ensure-embed
+	ensure-ollama-quick ensure-embed ensure-lint-tools flake mypy lint
 
 all: setup
 
@@ -61,6 +68,9 @@ help:
 	@echo "make p3      - run Part 3 Patch Loop & Dashboard on http://127.0.0.1:$(PORT)"
 	@echo "make p3-cli  - run headless patch loop: make p3-cli INTENT=\"your intent\""
 	@echo "make bonus   - run Chapter VII Bonus Suite & Dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make flake   - run flake8 on $(LINT_DIRS)"
+	@echo "make mypy    - run mypy on $(LINT_DIRS)"
+	@echo "make lint    - run flake8 + mypy on $(LINT_DIRS)"
 	@echo "make stop    - stop background ollama started by this Makefile (if any)"
 	@echo "make clean   - remove chroma db / pip+hf caches (keep venv)"
 	@echo "make fclean  - full wipe of /tmp/ioc"
@@ -122,11 +132,11 @@ ensure-ready:
 ensure-ollama: ensure-dirs
 	@command -v ollama >/dev/null 2>&1 || { echo "ollama not found in PATH"; exit 1; }
 	@if [ -f $(IOC_DIR)/ollama.pid ] && kill -0 $$(cat $(IOC_DIR)/ollama.pid) 2>/dev/null; then \
-		echo "[*] Ollama already running (pid $$(cat $(IOC_DIR)/ollama.pid), $(OLLAMA_HOST))"; \
+		echo "[*] Ollama already running (pid $$(cat $(IOC_DIR)/ollama.pid), bind $(OLLAMA_BIND))"; \
 	else \
-		echo "[*] Starting ollama serve (models=$(OLLAMA_DIR), host=$(OLLAMA_HOST))"; \
+		echo "[*] Starting ollama serve (models=$(OLLAMA_DIR), bind=$(OLLAMA_BIND))"; \
 		mkdir -p $(IOC_DIR)/logs $(OLLAMA_DIR); \
-		nohup env HOME="$(IOC_DIR)" OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" \
+		nohup env HOME="$(IOC_DIR)" OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_BIND)" \
 			ollama serve >$(IOC_DIR)/logs/ollama.log 2>&1 & echo $$! > $(IOC_DIR)/ollama.pid; \
 		sleep 2; \
 	fi
@@ -139,9 +149,9 @@ ensure-ollama-quick: ensure-dirs
 	@if [ -f $(IOC_DIR)/ollama.pid ] && kill -0 $$(cat $(IOC_DIR)/ollama.pid) 2>/dev/null; then \
 		true; \
 	else \
-		echo "[*] Starting ollama serve (models=$(OLLAMA_DIR), host=$(OLLAMA_HOST))"; \
+		echo "[*] Starting ollama serve (models=$(OLLAMA_DIR), bind=$(OLLAMA_BIND))"; \
 		mkdir -p $(IOC_DIR)/logs $(OLLAMA_DIR); \
-		nohup env HOME="$(IOC_DIR)" OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" \
+		nohup env HOME="$(IOC_DIR)" OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_BIND)" \
 			ollama serve >$(IOC_DIR)/logs/ollama.log 2>&1 & echo $$! > $(IOC_DIR)/ollama.pid; \
 		sleep 2; \
 	fi
@@ -218,6 +228,30 @@ stop:
 	else \
 		echo "[*] No Makefile ollama pid file"; \
 	fi
+
+# ---------------------------------------------------------------------------
+# Lint (flake8 + mypy)
+# ---------------------------------------------------------------------------
+
+ensure-lint-tools: ensure-venv
+	@if $(VENV)/bin/python -c "import flake8, mypy" 2>/dev/null; then \
+		echo "[*] Lint tools already installed in $(VENV)"; \
+	else \
+		echo "[*] Installing flake8 + mypy into $(VENV)"; \
+		$(VENV)/bin/pip install --cache-dir $(PIP_CACHE) flake8 mypy types-PyYAML; \
+	fi
+
+flake: ensure-lint-tools
+	@echo "[*] flake8 → $(LINT_DIRS)"
+	@$(VENV)/bin/python -m flake8 $(LINT_DIRS)
+
+mypy: ensure-lint-tools
+	@echo "[*] mypy → $(LINT_DIRS)"
+	@PYTHONPATH="$(CURDIR):$(SITE_PACKAGES)" $(VENV)/bin/python -m mypy \
+		--config-file mypy.ini $(LINT_DIRS)
+
+lint: flake mypy
+	@echo "[+] lint OK (flake8 + mypy)"
 
 clean: stop
 	@rm -rf $(CHROMA_DIR) $(PIP_CACHE) $(HF_HOME) $(IOC_DIR)/logs $(IOC_DIR)/.deps-ok

@@ -12,10 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Configure offline-first cache directories
+# Offline-first: embedding weights must exist under HF_HOME (mounted from host
+# /tmp/ioc/hf-cache produced by `make setup`, or baked in at build time).
 ENV PYTHONUNBUFFERED=1 \
     PYTHONNOUSERSITE=1 \
     HF_HOME=/tmp/ioc/hf-cache \
+    TRANSFORMERS_CACHE=/tmp/ioc/hf-cache \
     HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1 \
     OLLAMA_HOST=http://host.docker.internal:11435
