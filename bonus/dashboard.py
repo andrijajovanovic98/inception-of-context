@@ -376,8 +376,8 @@ def setup_bonus_dashboard(
 
             <div class="form-group" style="margin-bottom:14px;">
                 <label for="patch-intent">Coding Intent / Task Description:</label>
-                <textarea id="patch-intent" placeholder="e.g. Add a method multiply(a,
-                    b) to Calculator in calculator.py"></textarea>
+                <textarea id="patch-intent"
+                    placeholder="e.g. Add square(a) to Calculator"></textarea>
             </div>
 
             <!-- Bonus Controls: Dry-run and Auto-commit checkboxes -->
@@ -495,12 +495,17 @@ def setup_bonus_dashboard(
             gitBanner.style.display = 'none';
             statusBadge.className = 'badge badge-amber';
             statusBadge.innerText = dryRun ? 'DRY-RUN SIMULATING' : 'RUNNING';
-            statusTitle.innerText = dryRun ? 'Generating diff without modifying disk...' : 'Autonomous Patch
-                Loop in progress...';
-            statusMsg.innerText = 'Retrieving context &rarr; Generating JSON patch &rarr; Sanity check &rarr;
-                Computing visual diff';
-            container.innerHTML = '<div style="text-align:center; padding:40px;
-                color:var(--accent);">Processing patch request...</div>';
+            statusTitle.innerText = dryRun
+                ? 'Generating diff without modifying disk...'
+                : 'Autonomous Patch Loop in progress...';
+            statusMsg.innerText = (
+                'Retrieving context → Generating JSON patch → '
+                + 'Sanity check → Computing visual diff'
+            );
+            container.innerHTML = (
+                '<div style="text-align:center; padding:40px; color:var(--accent);">'
+                + 'Processing patch request...</div>'
+            );
 
             try {{
                 const res = await fetch('/bonus/patch/run', {{
@@ -541,8 +546,9 @@ def setup_bonus_dashboard(
             // Dry-Run outcome
             if (result.dry_run) {{
                 statusBadge.className = result.sanity_passed ? 'badge' : 'badge badge-red';
-                statusBadge.innerText = result.sanity_passed ? 'DRY-RUN: CLEAN DIFF' : 'DRY-RUN: SANITY
-                    REFUSAL';
+                statusBadge.innerText = result.sanity_passed
+                    ? 'DRY-RUN: CLEAN DIFF'
+                    : 'DRY-RUN: SANITY REFUSAL';
                 statusTitle.innerText = 'Dry-run preview generated (Disk untouched)';
                 statusMsg.innerText = result.message;
                 attemptsBadge.innerText = 'Dry-Run';
@@ -563,8 +569,9 @@ def setup_bonus_dashboard(
                         </div>
                     `;
                 }});
-                container.innerHTML = diffHtml || '<div style="color:var(--text-muted);">No diff
-                    produced.</div>';
+                container.innerHTML = diffHtml || (
+                    '<div style="color:var(--text-muted);">No diff produced.</div>'
+                );
                 return;
             }}
 
@@ -595,8 +602,9 @@ def setup_bonus_dashboard(
                 statusBadge.innerText = 'FAILED (100% ROLLED BACK)';
                 statusTitle.innerText = `Loop failed after ${{result.attempts_count}}
                     attempt(s). Codebase restored.`;
-                statusMsg.innerText = result.error_message || 'Project cleanly restored to pre-patch
-                    snapshot.';
+                statusMsg.innerText = result.error_message || (
+                    'Project cleanly restored to pre-patch snapshot.'
+                );
             }}
 
             // Render Attempt cards with Visual Diffs
@@ -637,29 +645,34 @@ def setup_bonus_dashboard(
                                 <span class="badge ${{att.validation_exit_code === 0 ? '' :
                                     'badge-red'}}">Exit Code: ${{att.validation_exit_code}}</span>
                             </div>
-                            <pre class="terminal-box">${{escapeHtml(att.validation_output || '(no
-                                output)')}}</pre>
+                            <pre class="terminal-box">${{
+                                escapeHtml(att.validation_output || '(no output)')
+                            }}</pre>
                         </div>
                     `;
                 }}
 
+                const emptyDiff = (
+                    '<div style="color:var(--text-muted); font-size:13px;">'
+                    + 'No diff available.</div>'
+                );
+                const explanation = (att.patch || {{}}).explanation || '';
                 html += `
                 <div class="attempt-card">
                     <div class="attempt-header">
                         <div style="display:flex; align-items:center; gap:10px;">
-                            <strong style="font-size:15px; color:#fff;">Attempt #${{att.attempt}}</strong>
+                            <strong style="font-size:15px; color:#fff;">
+                                Attempt #${{att.attempt}}</strong>
                             ${{statusPill}}
                         </div>
-                        <span style="font-size:12px;
-                            color:var(--text-muted);">${{escapeHtml((att.patch || {{}}).explanation ||
-                            '')}}</span>
+                        <span style="font-size:12px; color:var(--text-muted);">
+                            ${{escapeHtml(explanation)}}</span>
                     </div>
                     <div class="attempt-body">
                         <div>
                             <label>Visual Patch Diff (+ Additions / - Deletions):</label>
-                            <div style="margin-top:8px;">${{diffsHtml || '<div
-                                style="color:var(--text-muted);
-                                font-size:13px;">No diff available.</div>'}}</div>
+                            <div style="margin-top:8px;">
+                                ${{diffsHtml || emptyDiff}}</div>
                         </div>
                         ${{valHtml}}
                     </div>
