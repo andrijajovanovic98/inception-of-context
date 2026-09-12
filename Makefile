@@ -1,15 +1,11 @@
 # Inception-of-Context  local runtime under /tmp/ioc
 # Usage:
-#   make setup   # create /tmp/ioc (venv, deps, embeddings, ollama model)
-#   make p1      # run Part 1 (index + dashboard on :8000)
-#   make p2      # stub  Part 2 (Ask & Retrieve)
-#   make p3      # stub  Part 3 (Patch Loop)
-#   make bonus   # stub  bonus features
-#   make flake   # run flake8 on Python packages
-#   make mypy    # run mypy on Python packages
-#   make lint    # run flake8 + mypy
-#   make clean   # remove chroma db / caches under /tmp/ioc (keep venv)
-#   make fclean  # full wipe of /tmp/ioc (venv + models cache + db)
+#   make setup        # create /tmp/ioc (venv, deps, embeddings, ollama model)
+#   make p1 / p2 / p3 / bonus
+#   make flake / mypy / lint
+#   make up / down    # Docker Compose
+#   make docker-clean / docker-fclean
+#   make stop / clean / fclean / re
 
 IOC_DIR      := /tmp/ioc
 VENV         := $(IOC_DIR)/venv
@@ -33,6 +29,7 @@ EMBED_MODEL  := all-MiniLM-L6-v2
 PORT         := 8000
 TARGET       := demo_app
 LINT_DIRS    := p1 p2 p3 bonus demo_app
+DOCKER_IMAGE := inception-of-context-ioc
 
 # Campus image: python3 -m venv often lacks ensurepip; virtualenv is available.
 VIRTUALENV   := $(shell command -v virtualenv 2>/dev/null)
@@ -47,9 +44,9 @@ export PYTHONPATH      := $(CURDIR):$(SITE_PACKAGES)
 export OLLAMA_MODELS   := $(OLLAMA_DIR)
 export OLLAMA_HOST
 
-.PHONY: all up down setup p1 p2 p3 p3-cli bonus stop clean fclean re help \
-	ensure-dirs ensure-venv ensure-deps ensure-ready ensure-ollama \
-	ensure-ollama-quick ensure-embed ensure-lint-tools flake mypy lint
+.PHONY: all up down docker-clean docker-fclean setup p1 p2 p3 p3-cli bonus stop \
+	clean fclean re help ensure-dirs ensure-venv ensure-deps ensure-ready \
+	ensure-ollama ensure-ollama-quick ensure-embed ensure-lint-tools flake mypy lint
 
 all: setup
 
@@ -59,22 +56,71 @@ up:
 down:
 	@docker compose down 2>/dev/null || docker-compose down
 
+# Soft Docker cleanup (IoC only): stop/remove container + project network, keep image.
+# No error if Docker is missing or IoC was never built.
+docker-clean:
+	@if ! command -v docker >/dev/null 2>&1; then \
+		echo "[*] Docker not available — skip docker-clean"; \
+	else \
+		echo "[*] Docker clean (container/network; keep image $(DOCKER_IMAGE))"; \
+		docker compose down --remove-orphans >/dev/null 2>&1 \
+			|| docker-compose down --remove-orphans >/dev/null 2>&1 \
+			|| true; \
+		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx 'ioc-app'; then \
+			docker rm -f ioc-app >/dev/null 2>&1 || true; \
+			echo "[*] Removed container ioc-app"; \
+		fi; \
+		echo "[+] docker-clean done"; \
+	fi
+
+# Full Docker cleanup (IoC only): container, networks, volumes, image.
+# Prunes only if they exist; never fails when Docker/IoC artifacts are absent.
+docker-fclean:
+	@if ! command -v docker >/dev/null 2>&1; then \
+		echo "[*] Docker not available — skip docker-fclean"; \
+	else \
+		echo "[*] Docker fclean (container/network/volume/image for IoC only)"; \
+		docker compose down --rmi local --volumes --remove-orphans >/dev/null 2>&1 \
+			|| docker-compose down --rmi local --volumes --remove-orphans >/dev/null 2>&1 \
+			|| true; \
+		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx 'ioc-app'; then \
+			docker rm -f ioc-app >/dev/null 2>&1 || true; \
+			echo "[*] Removed container ioc-app"; \
+		fi; \
+		if docker image inspect $(DOCKER_IMAGE):latest >/dev/null 2>&1; then \
+			docker rmi -f $(DOCKER_IMAGE):latest >/dev/null 2>&1 || true; \
+			echo "[*] Removed image $(DOCKER_IMAGE):latest"; \
+		fi; \
+		ids=$$(docker images -q '$(DOCKER_IMAGE)' 2>/dev/null || true); \
+		if [ -n "$$ids" ]; then \
+			docker rmi -f $$ids >/dev/null 2>&1 || true; \
+			echo "[*] Removed remaining $(DOCKER_IMAGE) image tags"; \
+		fi; \
+		if docker network ls --format '{{.Name}}' 2>/dev/null | grep -qx 'inception-of-context_default'; then \
+			docker network rm inception-of-context_default >/dev/null 2>&1 || true; \
+			echo "[*] Removed network inception-of-context_default"; \
+		fi; \
+		echo "[+] docker-fclean done (other Docker images untouched)"; \
+	fi
+
 help:
-	@echo "make up      - build and launch containerized IoC via Docker Compose"
-	@echo "make down    - stop and tear down Docker containers"
-	@echo "make setup   - prepare /tmp/ioc (venv, pip, embeddings, ollama $(LLM_MODEL))"
-	@echo "make p1      - run Part 1 Overview dashboard on http://127.0.0.1:$(PORT)"
-	@echo "make p2      - run Part 2 Architect API & RAG dashboard on http://127.0.0.1:$(PORT)"
-	@echo "make p3      - run Part 3 Patch Loop & Dashboard on http://127.0.0.1:$(PORT)"
-	@echo "make p3-cli  - run headless patch loop: make p3-cli INTENT=\"your intent\""
-	@echo "make bonus   - run Chapter VII Bonus Suite & Dashboard on http://127.0.0.1:$(PORT)"
-	@echo "make flake   - run flake8 on $(LINT_DIRS)"
-	@echo "make mypy    - run mypy on $(LINT_DIRS)"
-	@echo "make lint    - run flake8 + mypy on $(LINT_DIRS)"
-	@echo "make stop    - stop background ollama started by this Makefile (if any)"
-	@echo "make clean   - remove chroma db / pip+hf caches (keep venv)"
-	@echo "make fclean  - full wipe of /tmp/ioc"
-	@echo "make re      - fclean + setup"
+	@echo "make up            - build and launch containerized IoC via Docker Compose"
+	@echo "make down          - stop and tear down Docker containers"
+	@echo "make docker-clean  - remove IoC container/network (keep image)"
+	@echo "make docker-fclean - remove IoC container/network/volumes/image"
+	@echo "make setup         - prepare /tmp/ioc (venv, pip, embeddings, ollama $(LLM_MODEL))"
+	@echo "make p1            - run Part 1 Overview dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make p2            - run Part 2 Architect API & RAG dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make p3            - run Part 3 Patch Loop & Dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make p3-cli        - run headless patch loop: make p3-cli INTENT=\"your intent\""
+	@echo "make bonus         - run Chapter VII Bonus Suite & Dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make flake         - run flake8 on $(LINT_DIRS)"
+	@echo "make mypy          - run mypy on $(LINT_DIRS)"
+	@echo "make lint          - run flake8 + mypy on $(LINT_DIRS)"
+	@echo "make stop          - stop background ollama started by this Makefile (if any)"
+	@echo "make clean         - docker-clean + remove chroma/pip/hf caches (keep venv)"
+	@echo "make fclean        - docker-fclean + full wipe of /tmp/ioc"
+	@echo "make re            - fclean + setup"
 
 ensure-dirs:
 	@mkdir -p $(IOC_DIR) $(PIP_CACHE) $(HF_HOME) $(CHROMA_DIR) $(OLLAMA_DIR)
@@ -253,11 +299,13 @@ mypy: ensure-lint-tools
 lint: flake mypy
 	@echo "[+] lint OK (flake8 + mypy)"
 
-clean: stop
+# Soft clean: stop ollama + docker container/network + local caches (keep venv + docker image)
+clean: stop docker-clean
 	@rm -rf $(CHROMA_DIR) $(PIP_CACHE) $(HF_HOME) $(IOC_DIR)/logs $(IOC_DIR)/.deps-ok
 	@echo "[*] Cleaned caches and chroma db under $(IOC_DIR) (venv kept)"
 
-fclean: stop
+# Full clean: stop ollama + remove IoC docker image/network/volumes + wipe /tmp/ioc
+fclean: stop docker-fclean
 	@rm -rf $(IOC_DIR)
 	@echo "[*] Removed $(IOC_DIR)"
 
