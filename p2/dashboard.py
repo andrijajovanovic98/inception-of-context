@@ -6,9 +6,11 @@ Figures VI.1, VI.2, and VI.3 of the official 42 Subject.
 """
 
 from typing import Optional
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
+from p1.dashboard_modal import MODAL_CSS, MODAL_HTML, MODAL_JS
 from p1.indexer import CodebaseIndexer
 from p1.watcher import CodebaseWatcher
 from p2.llm import OllamaClient
@@ -396,9 +398,11 @@ def setup_dashboard(
             font-weight: bold;
             margin-right: 8px;
         }}
+{MODAL_CSS}
     </style>
 </head>
 <body>
+{MODAL_HTML}
     <div class="header">
         <div class="header-title">
             <h1>Inception-of-Context</h1>
@@ -566,6 +570,7 @@ def setup_dashboard(
 
     <!-- JavaScript Client Logic -->
     <script>
+{MODAL_JS}
         function showTab(tabName) {{
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -608,7 +613,7 @@ def setup_dashboard(
         async function submitAsk(retrieveOnly) {{
             const query = document.getElementById('query-input').value.trim();
             if (!query) {{
-                alert('Please enter a question or search query.');
+                await showAlert('Please enter a question or search query.', 'warn', 'Ask & Retrieve');
                 return;
             }}
             const k = parseInt(document.getElementById('k-input').value, 10) || 3;
@@ -658,7 +663,7 @@ def setup_dashboard(
                     resultBox.style.display = 'block';
                 }}
             }} catch (err) {{
-                alert('Error processing request: ' + err.message);
+                await showAlert('Error processing request: ' + err.message, 'error', 'Ask & Retrieve');
             }} finally {{
                 loading.style.display = 'none';
                 btnAsk.disabled = false;

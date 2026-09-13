@@ -11,7 +11,7 @@ import shlex
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -98,12 +98,14 @@ class PatchLoopEngine:
         llm_client: Optional[OllamaClient] = None,
         indexer: Optional[CodebaseIndexer] = None,
         max_attempts: int = 3,
+        activity_logger: Optional[Callable[[str, str, str], None]] = None,
     ) -> None:
         self.target_dir = os.path.abspath(target_dir)
         self.retriever = retriever
         self.llm_client = llm_client
         self.indexer = indexer
         self.max_attempts = max_attempts
+        self.activity_logger = activity_logger
 
         self.sanity_checker = SanityChecker(target_dir=self.target_dir)
         self.applier = PatchApplier(target_dir=self.target_dir)
@@ -113,6 +115,22 @@ class PatchLoopEngine:
             llm_client=self.llm_client,
             target_dir=self.target_dir,
         )
+
+    def _emit(self, action: str, path: str, details: str = "") -> None:
+        """Push live loop / validation status to SSE via the activity logger."""
+        if not self.activity_logger:
+            return
+        try:
+            self.activity_logger(action, path, details)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _truncate(text: str, limit: int = 480) -> str:
+        text = (text or "").strip()
+        if len(text) <= limit:
+            return text
+        return text[: limit - 3] + "..."
 
     def _run_validation(self, modified_files: List[str]) -> Tuple[bool, str, int, str]:
         """
@@ -184,10 +202,16 @@ class PatchLoopEngine:
 
         for attempt_num in range(1, self.max_attempts + 1):
             rec = AttemptRecord(attempt=attempt_num)
+            attempt_label = f"attempt {attempt_num}/{self.max_attempts}"
 
             # -----------------------------------------------------------------
             # Stage 1: Generate structured patch
             # -----------------------------------------------------------------
+            self._emit(
+                "PATCH_ATTEMPT",
+                attempt_label,
+                "Generating structured JSON patch...",
+            )
             try:
                 patch = await self.generator.generate_patch(
                     intent=intent,
@@ -203,11 +227,17 @@ class PatchLoopEngine:
                 rec.sanity_errors = [f"Failed to generate structured JSON patch: {e}"]
                 attempts_records.append(rec)
                 error_feedback = f"Generation error: {e}"
+                self._emit(
+                    "PATCH_ATTEMPT",
+                    attempt_label,
+                    f"Generation failed: {self._truncate(str(e), 200)}",
+                )
                 continue
 
             # -----------------------------------------------------------------
             # Stage 2: Sanity Check (Hard refusals before any disk write)
             # -----------------------------------------------------------------
+            self._emit("PATCH_SANITY", attempt_label, "Running AST sanity checks...")
             sanity_res = self.sanity_checker.check(patch)
             rec.sanity_passed = sanity_res.passed
             rec.sanity_errors = sanity_res.errors
@@ -220,7 +250,14 @@ class PatchLoopEngine:
                     "Sanity Checks Failed (Hard Refusal):\n"
                     + "\n".join(f"- {err}" for err in sanity_res.errors)
                 )
+                self._emit(
+                    "PATCH_SANITY",
+                    attempt_label,
+                    "FAILED: " + self._truncate("; ".join(sanity_res.errors), 300),
+                )
                 continue
+
+            self._emit("PATCH_SANITY", attempt_label, "PASSED — applying patch atomically")
 
             # -----------------------------------------------------------------
             # Stage 3: Atomic Application (using *.ioc.tmp staging)
@@ -228,16 +265,27 @@ class PatchLoopEngine:
             try:
                 self.applier.apply(patch)
                 rec.applied = True
+                self._emit("PATCH_APPLY", attempt_label, "Patch applied; starting validation")
             except Exception as e:
                 rec.status = "apply_failed"
                 rec.sanity_errors = [f"Atomic apply failed: {e}"]
                 attempts_records.append(rec)
                 error_feedback = f"Application error: {e}"
+                self._emit(
+                    "PATCH_APPLY",
+                    attempt_label,
+                    f"Apply failed: {self._truncate(str(e), 200)}",
+                )
                 continue
 
             # -----------------------------------------------------------------
             # Stage 4: Run Validation Command (ioc.config.yml)
             # -----------------------------------------------------------------
+            self._emit(
+                "PATCH_VALIDATION",
+                attempt_label,
+                f"Running validation ({load_validation_command(self.target_dir)})...",
+            )
             passed, cmd, exit_code, val_output = self._run_validation(
                 modified_files=self.applier.last_applied_files
             )
@@ -251,6 +299,11 @@ class PatchLoopEngine:
                 rec.status = "success"
                 attempts_records.append(rec)
                 self.applier.commit()
+                self._emit(
+                    "PATCH_VALIDATION",
+                    attempt_label,
+                    f"GREEN exit={exit_code} | cmd: {cmd}\n{self._truncate(val_output)}",
+                )
 
                 # Re-index codebase to keep ChromaDB and BM25 up to date
                 if self.indexer:
@@ -274,6 +327,11 @@ class PatchLoopEngine:
                 rec.status = "validation_failed"
                 attempts_records.append(rec)
                 self.applier.rollback()
+                self._emit(
+                    "PATCH_VALIDATION",
+                    attempt_label,
+                    f"RED exit={exit_code} | cmd: {cmd}\n{self._truncate(val_output)}",
+                )
 
                 # Prepare error log to feed back to the model for next attempt
                 error_feedback = (

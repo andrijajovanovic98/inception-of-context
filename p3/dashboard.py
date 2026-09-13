@@ -14,6 +14,7 @@ from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
+from p1.dashboard_modal import MODAL_CSS, MODAL_HTML, MODAL_JS
 from p1.indexer import CodebaseIndexer
 from p1.watcher import CodebaseWatcher
 from p2.llm import OllamaClient
@@ -275,10 +276,13 @@ def setup_p3_dashboard(
         .feed-action.CREATED, .feed-action.PATCH_SUCCESS {{
             background: rgba(74, 222, 128, 0.2); color: var(--accent-green);
         }}
-        .feed-action.MODIFIED, .feed-action.PATCH_START {{
+        .feed-action.MODIFIED, .feed-action.PATCH_START,
+        .feed-action.PATCH_ATTEMPT, .feed-action.PATCH_APPLY,
+        .feed-action.PATCH_VALIDATION {{
             background: rgba(251, 191, 36, 0.2); color: var(--accent-amber);
         }}
-        .feed-action.DELETED, .feed-action.PATCH_FAILED, .feed-action.PATCH_ROLLBACK {{
+        .feed-action.DELETED, .feed-action.PATCH_FAILED, .feed-action.PATCH_ROLLBACK,
+        .feed-action.PATCH_SANITY {{
             background: rgba(248, 113, 113, 0.2); color: var(--accent-red);
         }}
         .feed-path {{ font-family: monospace; font-weight: 600; color: var(--accent); }}
@@ -470,9 +474,11 @@ def setup_p3_dashboard(
             background: rgba(251, 191, 36, 0.1);
             border-radius: 6px;
         }}
+{MODAL_CSS}
     </style>
 </head>
 <body>
+{MODAL_HTML}
     <!-- App Header -->
     <div class="header">
         <div class="header-title">
@@ -676,6 +682,8 @@ def setup_p3_dashboard(
                 <span id="patch-attempts-badge" style="font-size:12px; color:var(--text-muted);"></span>
             </div>
             <div id="patch-status-msg" style="font-size:13px; color:var(--text-muted); margin-top:8px;"></div>
+            <pre id="live-validation-log" class="terminal-box" style="display:none; margin-top:10px;
+                max-height:160px;"></pre>
         </div>
 
         <!-- Attempts & Output Container -->
@@ -684,6 +692,7 @@ def setup_p3_dashboard(
 
     <!-- Client-side Logic (Vanilla JS, 0 External Dependencies) -->
     <script>
+{MODAL_JS}
         // Tab switching
         function showTab(tabId) {{
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -724,7 +733,7 @@ def setup_p3_dashboard(
         async function runPatchLoop() {{
             const intent = document.getElementById('patch-intent').value.trim();
             if (!intent) {{
-                alert('Please enter a coding intent first.');
+                await showAlert('Please enter a coding intent first.', 'warn', 'Missing intent');
                 return;
             }}
             const k = parseInt(document.getElementById('patch-k').value, 10) || 3;
@@ -745,6 +754,11 @@ def setup_p3_dashboard(
                 'Retrieving context &rarr; Generating JSON patch &rarr; '
                 + 'Checking sanity &rarr; Applying &rarr; Validating'
             );
+            const liveLog = document.getElementById('live-validation-log');
+            if (liveLog) {{
+                liveLog.style.display = 'block';
+                liveLog.textContent = '[SSE] Waiting for live validation events...\\n';
+            }}
             container.innerHTML = (
                 '<div style="text-align:center; padding:40px; color:var(--accent);">'
                 + 'Executing autonomous patch and self-healing loop... Please wait.</div>'
@@ -758,7 +772,11 @@ def setup_p3_dashboard(
                 }});
 
                 if (res.status === 409) {{
-                    alert('Another patch loop is already running. Please wait.');
+                    await showAlert(
+                        'Another patch loop is already running. Please wait.',
+                        'warn',
+                        'Busy'
+                    );
                     return;
                 }}
                 if (!res.ok) {{
@@ -950,14 +968,22 @@ def setup_p3_dashboard(
         }}
 
         async function triggerManualRollback() {{
-            if (!confirm('Revert codebase back to the last pre-patch snapshot?')) return;
+            const ok = await showConfirm(
+                'Revert codebase back to the last pre-patch snapshot?',
+                'Manual Rollback'
+            );
+            if (!ok) return;
             try {{
                 const res = await fetch('/patch/rollback', {{ method: 'POST' }});
                 const data = await res.json();
-                alert('Rollback completed. Codebase restored to snapshot.');
+                await showAlert(
+                    'Rollback completed. Codebase restored to snapshot.',
+                    'success',
+                    'Rollback'
+                );
                 checkPatchStatus();
             }} catch (err) {{
-                alert('Rollback failed: ' + err.message);
+                await showAlert('Rollback failed: ' + err.message, 'error', 'Rollback');
             }}
         }}
 
@@ -978,10 +1004,14 @@ def setup_p3_dashboard(
                 if (data.history && data.history.length > 0) {{
                     renderPatchLoopResult(data.history[0]);
                 }} else {{
-                    alert('No previous patch runs found in current session.');
+                    await showAlert(
+                        'No previous patch runs found in current session.',
+                        'info',
+                        'History'
+                    );
                 }}
             }} catch (e) {{
-                alert('Could not load history: ' + e.message);
+                await showAlert('Could not load history: ' + e.message, 'error', 'History');
             }}
         }}
 
@@ -991,7 +1021,7 @@ def setup_p3_dashboard(
         async function submitAsk(retrieveOnly) {{
             const query = document.getElementById('ask-query').value.trim();
             if (!query) {{
-                alert('Please enter a question or query text.');
+                await showAlert('Please enter a question or query text.', 'warn', 'Ask & Retrieve');
                 return;
             }}
             const k = parseInt(document.getElementById('k-input').value, 10) || 3;
@@ -1035,7 +1065,7 @@ def setup_p3_dashboard(
                     resultBox.style.display = 'block';
                 }}
             }} catch (err) {{
-                alert('Error processing request: ' + err.message);
+                await showAlert('Error processing request: ' + err.message, 'error', 'Ask & Retrieve');
             }} finally {{
                 loading.style.display = 'none';
                 btnAsk.disabled = false;
@@ -1168,9 +1198,11 @@ def setup_p3_dashboard(
                     if (el) el.innerText = data.total_chunks;
                 }}
 
-                // If patch event received, update badge
+                // If patch event received, update badge + live validation log
                 if (data.action && data.action.startsWith('PATCH_')) {{
+                    const statusCard = document.getElementById('patch-status-card');
                     const badge = document.getElementById('patch-status-badge');
+                    if (statusCard) statusCard.style.display = 'block';
                     if (badge) {{
                         badge.innerText = data.action;
                         if (data.action === 'PATCH_SUCCESS') badge.className = 'badge';
@@ -1178,6 +1210,24 @@ def setup_p3_dashboard(
                             data.action === 'PATCH_FAILED' || data.action === 'PATCH_ROLLBACK'
                         ) badge.className = 'badge badge-red';
                         else badge.className = 'badge badge-amber';
+                    }}
+                    const title = document.getElementById('patch-status-title');
+                    const msg = document.getElementById('patch-status-msg');
+                    const attemptsBadge = document.getElementById('patch-attempts-badge');
+                    if (title) title.innerText = data.path || data.action;
+                    if (msg) msg.innerText = (data.details || '').split('\\n')[0];
+                    if (attemptsBadge && data.path) attemptsBadge.innerText = data.path;
+                    const liveLog = document.getElementById('live-validation-log');
+                    if (liveLog && (
+                        data.action === 'PATCH_VALIDATION'
+                        || data.action === 'PATCH_ATTEMPT'
+                        || data.action === 'PATCH_SANITY'
+                        || data.action === 'PATCH_APPLY'
+                    )) {{
+                        liveLog.style.display = 'block';
+                        liveLog.textContent += '[' + (data.action || '') + '] '
+                            + (data.path || '') + ' — ' + (data.details || '') + '\\n';
+                        liveLog.scrollTop = liveLog.scrollHeight;
                     }}
                 }}
             }} catch (e) {{}}

@@ -3,7 +3,7 @@
 #   make setup        # create /tmp/ioc (venv, deps, embeddings, ollama model)
 #   make p1 / p2 / p3 / bonus
 #   make flake / mypy / lint
-#   make up / down    # Docker Compose
+#   make up / down / docker-restart  # Docker Compose
 #   make docker-clean / docker-fclean
 #   make stop / clean / fclean / re
 
@@ -44,8 +44,8 @@ export PYTHONPATH      := $(CURDIR):$(SITE_PACKAGES)
 export OLLAMA_MODELS   := $(OLLAMA_DIR)
 export OLLAMA_HOST
 
-.PHONY: all up down docker-clean docker-fclean setup p1 p2 p3 p3-cli bonus stop \
-	clean fclean re help ensure-dirs ensure-venv ensure-deps ensure-ready \
+.PHONY: all up down docker-restart docker-clean docker-fclean setup p1 p2 p3 p3-cli \
+	bonus stop clean fclean re help ensure-dirs ensure-venv ensure-deps ensure-ready \
 	ensure-ollama ensure-ollama-quick ensure-embed ensure-lint-tools flake mypy lint
 
 all: setup
@@ -55,6 +55,12 @@ up:
 
 down:
 	@docker compose down 2>/dev/null || docker-compose down
+
+# Rebuild image (bonus/p* are not volume-mounted) and recreate the container.
+docker-restart:
+	@docker compose up --build -d --force-recreate 2>/dev/null \
+		|| docker-compose up --build -d --force-recreate
+	@echo "[+] docker-restart done (rebuild + recreate ioc-app)"
 
 # Soft Docker cleanup (IoC only): stop/remove container + project network, keep image.
 # No error if Docker is missing or IoC was never built.
@@ -104,23 +110,24 @@ docker-fclean:
 	fi
 
 help:
-	@echo "make up            - build and launch containerized IoC via Docker Compose"
-	@echo "make down          - stop and tear down Docker containers"
-	@echo "make docker-clean  - remove IoC container/network (keep image)"
-	@echo "make docker-fclean - remove IoC container/network/volumes/image"
-	@echo "make setup         - prepare /tmp/ioc (venv, pip, embeddings, ollama $(LLM_MODEL))"
-	@echo "make p1            - run Part 1 Overview dashboard on http://127.0.0.1:$(PORT)"
-	@echo "make p2            - run Part 2 Architect API & RAG dashboard on http://127.0.0.1:$(PORT)"
-	@echo "make p3            - run Part 3 Patch Loop & Dashboard on http://127.0.0.1:$(PORT)"
-	@echo "make p3-cli        - run headless patch loop: make p3-cli INTENT=\"your intent\""
-	@echo "make bonus         - run Chapter VII Bonus Suite & Dashboard on http://127.0.0.1:$(PORT)"
-	@echo "make flake         - run flake8 on $(LINT_DIRS)"
-	@echo "make mypy          - run mypy on $(LINT_DIRS)"
-	@echo "make lint          - run flake8 + mypy on $(LINT_DIRS)"
-	@echo "make stop          - stop background ollama started by this Makefile (if any)"
-	@echo "make clean         - docker-clean + remove chroma/pip/hf caches (keep venv)"
-	@echo "make fclean        - docker-fclean + full wipe of /tmp/ioc"
-	@echo "make re            - fclean + setup"
+	@echo "make up               - build and launch containerized IoC via Docker Compose"
+	@echo "make down             - stop and tear down Docker containers"
+	@echo "make docker-restart   - rebuild image and recreate ioc-app (code changes)"
+	@echo "make docker-clean     - remove IoC container/network (keep image)"
+	@echo "make docker-fclean    - remove IoC container/network/volumes/image"
+	@echo "make setup            - prepare /tmp/ioc (venv, pip, embeddings, ollama $(LLM_MODEL))"
+	@echo "make p1               - run Part 1 Overview dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make p2               - run Part 2 Architect API & RAG dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make p3               - run Part 3 Patch Loop & Dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make p3-cli           - run headless patch loop: make p3-cli INTENT=\"your intent\""
+	@echo "make bonus            - run Chapter VII Bonus Suite & Dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make flake            - run flake8 on $(LINT_DIRS)"
+	@echo "make mypy             - run mypy on $(LINT_DIRS)"
+	@echo "make lint             - run flake8 + mypy on $(LINT_DIRS)"
+	@echo "make stop             - stop background ollama started by this Makefile (if any)"
+	@echo "make clean            - docker-clean + remove chroma/pip/hf caches (keep venv)"
+	@echo "make fclean           - docker-fclean + full wipe of /tmp/ioc"
+	@echo "make re               - fclean + setup"
 
 ensure-dirs:
 	@mkdir -p $(IOC_DIR) $(PIP_CACHE) $(HF_HOME) $(CHROMA_DIR) $(OLLAMA_DIR)
@@ -214,7 +221,7 @@ ensure-embed: ensure-deps
 setup: ensure-deps ensure-ollama ensure-embed
 	@echo
 	@echo "[+] Setup complete under $(IOC_DIR)"
-	@echo "    Next: make p1   →  http://127.0.0.1:$(PORT)"
+	@echo "    Next: make p1 or p2 or p3 or bonus  →  http://127.0.0.1:$(PORT)"
 
 # ---------------------------------------------------------------------------
 # Part runners
