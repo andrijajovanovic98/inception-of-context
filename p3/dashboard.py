@@ -1226,7 +1226,7 @@ def setup_p3_dashboard(
                     )) {{
                         liveLog.style.display = 'block';
                         liveLog.textContent += '[' + (data.action || '') + '] '
-                            + (data.path || '') + ' — ' + (data.details || '') + '\\n';
+                            + (data.path || '') + ' - ' + (data.details || '') + '\\n';
                         liveLog.scrollTop = liveLog.scrollHeight;
                     }}
                 }}

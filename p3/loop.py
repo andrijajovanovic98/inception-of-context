@@ -257,7 +257,7 @@ class PatchLoopEngine:
                 )
                 continue
 
-            self._emit("PATCH_SANITY", attempt_label, "PASSED — applying patch atomically")
+            self._emit("PATCH_SANITY", attempt_label, "PASSED - applying patch atomically")
 
             # -----------------------------------------------------------------
             # Stage 3: Atomic Application (using *.ioc.tmp staging)

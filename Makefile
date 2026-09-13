@@ -66,7 +66,7 @@ docker-restart:
 # No error if Docker is missing or IoC was never built.
 docker-clean:
 	@if ! command -v docker >/dev/null 2>&1; then \
-		echo "[*] Docker not available — skip docker-clean"; \
+		echo "[*] Docker not available - skip docker-clean"; \
 	else \
 		echo "[*] Docker clean (container/network; keep image $(DOCKER_IMAGE))"; \
 		docker compose down --remove-orphans >/dev/null 2>&1 \
@@ -83,7 +83,7 @@ docker-clean:
 # Prunes only if they exist; never fails when Docker/IoC artifacts are absent.
 docker-fclean:
 	@if ! command -v docker >/dev/null 2>&1; then \
-		echo "[*] Docker not available — skip docker-fclean"; \
+		echo "[*] Docker not available - skip docker-fclean"; \
 	else \
 		echo "[*] Docker fclean (container/network/volume/image for IoC only)"; \
 		docker compose down --rmi local --volumes --remove-orphans >/dev/null 2>&1 \
@@ -124,7 +124,7 @@ help:
 	@echo "make flake            - run flake8 on $(LINT_DIRS)"
 	@echo "make mypy             - run mypy on $(LINT_DIRS)"
 	@echo "make lint             - run flake8 + mypy on $(LINT_DIRS)"
-	@echo "make stop             - stop background ollama started by this Makefile (if any)"
+	@echo "make stop             - stop IoC ollama (pid file + IoC orphans; safe for make)"
 	@echo "make clean            - docker-clean + remove chroma/pip/hf caches (keep venv)"
 	@echo "make fclean           - docker-fclean + full wipe of /tmp/ioc"
 	@echo "make re               - fclean + setup"
@@ -274,13 +274,24 @@ bonus: ensure-ready ensure-ollama-quick
 		--ollama-host $(OLLAMA_HOST)
 
 stop:
+	@# Prefer pid file written by ensure-ollama*
 	@if [ -f $(IOC_DIR)/ollama.pid ]; then \
 		kill $$(cat $(IOC_DIR)/ollama.pid) 2>/dev/null || true; \
 		rm -f $(IOC_DIR)/ollama.pid; \
-		echo "[*] Stopped Makefile-started ollama"; \
-	else \
-		echo "[*] No Makefile ollama pid file"; \
+		echo "[*] Stopped ollama via $(IOC_DIR)/ollama.pid"; \
 	fi
+	@# Orphans after lost pid: only ollama whose environ uses IoC models dir.
+	@# Never pkill -f MODELS/HOST strings — that matches this recipe and kills make.
+	@for pid in $$(pgrep -x ollama 2>/dev/null || true); do \
+		if [ -r /proc/$$pid/environ ] \
+			&& tr '\0' '\n' < /proc/$$pid/environ 2>/dev/null \
+				| grep -qx 'OLLAMA_MODELS=$(OLLAMA_DIR)'; then \
+			kill $$pid 2>/dev/null || true; \
+			echo "[*] Stopped orphan ollama pid $$pid"; \
+		fi; \
+	done
+	@rm -f $(IOC_DIR)/ollama.pid 2>/dev/null || true
+	@echo "[*] stop done"
 
 # ---------------------------------------------------------------------------
 # Lint (flake8 + mypy)

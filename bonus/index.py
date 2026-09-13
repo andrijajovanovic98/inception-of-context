@@ -185,12 +185,30 @@ def main() -> int:
         print("    • Features: Visual Diff, Dry-Run Mode, Auto Git Commit, POST /reindex")
 
         try:
-            uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+            config = uvicorn.Config(
+                app,
+                host=args.host,
+                port=args.port,
+                log_level="info",
+                timeout_graceful_shutdown=2,
+            )
+            server = uvicorn.Server(config)
+            previous_handle_exit = server.handle_exit
+
+            def handle_exit(sig, frame):  # type: ignore[no-untyped-def]
+                closer = getattr(app, "close_sse_clients", None)
+                if callable(closer):
+                    closer()
+                previous_handle_exit(sig, frame)
+
+            server.handle_exit = handle_exit  # type: ignore[method-assign]
+            server.run()
         except KeyboardInterrupt:
             pass
         finally:
             if watcher:
                 watcher.stop()
+            print("\n[*] Bonus dashboard stopped.")
         return 0
 
     if args.watch and watcher:
