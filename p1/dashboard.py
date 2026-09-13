@@ -12,6 +12,7 @@ import threading
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, List, Optional
 from p1.chunker import chunk_file
+from p1.dashboard_modal import MODAL_CSS, MODAL_HTML, MODAL_JS
 from p1.indexer import CodebaseIndexer
 from p1.watcher import CodebaseWatcher
 
@@ -427,9 +428,11 @@ def create_dashboard_app(
             margin-right: 6px;
             box-shadow: 0 0 8px var(--accent-green);
         }}
+{MODAL_CSS}
     </style>
 </head>
 <body>
+{MODAL_HTML}
     <div class="header">
         <h1>Inception-of-Context (IoC)</h1>
         <div>
@@ -493,6 +496,7 @@ def create_dashboard_app(
     </div>
 
     <script>
+{MODAL_JS}
         // Connect to real-time Server-Sent Events (SSE)
         const eventSource = new EventSource('/events');
         const feed = document.getElementById('activityFeed');

@@ -12,6 +12,7 @@ from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
+from p1.dashboard_modal import MODAL_CSS, MODAL_HTML, MODAL_JS
 from p1.indexer import CodebaseIndexer
 from p1.watcher import CodebaseWatcher
 from p2.llm import OllamaClient
@@ -164,9 +165,12 @@ def setup_bonus_dashboard(
         .feed-action {{ padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }}
         .feed-action.CREATED, .feed-action.PATCH_SUCCESS, .feed-action.REINDEX,
             .feed-action.GIT_COMMIT {{ background: rgba(74, 222, 128, 0.2); color: var(--accent-green); }}
-        .feed-action.MODIFIED, .feed-action.PATCH_START, .feed-action.DRY_RUN {{ background: rgba(251, 191,
+        .feed-action.MODIFIED, .feed-action.PATCH_START, .feed-action.DRY_RUN,
+            .feed-action.PATCH_ATTEMPT, .feed-action.PATCH_APPLY,
+            .feed-action.PATCH_VALIDATION {{ background: rgba(251, 191,
             36, 0.2); color: var(--accent-amber); }}
-        .feed-action.DELETED, .feed-action.PATCH_FAILED, .feed-action.PATCH_ROLLBACK {{ background: rgba(248,
+        .feed-action.DELETED, .feed-action.PATCH_FAILED, .feed-action.PATCH_ROLLBACK,
+            .feed-action.PATCH_SANITY {{ background: rgba(248,
             113, 113, 0.2); color: var(--accent-red); }}
         .feed-path {{ font-family: monospace; font-weight: 600; color: var(--accent); }}
 
@@ -227,9 +231,11 @@ def setup_bonus_dashboard(
 
         /* Visual Diff Styling */
         .visual-diff-container div {{ font-family: monospace; white-space: pre-wrap; }}
+{MODAL_CSS}
     </style>
 </head>
 <body>
+{MODAL_HTML}
     <div class="header">
         <div class="header-title">
             <h1>Inception-of-Context</h1>
@@ -423,6 +429,8 @@ def setup_bonus_dashboard(
                 <span id="patch-attempts-badge" style="font-size:12px; color:var(--text-muted);"></span>
             </div>
             <div id="patch-status-msg" style="font-size:13px; color:var(--text-muted); margin-top:8px;"></div>
+            <pre id="live-validation-log" class="terminal-box" style="display:none; margin-top:10px;
+                max-height:160px;"></pre>
             <div id="patch-git-commit-banner" style="margin-top:10px; display:none;"></div>
         </div>
 
@@ -430,6 +438,7 @@ def setup_bonus_dashboard(
     </div>
 
     <script>
+{MODAL_JS}
         function showTab(tabId) {{
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(panel => panel.classList.remove('active'));
@@ -444,12 +453,16 @@ def setup_bonus_dashboard(
             try {{
                 const res = await fetch('/reindex', {{ method: 'POST' }});
                 const data = await res.json();
-                alert(`On-demand reindex complete! Total files: ${{data.total_files}},
-                    total chunks: ${{data.total_chunks}}`);
+                await showAlert(
+                    'On-demand reindex complete!\\nTotal files: '
+                    + data.total_files + ', total chunks: ' + data.total_chunks,
+                    'success',
+                    'Reindex'
+                );
                 const el = document.getElementById('card-total-chunks');
                 if (el) el.innerText = data.total_chunks;
             }} catch (err) {{
-                alert('Reindex failed: ' + err.message);
+                await showAlert('Reindex failed: ' + err.message, 'error', 'Reindex');
             }}
         }}
 
@@ -475,7 +488,7 @@ def setup_bonus_dashboard(
         async function runBonusPatchLoop() {{
             const intent = document.getElementById('patch-intent').value.trim();
             if (!intent) {{
-                alert('Please enter a coding intent first.');
+                await showAlert('Please enter a coding intent first.', 'warn', 'Missing intent');
                 return;
             }}
             const k = parseInt(document.getElementById('patch-k').value, 10) || 3;
@@ -502,6 +515,11 @@ def setup_bonus_dashboard(
                 'Retrieving context → Generating JSON patch → '
                 + 'Sanity check → Computing visual diff'
             );
+            const liveLog = document.getElementById('live-validation-log');
+            if (liveLog) {{
+                liveLog.style.display = dryRun ? 'none' : 'block';
+                liveLog.textContent = dryRun ? '' : '[SSE] Waiting for live validation events...\\n';
+            }}
             container.innerHTML = (
                 '<div style="text-align:center; padding:40px; color:var(--accent);">'
                 + 'Processing patch request...</div>'
@@ -684,11 +702,17 @@ def setup_bonus_dashboard(
         }}
 
         async function triggerManualRollback() {{
-            if (!confirm('Revert codebase back to snapshot?')) return;
+            const ok = await showConfirm(
+                'Revert codebase back to the last pre-patch snapshot?',
+                'Manual Rollback'
+            );
+            if (!ok) return;
             try {{
                 await fetch('/patch/rollback', {{ method: 'POST' }});
-                alert('Rollback completed.');
-            }} catch (e) {{ alert(e.message); }}
+                await showAlert('Rollback completed. Codebase restored to snapshot.', 'success', 'Rollback');
+            }} catch (e) {{
+                await showAlert(e.message, 'error', 'Rollback');
+            }}
         }}
 
         async function loadPatchHistory() {{
@@ -696,14 +720,19 @@ def setup_bonus_dashboard(
                 const res = await fetch('/patch/history');
                 const data = await res.json();
                 if (data.history && data.history.length > 0) renderBonusResult(data.history[0]);
-                else alert('No previous runs found.');
-            }} catch (e) {{ alert(e.message); }}
+                else await showAlert('No previous runs found in this session.', 'info', 'History');
+            }} catch (e) {{
+                await showAlert(e.message, 'error', 'History');
+            }}
         }}
 
         // Ask and Files tab helpers
         async function submitAsk(retrieveOnly) {{
             const query = document.getElementById('ask-query').value.trim();
-            if (!query) return alert('Enter a query');
+            if (!query) {{
+                await showAlert('Enter a query', 'warn', 'Ask & Retrieve');
+                return;
+            }}
             const k = parseInt(document.getElementById('k-input').value, 10) || 3;
             const loading = document.getElementById('ask-loading');
             const resBox = document.getElementById('ask-result-container');
@@ -766,8 +795,10 @@ def setup_bonus_dashboard(
         eventSource.onmessage = function(e) {{
             try {{
                 const data = JSON.parse(e.data);
+                if (data.action === 'CONNECTED') return;
+
                 const feed = document.getElementById('activity-feed');
-                if (feed && data.action !== 'CONNECTED') {{
+                if (feed) {{
                     const li = document.createElement('li');
                     li.className = 'feed-item';
                     li.innerHTML = `<div class="feed-header"><span class="feed-action
@@ -775,6 +806,39 @@ def setup_bonus_dashboard(
                         'now'}}</span></div><div class="feed-path">${{data.path ||
                         ''}}</div><div>${{data.details || ''}}</div>`;
                     feed.insertBefore(li, feed.firstChild);
+                }}
+
+                if (data.action && data.action.startsWith('PATCH_')) {{
+                    const statusCard = document.getElementById('patch-status-card');
+                    const badge = document.getElementById('patch-status-badge');
+                    if (statusCard) statusCard.style.display = 'block';
+                    if (badge) {{
+                        badge.innerText = data.action;
+                        if (data.action === 'PATCH_SUCCESS') badge.className = 'badge';
+                        else if (
+                            data.action === 'PATCH_FAILED' || data.action === 'PATCH_ROLLBACK'
+                        ) badge.className = 'badge badge-red';
+                        else badge.className = 'badge badge-amber';
+                    }}
+                    const title = document.getElementById('patch-status-title');
+                    const msg = document.getElementById('patch-status-msg');
+                    const attemptsBadge = document.getElementById('patch-attempts-badge');
+                    if (title) title.innerText = data.path || data.action;
+                    if (msg) msg.innerText = (data.details || '').split('\\n')[0];
+                    if (attemptsBadge && data.path) attemptsBadge.innerText = data.path;
+                    const liveLog = document.getElementById('live-validation-log');
+                    if (liveLog && (
+                        data.action === 'PATCH_VALIDATION'
+                        || data.action === 'PATCH_ATTEMPT'
+                        || data.action === 'PATCH_SANITY'
+                        || data.action === 'PATCH_APPLY'
+                    )) {{
+                        liveLog.style.display = 'block';
+                        const line = '[' + (data.action || '') + '] '
+                            + (data.path || '') + ' — ' + (data.details || '') + '\\n';
+                        liveLog.textContent += line;
+                        liveLog.scrollTop = liveLog.scrollHeight;
+                    }}
                 }}
             }} catch(err) {{}}
         }};

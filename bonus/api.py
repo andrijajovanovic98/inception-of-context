@@ -70,6 +70,13 @@ def create_bonus_api(
 
     patch_engine: PatchLoopEngine = app.state.engine
 
+    def _broadcast_event(action: str, target: str, details: str) -> None:
+        if watcher:
+            try:
+                watcher.log_activity(action, target, details)
+            except Exception:
+                pass
+
     # -------------------------------------------------------------------------
     # BONUS 1: On-Demand Reindex (POST /reindex & /api/reindex)
     # Subject: "POST /reindex for an on-demand full reindex. Useful when the watcher misses an event."
@@ -81,12 +88,11 @@ def create_bonus_api(
             # Refresh BM25 index & symbol inventory
             retriever.refresh_index()
 
-            if watcher:
-                watcher.log_activity(
-                    "REINDEX",
-                    indexer.target_dir,
-                    f"On-demand reindex: {summary['total_chunks']} chunks",
-                )
+            _broadcast_event(
+                "REINDEX",
+                indexer.target_dir,
+                f"On-demand reindex: {summary['total_chunks']} chunks",
+            )
 
             return {
                 "status": "success",
@@ -122,8 +128,8 @@ def create_bonus_api(
         # Dry-Run Mode: Generates patch + diff without touching the disk
         # ---------------------------------------------------------------------
         if payload.dry_run:
-            if watcher:
-                watcher.log_activity("DRY_RUN", "patch", f"Simulating patch: {intent[:50]}")
+            _broadcast_event("DRY_RUN", "patch", f"Simulating patch: {intent[:50]}")
+            _broadcast_event("PATCH_START", "dry_run", f"Dry-run patch: {intent[:60]}")
 
             context_chunks = retriever.retrieve(query=intent, k=k)
             try:
@@ -135,10 +141,24 @@ def create_bonus_api(
                     attempt=1,
                 )
             except Exception as e:
+                _broadcast_event("PATCH_ERROR", "dry_run", f"Dry-run failed: {e}")
                 raise HTTPException(status_code=500, detail=f"Dry-run patch generation failed: {e}")
 
             sanity_res = patch_engine.sanity_checker.check(patch)
             diffs = compute_patch_diff(target_dir=indexer.target_dir, patch=patch)
+
+            if sanity_res.passed:
+                _broadcast_event(
+                    "PATCH_SUCCESS",
+                    "dry_run",
+                    f"Dry-run sanity OK for: {intent[:50]}",
+                )
+            else:
+                _broadcast_event(
+                    "PATCH_FAILED",
+                    "dry_run",
+                    f"Dry-run sanity failed for: {intent[:50]}",
+                )
 
             return {
                 "status": "dry_run_success" if sanity_res.passed else "dry_run_sanity_failed",
@@ -155,7 +175,13 @@ def create_bonus_api(
         # ---------------------------------------------------------------------
         # Full Autonomous Execution
         # ---------------------------------------------------------------------
-        result = await patch_engine.run(intent=intent, k=k)
+        _broadcast_event("PATCH_START", "intent", f"Started patch loop: {intent[:60]}")
+        try:
+            result = await patch_engine.run(intent=intent, k=k)
+        except Exception as e:
+            _broadcast_event("PATCH_ERROR", "loop", f"Loop exception: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Patch loop failed with exception: {e}")
+
         res_dict = result.to_dict()
 
         # Compute visual diffs for each attempt
@@ -164,12 +190,29 @@ def create_bonus_api(
             if patch_data:
                 att["diffs"] = compute_patch_diff(target_dir=indexer.target_dir, patch=patch_data)
 
+        if result.status == "success":
+            _broadcast_event(
+                "PATCH_SUCCESS",
+                f"{result.attempts_count} attempt(s)",
+                f"Validated and applied patch for: {intent[:50]}",
+            )
+        else:
+            _broadcast_event(
+                "PATCH_FAILED",
+                f"{result.attempts_count} attempt(s)",
+                f"Failed after {result.attempts_count} attempts. 100% Rollback applied.",
+            )
+
         # ---------------------------------------------------------------------
         # Auto-Commit on Validated Success
         # ---------------------------------------------------------------------
         if payload.auto_commit and result.status == "success":
             patch_obj = result.final_patch or {}
-            explanation = patch_obj.get("explanation", intent)
+            explanation = (
+                patch_obj.get("explanation")
+                or patch_obj.get("summary")
+                or intent
+            )
             applied_files = patch_engine.applier.last_applied_files
 
             commit_msg = await generate_commit_message(
@@ -186,9 +229,8 @@ def create_bonus_api(
             )
 
             res_dict["git_commit"] = commit_res
-            if watcher:
-                action = "GIT_COMMIT" if commit_res.get("committed") else "GIT_COMMIT_FAILED"
-                watcher.log_activity(action, commit_res.get("commit_hash", ""), commit_msg)
+            action = "GIT_COMMIT" if commit_res.get("committed") else "GIT_COMMIT_FAILED"
+            _broadcast_event(action, commit_res.get("commit_hash", ""), commit_msg)
 
         return res_dict
 

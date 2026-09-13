@@ -89,6 +89,12 @@ def create_patch_api(
             max_attempts=max_attempts,
         )
 
+    # Live validation / attempt status → SSE activity feed
+    if watcher is not None:
+        engine.activity_logger = (
+            lambda action, path, details: watcher.log_activity(action, path, details)
+        )
+
     # Store engine on app.state for access from dashboard or tests
     app.state.engine = engine
 
