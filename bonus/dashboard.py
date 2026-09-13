@@ -835,7 +835,7 @@ def setup_bonus_dashboard(
                     )) {{
                         liveLog.style.display = 'block';
                         const line = '[' + (data.action || '') + '] '
-                            + (data.path || '') + ' — ' + (data.details || '') + '\\n';
+                            + (data.path || '') + ' - ' + (data.details || '') + '\\n';
                         liveLog.textContent += line;
                         liveLog.scrollTop = liveLog.scrollHeight;
                     }}
