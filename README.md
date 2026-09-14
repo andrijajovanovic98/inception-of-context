@@ -2,7 +2,7 @@
 
 > **AI-Native Autonomous Codebase Engine: Local-First Hybrid RAG, AST-Grounded Context & Self-Healing Patch Loop with 100% Atomic Rollback.**
 
-An offline, zero-external-dependency software engineering agent built for the 42 Budapest curriculum. IoC indexes codebases into logical AST chunks, performs deterministic hybrid semantic retrieval, answers architectural queries via local LLMs, and autonomously executes a multi-attempt self-healing patch loop with strict AST sanity refusals, test validation, and guaranteed 100% atomic rollbacks.
+An offline, zero-external-dependency software engineering agent built for the 42 curriculum. IoC indexes codebases into logical AST chunks, performs deterministic hybrid semantic retrieval, answers architectural queries via local LLMs, and autonomously executes a multi-attempt self-healing patch loop with strict AST sanity refusals, test validation, and guaranteed 100% atomic rollbacks.
 
 ---
 
