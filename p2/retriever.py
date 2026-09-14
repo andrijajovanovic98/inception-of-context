@@ -8,6 +8,7 @@ symbol existence and file-function inventory queries as required by the Subject.
 import os
 import re
 import sys
+import threading
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 # Ensure 100% offline HuggingFace operation
@@ -69,7 +70,16 @@ class Retriever:
         self.metadatas: List[Dict[str, Any]] = []
         self.tokenized_corpus: List[List[str]] = []
         self.symbol_inventory: Dict[str, Any] = {}
+        # refresh_index() runs on the watcher thread while retrieve() and the
+        # /chunks handler read the corpus; without this they can observe a
+        # half-swapped corpus and raise IndexError.
+        self._corpus_lock = threading.RLock()
         self.refresh_index()
+
+    def snapshot_corpus(self) -> Tuple[List[str], List[str], List[Dict[str, Any]]]:
+        """Return a consistent (ids, documents, metadatas) triple."""
+        with self._corpus_lock:
+            return self.chunk_ids, self.documents, self.metadatas
 
     def refresh_index(self) -> None:
         """
@@ -77,51 +87,61 @@ class Retriever:
         Executed at startup and whenever the index is updated.
         """
         if self.db.count() == 0:
-            self.bm25 = None
-            self.chunk_ids = []
-            self.documents = []
-            self.metadatas = []
-            self.tokenized_corpus = []
-            self.symbol_inventory = {}
+            with self._corpus_lock:
+                self.bm25 = None
+                self.chunk_ids = []
+                self.documents = []
+                self.metadatas = []
+                self.tokenized_corpus = []
+                self.symbol_inventory = {}
             return
 
         all_data = self.db.collection.get(include=["metadatas", "documents"])
-        self.chunk_ids = list(all_data.get("ids") or [])
-        self.documents = cast(List[str], all_data.get("documents") or [])
-        self.metadatas = cast(List[Dict[str, Any]], all_data.get("metadatas") or [])
+        chunk_ids = list(all_data.get("ids") or [])
+        documents = cast(List[str], all_data.get("documents") or [])
+        metadatas = cast(List[Dict[str, Any]], all_data.get("metadatas") or [])
 
-        # Build tokenized corpus for BM25
-        self.tokenized_corpus = [tokenize_code(doc) for doc in self.documents]
-        if BM25_AVAILABLE and self.tokenized_corpus:
-            self.bm25 = BM25Okapi(self.tokenized_corpus)
-        else:
-            self.bm25 = None
+        # Build everything off to the side first, then publish in one swap.
+        tokenized_corpus = [tokenize_code(doc) for doc in documents]
+        bm25 = BM25Okapi(tokenized_corpus) if (BM25_AVAILABLE and tokenized_corpus) else None
+        inventory = self._compute_symbol_inventory(chunk_ids, documents, metadatas)
 
-        # Build symbol inventory for deterministic pre-resolution
-        self._build_symbol_inventory()
+        with self._corpus_lock:
+            self.chunk_ids = chunk_ids
+            self.documents = documents
+            self.metadatas = metadatas
+            self.tokenized_corpus = tokenized_corpus
+            self.bm25 = bm25
+            self.symbol_inventory = inventory
 
-    def _build_symbol_inventory(self) -> None:
+    def _compute_symbol_inventory(
+        self,
+        chunk_ids: List[str],
+        documents: List[str],
+        metadatas: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
         """
         Catalog all functions, methods, and classes indexed across all files.
         This provides verified ground truth before the LLM generates any answer.
+        Pure with respect to self so the result can be swapped in atomically.
         """
         by_name: Dict[str, List[Dict[str, Any]]] = {}
         by_file: Dict[str, List[Dict[str, Any]]] = {}
         all_functions: Set[str] = set()
         all_classes: Set[str] = set()
 
-        for idx, meta in enumerate(self.metadatas):
+        for idx, meta in enumerate(metadatas):
             name = meta.get("symbol_name", "")
             sym_type = meta.get("symbol_type", "")
             fpath = meta.get("file_path", "")
             entry = {
-                "chunk_id": self.chunk_ids[idx] if idx < len(self.chunk_ids) else "",
+                "chunk_id": chunk_ids[idx] if idx < len(chunk_ids) else "",
                 "file_path": fpath,
                 "symbol_name": name,
                 "symbol_type": sym_type,
                 "start_line": meta.get("start_line"),
                 "end_line": meta.get("end_line"),
-                "content": self.documents[idx] if idx < len(self.documents) else "",
+                "content": documents[idx] if idx < len(documents) else "",
             }
 
             if fpath not in by_file:
@@ -149,7 +169,7 @@ class Retriever:
                 elif sym_type == "class":
                     all_classes.add(name)
 
-        self.symbol_inventory = {
+        return {
             "by_name": by_name,
             "by_file": by_file,
             "all_functions": sorted(list(all_functions)),
@@ -278,7 +298,12 @@ class Retriever:
         Subject Requirement:
         Returns top-k code chunks with their similarity score.
         """
-        total_count = len(self.chunk_ids)
+        # One consistent view for the whole call; refresh_index() may swap the
+        # corpus on the watcher thread at any point.
+        chunk_ids, documents, metadatas = self.snapshot_corpus()
+        bm25 = self.bm25
+
+        total_count = len(chunk_ids)
         if total_count == 0:
             return []
 
@@ -302,16 +327,18 @@ class Retriever:
         bm25_scores: Dict[str, float] = {}
         query_tokens = tokenize_code(query)
 
-        if self.bm25 and query_tokens:
-            raw_bm25 = self.bm25.get_scores(query_tokens)
+        if bm25 and query_tokens:
+            raw_bm25 = bm25.get_scores(query_tokens)
             max_b = max(raw_bm25) if len(raw_bm25) > 0 else 0.0
-            for idx, cid in enumerate(self.chunk_ids):
+            for idx, cid in enumerate(chunk_ids):
+                if idx >= len(raw_bm25):
+                    break
                 score = float(raw_bm25[idx])
                 # Normalize BM25 score to [0, 1]
                 normalized_b = (score / max_b) if max_b > 0 else 0.0
                 bm25_scores[cid] = normalized_b
         else:
-            for cid in self.chunk_ids:
+            for cid in chunk_ids:
                 bm25_scores[cid] = 0.0
 
         # 3. Combine scores & apply symbol exact match boost
@@ -319,7 +346,7 @@ class Retriever:
             sorted(bm25_scores.keys(), key=lambda c: bm25_scores[c], reverse=True)[:candidate_count]
         )
 
-        id_to_idx = {cid: idx for idx, cid in enumerate(self.chunk_ids)}
+        id_to_idx = {cid: idx for idx, cid in enumerate(chunk_ids)}
         scored_candidates: List[Tuple[float, Dict[str, Any]]] = []
 
         query_words = set(query_tokens)
@@ -329,9 +356,11 @@ class Retriever:
             if maybe_idx is None:
                 continue
             idx = maybe_idx
+            if idx >= len(metadatas) or idx >= len(documents):
+                continue
 
-            meta = self.metadatas[idx]
-            doc = self.documents[idx]
+            meta = metadatas[idx]
+            doc = documents[idx]
             d_score = dense_scores.get(cid, 0.0)
             b_score = bm25_scores.get(cid, 0.0)
 
@@ -346,7 +375,11 @@ class Retriever:
             short_sym = symbol_name.split(".")[-1] if "." in symbol_name else symbol_name
             if symbol_name and (symbol_name in query_words or short_sym in query_words):
                 boost += 0.25
-            if file_name and file_name in query_words:
+            # Match the stem: tokenize_code() splits on '.', so the query for
+            # "calculator.py" yields {'calculator', 'py'} and the full filename
+            # would never be present as a token.
+            file_stem = os.path.splitext(file_name)[0]
+            if file_stem and file_stem in query_words:
                 boost += 0.15
 
             final_score = min(1.0, combined_score + boost)

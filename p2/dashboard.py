@@ -469,7 +469,7 @@ def setup_dashboard(
                             <th>Status</th>
                         </tr>
                     </thead>
-                    <tbody id="files-tbody">
+                    <tbody id="files-table-body">
                         {files_rows}
                     </tbody>
                 </table>
@@ -755,6 +755,61 @@ ${{c.content_hash.substring(0, 10)}}...</span>
                 .replace(/'/g, "&#039;");
         }}
 
+
+        // Keep the Overview cards, the file table and the Files dropdown live.
+        // Watcher events carry no chunk counts, so the previous
+        // `if (data.total_chunks !== undefined)` guard never fired and the cards
+        // stayed frozen at their server-rendered values until a page reload.
+        async function refreshStats() {{
+            try {{
+                const statusRes = await fetch('/status');
+                if (statusRes.ok) {{
+                    const data = await statusRes.json();
+                    const chunkEl = document.getElementById('card-total-chunks');
+                    const fileEl = document.getElementById('card-total-files');
+                    if (chunkEl) chunkEl.innerText = data.total_chunks;
+                    if (fileEl) fileEl.innerText = data.total_files;
+                }}
+
+                const filesRes = await fetch('/files');
+                if (!filesRes.ok) return;
+                const filesData = await filesRes.json();
+                const files = filesData.files || [];
+
+                const tbody = document.getElementById('files-table-body');
+                if (tbody) {{
+                    tbody.innerHTML = files.length
+                        ? files.map(f => `
+                            <tr>
+                                <td><code>${{escapeHtml(f.path)}}</code></td>
+                                <td><strong>${{f.chunk_count}}</strong> chunks</td>
+                                <td><span style="color:var(--accent-green)">Synced</span></td>
+                            </tr>`).join('')
+                        : '<tr><td colspan="3" style="text-align:center; '
+                          + 'color:var(--text-muted);">No files indexed yet.</td></tr>';
+                }}
+
+                // Preserve the user's selection while refreshing the options
+                const select = document.getElementById('file-select');
+                if (select) {{
+                    const current = select.value;
+                    const wanted = files.map(f => f.path).join('\u0000');
+                    if (select.dataset.paths !== wanted) {{
+                        select.innerHTML = files
+                            .map(f => {{
+                                const p = escapeHtml(f.path);
+                                return `<option value="${{p}}">${{p}}</option>`;
+                            }})
+                            .join('');
+                        select.dataset.paths = wanted;
+                        if (files.some(f => f.path === current)) select.value = current;
+                    }}
+                }}
+            }} catch (e) {{
+                console.error('Stats refresh failed', e);
+            }}
+        }}
+
         // Server-Sent Events (SSE) live connection
         const eventSource = new EventSource('/events');
         eventSource.onmessage = function(event) {{
@@ -775,11 +830,8 @@ ${{c.content_hash.substring(0, 10)}}...</span>
                 `;
                 feed.insertBefore(li, feed.firstChild);
 
-                // Update summary stats if present
-                if (data.total_chunks !== undefined) {{
-                    const el = document.getElementById('card-total-chunks');
-                    if (el) el.innerText = data.total_chunks;
-                }}
+                // Refresh Overview cards, file table and Files dropdown
+                refreshStats();
             }} catch (e) {{}}
         }};
     </script>

@@ -5,8 +5,25 @@ Formats grounded prompts combining retrieved code chunks and verified AST ground
 to prevent hallucinations as required by the Subject.
 """
 
+import logging
 import os
+import sys
 from typing import Any, Dict, List, Optional
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from p1.markers import (  # noqa: E402
+    RAG_CHUNK_PREFIX,
+    RAG_CONTEXT_HEADER,
+    RAG_GROUND_TRUTH_HEADER,
+    RAG_INSTRUCTIONS_HEADER,
+    RAG_QUESTION_HEADER,
+    RAG_RELEVANCE_LABEL,
+)
+
+logger = logging.getLogger("ioc.llm")
 
 try:
     import httpx
@@ -51,6 +68,27 @@ class OllamaClient:
         self.base_url = host.rstrip("/")
         self.model = model
         self.timeout = timeout
+        self.using_fallback_port = False
+
+    def _use_fallback(self, fallback_url: str) -> None:
+        """
+        Switch to the standard :11434 daemon and say so loudly.
+
+        The Makefile binds a private :11435 specifically to avoid the shared
+        campus Ollama, so falling back is a real change of runtime and must
+        never happen silently.
+        """
+        if not self.using_fallback_port:
+            message = (
+                f"[!] Ollama unreachable at {self.base_url}; "
+                f"falling back to {fallback_url}. "
+                "This is NOT the private IoC daemon started by `make setup` - "
+                "the model set and storage directory may differ."
+            )
+            logger.warning(message)
+            print(message, file=sys.stderr)
+        self.base_url = fallback_url
+        self.using_fallback_port = True
 
     async def is_available(self) -> bool:
         """Check if the local Ollama instance is alive and responding."""
@@ -68,7 +106,7 @@ class OllamaClient:
                     async with httpx.AsyncClient(timeout=3.0) as client:
                         res = await client.get(f"{fallback_url}/api/tags")
                         if res.status_code == 200:
-                            self.base_url = fallback_url
+                            self._use_fallback(fallback_url)
                             return True
                 except Exception:
                     pass
@@ -116,7 +154,7 @@ class OllamaClient:
                     async with httpx.AsyncClient(timeout=self.timeout) as client:
                         res = await client.post(f"{fallback_url}/api/generate", json=payload)
                         if res.status_code == 200:
-                            self.base_url = fallback_url
+                            self._use_fallback(fallback_url)
                             return res.json().get("response", "").strip()
                 except Exception:
                     pass
@@ -169,14 +207,14 @@ def build_rag_prompt(
     # 1. High-priority Verified AST Ground Truth
     if pre_resolved and pre_resolved.get("summary"):
         sections.append(
-            "=== VERIFIED CODEBASE GROUND TRUTH (AST ANALYSIS) ===\n"
+            f"{RAG_GROUND_TRUTH_HEADER}\n"
             f"{pre_resolved['summary']}\n"
             "Treat the above verified facts as absolute truth.\n"
         )
 
     # 2. Retrieved Context Chunks
     if context_chunks:
-        sections.append("=== RETRIEVED CODEBASE CONTEXT CHUNKS ===")
+        sections.append(RAG_CONTEXT_HEADER)
         for idx, c in enumerate(context_chunks, 1):
             score = c.get("similarity_score", 0.0)
             fpath = c.get("file_path", "unknown")
@@ -185,21 +223,21 @@ def build_rag_prompt(
             e_line = c.get("end_line", "?")
             content = c.get("content", "").strip()
             sections.append(
-                f"--- [Chunk {idx}] File: {fpath} | Symbol: {sym} "
-                f"(Lines {s_line}-{e_line}) | Relevance: {score:.4f} ---\n"
+                f"{RAG_CHUNK_PREFIX} {idx}] File: {fpath} | Symbol: {sym} "
+                f"(Lines {s_line}-{e_line}) | {RAG_RELEVANCE_LABEL} {score:.4f} ---\n"
                 f"{content}\n"
             )
     else:
         sections.append(
-            "=== RETRIEVED CODEBASE CONTEXT CHUNKS ===\n"
+            f"{RAG_CONTEXT_HEADER}\n"
             "No relevant code chunks found in index for this query.\n"
         )
 
     # 3. User Query
     sections.append(
-        "=== USER QUESTION ===\n"
+        f"{RAG_QUESTION_HEADER}\n"
         f"{question}\n\n"
-        "=== INSTRUCTIONS FOR YOUR ANSWER ===\n"
+        f"{RAG_INSTRUCTIONS_HEADER}\n"
         "Provide a grounded, technical answer based strictly on the context and verified facts above.\n"
         "If asking about the existence of a function or class, state clearly whether it exists or not."
     )

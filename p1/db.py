@@ -8,9 +8,35 @@ import os
 from typing import Any, Dict, List, Optional, cast
 from p1.chunker import CodeChunk
 
-# Enable offline mode automatically if weights already exist in local cache
-HF_CACHE_DIR = os.path.expanduser("~/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2")
-if os.path.exists(HF_CACHE_DIR):
+# Enable offline mode automatically if weights already exist in local cache.
+# HF_HOME must be honoured: `make setup` puts the weights under /tmp/ioc/hf-cache,
+# so probing only ~/.cache would never find them and every run would hit the network.
+_HF_MODEL_DIR = "hub/models--sentence-transformers--all-MiniLM-L6-v2"
+
+
+def _hf_cache_roots() -> List[str]:
+    """Candidate HuggingFace cache roots, most specific first."""
+    roots = []
+    for env_var in ("HF_HOME", "TRANSFORMERS_CACHE", "HUGGINGFACE_HUB_CACHE"):
+        value = os.environ.get(env_var)
+        if value:
+            roots.append(value)
+    roots.append(os.path.expanduser("~/.cache/huggingface"))
+    return roots
+
+
+def embedding_weights_present() -> bool:
+    """True when the all-MiniLM-L6-v2 weights are already on disk locally."""
+    for root in _hf_cache_roots():
+        if os.path.isdir(os.path.join(root, _HF_MODEL_DIR)):
+            return True
+        # HUGGINGFACE_HUB_CACHE points straight at the "hub" directory
+        if os.path.isdir(os.path.join(root, os.path.basename(_HF_MODEL_DIR))):
+            return True
+    return False
+
+
+if embedding_weights_present():
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
     os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 

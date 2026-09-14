@@ -6,6 +6,7 @@ Drives the autonomous coding cycle:
   error feedback retry loop (max 3 attempts) -> commit or 100% rollback.
 """
 
+import asyncio
 import os
 import shlex
 import subprocess
@@ -23,12 +24,12 @@ try:
 except ImportError:
     YAML_AVAILABLE = False
 
-from p1.indexer import CodebaseIndexer  # noqa: E402
+from p1.indexer import CodebaseIndexer, should_ignore_path  # noqa: E402
 from p2.llm import OllamaClient  # noqa: E402
 from p2.retriever import Retriever  # noqa: E402
 from p3.applier import PatchApplier  # noqa: E402
 from p3.generator import PatchGenerator  # noqa: E402
-from p3.sanity import SanityChecker  # noqa: E402
+from p3.sanity import RULE_LABELS, SanityCheckResult, SanityChecker  # noqa: E402
 
 DEFAULT_VALIDATION_COMMAND = "python3 -m py_compile {files}"
 
@@ -60,6 +61,11 @@ class AttemptRecord:
     patch: Optional[Dict[str, Any]] = None
     sanity_passed: bool = False
     sanity_errors: List[str] = field(default_factory=list)
+    # Per-rule pass/fail so the dashboard can show which specific Subject VI.3
+    # rules refused the patch instead of colouring all pills from one boolean.
+    sanity_rules: Dict[str, bool] = field(default_factory=dict)
+    sanity_rule_labels: Dict[str, str] = field(default_factory=dict)
+    diffs: List[Dict[str, Any]] = field(default_factory=list)
     applied: bool = False
     validation_command: str = ""
     validation_output: str = ""
@@ -132,26 +138,51 @@ class PatchLoopEngine:
             return text
         return text[: limit - 3] + "..."
 
-    def _run_validation(self, modified_files: List[str]) -> Tuple[bool, str, int, str]:
-        """
-        Executes the configured validation command over modified files.
-        Returns: (passed: bool, command_run: str, exit_code: int, output_log: str)
-        """
+    def _build_validation_command(self, modified_files: List[str]) -> str:
+        """Substitute {files} in the configured command with the surviving paths."""
         raw_cmd_template = load_validation_command(self.target_dir)
 
-        # Prepare file arguments relative to target_dir
+        # Prepare file arguments relative to target_dir. Paths the patch deleted
+        # must be dropped: handing a removed file to `py_compile` guarantees a
+        # non-zero exit, so a delete op could never validate.
         rel_files = []
         for fpath in modified_files:
-            if os.path.isabs(fpath):
-                rel = os.path.relpath(fpath, self.target_dir)
-            else:
-                rel = fpath
+            abs_path = fpath if os.path.isabs(fpath) else os.path.join(self.target_dir, fpath)
+            if not os.path.exists(abs_path):
+                continue
+            rel = os.path.relpath(abs_path, self.target_dir)
             # Quote arguments safely
             rel_files.append(shlex.quote(rel))
 
-        files_arg = " ".join(rel_files) if rel_files else "."
-        command = raw_cmd_template.replace("{files}", files_arg)
+        if not rel_files:
+            # Every path the patch touched is gone (a pure-delete patch). "."
+            # would hand py_compile a directory and fail for the wrong reason,
+            # so validate what is actually left of the project instead.
+            rel_files = [shlex.quote(p) for p in self._surviving_sources()]
 
+        files_arg = " ".join(rel_files) if rel_files else "."
+        return raw_cmd_template.replace("{files}", files_arg)
+
+    def _surviving_sources(self) -> List[str]:
+        """Target-relative Python sources still on disk, for post-delete validation."""
+        found: List[str] = []
+        for root, dirs, files in os.walk(self.target_dir):
+            dirs[:] = [
+                d for d in dirs
+                if not should_ignore_path(
+                    os.path.relpath(os.path.join(root, d), self.target_dir)
+                )
+            ]
+            for name in files:
+                if not name.endswith(".py"):
+                    continue
+                rel = os.path.relpath(os.path.join(root, name), self.target_dir)
+                if not should_ignore_path(rel):
+                    found.append(rel)
+        return sorted(found)
+
+    def _run_validation_blocking(self, command: str) -> Tuple[bool, str, int, str]:
+        """Blocking half of validation; always called on a worker thread."""
         try:
             res = subprocess.run(
                 command,
@@ -168,6 +199,20 @@ class PatchLoopEngine:
             return False, command, -1, "Validation command timed out after 30 seconds"
         except Exception as e:
             return False, command, -1, f"Failed to execute validation command: {e}"
+
+    async def _run_validation(self, modified_files: List[str]) -> Tuple[bool, str, int, str]:
+        """
+        Executes the configured validation command over modified files.
+        Returns: (passed: bool, command_run: str, exit_code: int, output_log: str)
+
+        Runs on a worker thread: a blocking subprocess.run here would freeze the
+        whole server for up to 30s, stalling SSE, /status and the live log.
+        """
+        command = self._build_validation_command(modified_files)
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, self._run_validation_blocking, command
+        )
 
     async def run(self, intent: str, k: int = 3) -> PatchLoopResult:
         """
@@ -192,6 +237,11 @@ class PatchLoopEngine:
                 attempts=[],
                 error_message="Coding intent cannot be empty",
             )
+
+        # Start from a clean slate. The engine is shared across every
+        # /patch/run call, so a snapshot left by an earlier run must not decide
+        # what this run's rollback restores.
+        self.applier.begin_run()
 
         # 1. Retrieve useful codebase context
         context_chunks = self.retriever.retrieve(query=intent, k=k) if self.retriever else []
@@ -238,9 +288,25 @@ class PatchLoopEngine:
             # Stage 2: Sanity Check (Hard refusals before any disk write)
             # -----------------------------------------------------------------
             self._emit("PATCH_SANITY", attempt_label, "Running AST sanity checks...")
-            sanity_res = self.sanity_checker.check(patch)
+            try:
+                sanity_res = self.sanity_checker.check(patch)
+            except Exception as e:
+                # A schema surprise is recoverable feedback, not a fatal error:
+                # letting it escape would abort the loop and burn the remaining
+                # attempts the self-healing design depends on.
+                sanity_res = SanityCheckResult(
+                    passed=False,
+                    errors=[
+                        f"Patch payload could not be validated ({type(e).__name__}: {e}). "
+                        f"Emit the exact documented schema: "
+                        f'{{"summary": "...", "files": [{{"path": "...", '
+                        f'"op": "modify", "content": "..."}}]}}'
+                    ],
+                )
             rec.sanity_passed = sanity_res.passed
             rec.sanity_errors = sanity_res.errors
+            rec.sanity_rules = sanity_res.rule_status
+            rec.sanity_rule_labels = RULE_LABELS
 
             if not sanity_res.passed:
                 rec.status = "sanity_failed"
@@ -284,9 +350,11 @@ class PatchLoopEngine:
             self._emit(
                 "PATCH_VALIDATION",
                 attempt_label,
-                f"Running validation ({load_validation_command(self.target_dir)})...",
+                "Running validation ("
+                + self._build_validation_command(self.applier.last_applied_files)
+                + ")...",
             )
-            passed, cmd, exit_code, val_output = self._run_validation(
+            passed, cmd, exit_code, val_output = await self._run_validation(
                 modified_files=self.applier.last_applied_files
             )
             rec.validation_command = cmd

@@ -797,6 +797,38 @@ def setup_p3_dashboard(
             }}
         }}
 
+        // Order the Subject VI.3 rules are shown in. Labels come from the API
+        // when present so they can never drift from the checker.
+        const SANITY_RULE_ORDER = ['1', '2', '3', '0', '4', '5', '6'];
+        const SANITY_FALLBACK_LABELS = {{
+            '0': 'Python Syntax Parse',
+            '1': 'Retrieval Markers Guard',
+            '2': 'No Overwrite on Create',
+            '3': 'Non-Empty Content',
+            '4': 'AST No-Stub Body',
+            '5': 'File Shrinkage \u2264 60%',
+            '6': 'Touches \u2264 3 Files'
+        }};
+
+        function renderSanityPills(att) {{
+            const rules = att.sanity_rules || {{}};
+            const labels = att.sanity_rule_labels || {{}};
+            const hasRules = Object.keys(rules).length > 0;
+            let pills = '';
+            SANITY_RULE_ORDER.forEach(key => {{
+                // Older payloads carry no per-rule detail; fall back to the
+                // aggregate so the panel still renders.
+                const passed = hasRules ? rules[key] !== false : !!att.sanity_passed;
+                const label = labels[key] || SANITY_FALLBACK_LABELS[key] || ('Rule ' + key);
+                pills += `
+                    <div class="sanity-pill ${{passed ? 'passed' : 'failed'}}">
+                        ${{passed ? '\u2713' : '\u2717'}} ${{escapeHtml(label)}}
+                    </div>
+                `;
+            }});
+            return '<div class="sanity-grid">' + pills + '</div>';
+        }}
+
         function renderPatchLoopResult(result) {{
             const statusCard = document.getElementById('patch-status-card');
             const statusBadge = document.getElementById('patch-status-badge');
@@ -840,31 +872,10 @@ def setup_p3_dashboard(
                 const sErrors = att.sanity_errors || [];
                 const sPassed = att.sanity_passed;
 
-                let sanityHtml = `
-                    <div class="sanity-grid">
-                        <div class="sanity-pill ${{sPassed ? 'passed' : 'failed'}}">
-                            ${{sPassed ? '✓' : '✗'}} Retrieval Markers Guard
-                        </div>
-                        <div class="sanity-pill ${{sPassed ? 'passed' : 'failed'}}">
-                            ${{sPassed ? '✓' : '✗'}} No Overwrite on Create
-                        </div>
-                        <div class="sanity-pill ${{sPassed ? 'passed' : 'failed'}}">
-                            ${{sPassed ? '✓' : '✗'}} Non-Empty Content
-                        </div>
-                        <div class="sanity-pill ${{sPassed ? 'passed' : 'failed'}}">
-                            ${{sPassed ? '✓' : '✗'}} Python Syntax Parse
-                        </div>
-                        <div class="sanity-pill ${{sPassed ? 'passed' : 'failed'}}">
-                            ${{sPassed ? '✓' : '✗'}} AST No-Stub Body
-                        </div>
-                        <div class="sanity-pill ${{sPassed ? 'passed' : 'failed'}}">
-                            ${{sPassed ? '✓' : '✗'}} File Shrinkage &le; 60%
-                        </div>
-                        <div class="sanity-pill ${{sPassed ? 'passed' : 'failed'}}">
-                            ${{sPassed ? '✓' : '✗'}} Touches &le; 3 Files
-                        </div>
-                    </div>
-                `;
+                // Real per-rule verdicts from the sanity checker. Driving all
+                // seven pills from one aggregate boolean marked passing rules as
+                // failed and claimed results the API never reported.
+                let sanityHtml = renderSanityPills(att);
 
                 if (!sPassed && sErrors.length > 0) {{
                     sanityHtml += `
@@ -942,7 +953,7 @@ def setup_p3_dashboard(
                             ${{statusPill}}
                         </div>
                         <span style="font-size:12px; color:var(--text-muted);">
-                            ${{escapeHtml(patchObj.explanation || '')}}
+                            ${{escapeHtml(patchObj.summary || patchObj.explanation || '')}}
                         </span>
                     </div>
                     <div class="attempt-body">
@@ -1171,6 +1182,61 @@ def setup_p3_dashboard(
                 .replace(/'/g, "&#039;");
         }}
 
+
+        // Keep the Overview cards, the file table and the Files dropdown live.
+        // Watcher events carry no chunk counts, so the previous
+        // `if (data.total_chunks !== undefined)` guard never fired and the cards
+        // stayed frozen at their server-rendered values until a page reload.
+        async function refreshStats() {{
+            try {{
+                const statusRes = await fetch('/status');
+                if (statusRes.ok) {{
+                    const data = await statusRes.json();
+                    const chunkEl = document.getElementById('card-total-chunks');
+                    const fileEl = document.getElementById('card-total-files');
+                    if (chunkEl) chunkEl.innerText = data.total_chunks;
+                    if (fileEl) fileEl.innerText = data.total_files;
+                }}
+
+                const filesRes = await fetch('/files');
+                if (!filesRes.ok) return;
+                const filesData = await filesRes.json();
+                const files = filesData.files || [];
+
+                const tbody = document.getElementById('files-table-body');
+                if (tbody) {{
+                    tbody.innerHTML = files.length
+                        ? files.map(f => `
+                            <tr>
+                                <td><code>${{escapeHtml(f.path)}}</code></td>
+                                <td><strong>${{f.chunk_count}}</strong> chunks</td>
+                                <td><span style="color:var(--accent-green)">Synced</span></td>
+                            </tr>`).join('')
+                        : '<tr><td colspan="3" style="text-align:center; '
+                          + 'color:var(--text-muted);">No files indexed yet.</td></tr>';
+                }}
+
+                // Preserve the user's selection while refreshing the options
+                const select = document.getElementById('file-select');
+                if (select) {{
+                    const current = select.value;
+                    const wanted = files.map(f => f.path).join('\u0000');
+                    if (select.dataset.paths !== wanted) {{
+                        select.innerHTML = files
+                            .map(f => {{
+                                const p = escapeHtml(f.path);
+                                return `<option value="${{p}}">${{p}}</option>`;
+                            }})
+                            .join('');
+                        select.dataset.paths = wanted;
+                        if (files.some(f => f.path === current)) select.value = current;
+                    }}
+                }}
+            }} catch (e) {{
+                console.error('Stats refresh failed', e);
+            }}
+        }}
+
         // Server-Sent Events (SSE) live connection
         const eventSource = new EventSource('/events');
         eventSource.onmessage = function(event) {{
@@ -1193,10 +1259,8 @@ def setup_p3_dashboard(
                     feed.insertBefore(li, feed.firstChild);
                 }}
 
-                if (data.total_chunks !== undefined) {{
-                    const el = document.getElementById('card-total-chunks');
-                    if (el) el.innerText = data.total_chunks;
-                }}
+                // Refresh Overview cards, file table and Files dropdown
+                refreshStats();
 
                 // If patch event received, update badge + live validation log
                 if (data.action && data.action.startsWith('PATCH_')) {{

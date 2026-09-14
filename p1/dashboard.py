@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, List, Optional
 from p1.chunker import chunk_file
 from p1.dashboard_modal import MODAL_CSS, MODAL_HTML, MODAL_JS
-from p1.indexer import CodebaseIndexer
+from p1.indexer import CodebaseIndexer, safe_join
 from p1.watcher import CodebaseWatcher
 
 try:
@@ -114,9 +114,10 @@ def create_dashboard_app(
         """Browsers always request this; serve a tiny SVG to avoid 404 noise."""
         return Response(content=_FAVICON_SVG, media_type="image/svg+xml")
 
-    @app.get("/api/status")
-    async def get_status() -> Dict[str, Any]:
-        """Subject requirement: GET /status exposing the index state."""
+    # Subject requirement: GET /status exposing the index state.
+    # Registered at both the documented root path and the /api/* path the
+    # dashboard JavaScript calls, so the README endpoint table works verbatim.
+    async def _handle_status() -> Dict[str, Any]:
         stats = indexer.db.get_stats()
         return {
             "status": "ready",
@@ -129,9 +130,16 @@ def create_dashboard_app(
             "persist_dir": stats["persist_dir"],
         }
 
-    @app.get("/api/files")
-    async def get_files() -> Dict[str, Any]:
-        """Subject requirement: GET /files returning file list and chunk counts."""
+    @app.get("/status")
+    async def get_status_root() -> Dict[str, Any]:
+        return await _handle_status()
+
+    @app.get("/api/status")
+    async def get_status_api() -> Dict[str, Any]:
+        return await _handle_status()
+
+    # Subject requirement: GET /files returning file list and chunk counts.
+    async def _handle_files() -> Dict[str, Any]:
         stats = indexer.db.get_stats()
         file_list = [
             {"path": path, "chunk_count": count}
@@ -142,12 +150,24 @@ def create_dashboard_app(
             "files": file_list,
         }
 
-    @app.get("/api/file")
-    async def get_file_chunks(
-        path: str = Query(..., description="Target-relative file path"),
-    ) -> Dict[str, Any]:
-        """Subject requirement: GET /file?path=... returning detailed chunks of a file."""
-        abs_path = os.path.join(indexer.target_dir, path)
+    @app.get("/files")
+    async def get_files_root() -> Dict[str, Any]:
+        return await _handle_files()
+
+    @app.get("/api/files")
+    async def get_files_api() -> Dict[str, Any]:
+        return await _handle_files()
+
+    # Subject requirement: GET /file?path=... returning detailed chunks of a file.
+    async def _handle_file(path: str) -> Dict[str, Any]:
+        # Containment check first: the parameter is attacker-controlled and must
+        # never be able to read outside the indexed target directory.
+        abs_path = safe_join(indexer.target_dir, path)
+        if abs_path is None:
+            raise HTTPException(
+                status_code=403,
+                detail="Path escapes the indexed target directory",
+            )
         if not os.path.isfile(abs_path):
             raise HTTPException(status_code=404, detail="File not found on disk")
 
@@ -165,6 +185,18 @@ def create_dashboard_app(
             "total_chunks": len(chunk_dicts),
             "chunks": chunk_dicts,
         }
+
+    @app.get("/file")
+    async def get_file_root(
+        path: str = Query(..., description="Target-relative file path"),
+    ) -> Dict[str, Any]:
+        return await _handle_file(path)
+
+    @app.get("/api/file")
+    async def get_file_api(
+        path: str = Query(..., description="Target-relative file path"),
+    ) -> Dict[str, Any]:
+        return await _handle_file(path)
 
     @app.get("/api/activity")
     async def get_activity(limit: int = 50) -> Dict[str, Any]:

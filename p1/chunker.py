@@ -8,7 +8,7 @@ import ast
 import hashlib
 import re
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 @dataclass
@@ -59,11 +59,35 @@ class ASTChunker:
                 start_line = min(dec_starts + [start_line])
         return start_line
 
+    def _gap_ranges(self, chunks: List[CodeChunk]) -> List[Tuple[int, int]]:
+        """
+        Return every maximal run of source lines not covered by any chunk.
+
+        Module-level statements sitting *between* two symbols (constants, config,
+        registration calls) belong to no function or class, so without this they
+        would never be indexed and could never be retrieved.
+        """
+        covered: Set[int] = set()
+        for c in chunks:
+            covered.update(range(c.start_line, c.end_line + 1))
+
+        gaps: List[Tuple[int, int]] = []
+        start: Optional[int] = None
+        for line_no in range(1, self.total_lines + 1):
+            if line_no in covered:
+                if start is not None:
+                    gaps.append((start, line_no - 1))
+                    start = None
+            elif start is None:
+                start = line_no
+        if start is not None:
+            gaps.append((start, self.total_lines))
+        return gaps
+
     def chunk(self) -> List[CodeChunk]:
         """Parse source into AST and extract logical function, method, and class chunks."""
         tree = ast.parse(self.source_code, filename=self.file_path)
         chunks: List[CodeChunk] = []
-        covered_ranges: List[tuple] = []
 
         # 1. Inspect top-level module docstring or header code before first symbol
         first_symbol_line = self.total_lines + 1
@@ -108,7 +132,6 @@ class ASTChunker:
                         content_hash=compute_sha256(content),
                     )
                 )
-                covered_ranges.append((start_line, end_line))
 
             elif isinstance(node, ast.ClassDef):
                 class_start = self._get_start_line_with_decorators(node)
@@ -175,25 +198,33 @@ class ASTChunker:
                             )
                         )
 
-        # 3. Check for any trailing module code (e.g. if __name__ == '__main__': block)
+        # 3. Cover every remaining line: trailing code (e.g. the
+        #    if __name__ == '__main__': block) AND module-level statements
+        #    sandwiched between two symbols, which belong to no symbol at all.
         last_covered = max([c.end_line for c in chunks], default=0)
-        if last_covered < self.total_lines:
-            trailing_content = self._get_slice(last_covered + 1, self.total_lines).strip()
-            if trailing_content:
-                chunk_id = f"{self.file_path}:<entrypoint>:{last_covered + 1}"
-                chunks.append(
-                    CodeChunk(
-                        chunk_id=chunk_id,
-                        file_path=self.file_path,
-                        symbol_name="<entrypoint>",
-                        symbol_type="block",
-                        start_line=last_covered + 1,
-                        end_line=self.total_lines,
-                        content=trailing_content,
-                        content_hash=compute_sha256(trailing_content),
-                    )
-                )
+        for gap_start, gap_end in self._gap_ranges(chunks):
+            gap_content = self._get_slice(gap_start, gap_end).strip()
+            if not gap_content:
+                continue
 
+            is_trailing = gap_start > last_covered
+            symbol_name = "<entrypoint>" if is_trailing else "<module>"
+            chunk_id = f"{self.file_path}:{symbol_name}:{gap_start}"
+            chunks.append(
+                CodeChunk(
+                    chunk_id=chunk_id,
+                    file_path=self.file_path,
+                    symbol_name=symbol_name,
+                    symbol_type="block",
+                    start_line=gap_start,
+                    end_line=gap_end,
+                    content=gap_content,
+                    content_hash=compute_sha256(gap_content),
+                )
+            )
+
+        # Keep chunks in source order so gutter markers and the Files tab read top-down
+        chunks.sort(key=lambda c: (c.start_line, c.end_line))
         return chunks
 
 

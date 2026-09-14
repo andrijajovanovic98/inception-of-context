@@ -26,6 +26,7 @@ REQ_P2       := p2/requirements.txt
 REQ_P3       := p3/requirements.txt
 LLM_MODEL    := qwen2.5:3b
 EMBED_MODEL  := all-MiniLM-L6-v2
+EMBED_CACHE  := $(HF_HOME)/hub/models--sentence-transformers--$(EMBED_MODEL)
 PORT         := 8000
 TARGET       := demo_app
 LINT_DIRS    := p1 p2 p3 bonus demo_app
@@ -125,7 +126,7 @@ help:
 	@echo "make mypy             - run mypy on $(LINT_DIRS)"
 	@echo "make lint             - run flake8 + mypy on $(LINT_DIRS)"
 	@echo "make stop             - stop IoC ollama (pid file + IoC orphans; safe for make)"
-	@echo "make clean            - docker-clean + remove chroma/pip/hf caches (keep venv)"
+	@echo "make clean            - docker-clean + remove chroma/pip caches (keep venv + weights)"
 	@echo "make fclean           - docker-fclean + full wipe of /tmp/ioc"
 	@echo "make re               - fclean + setup"
 
@@ -172,12 +173,21 @@ ensure-deps: ensure-venv
 	@chmod +x $(IOC_DIR)/run.sh
 
 # Fast preflight for make p1, p2, p3 (no pip install, no empty venv creation)
+# Checks BOTH the Python packages and the embedding weights: p2/p3/bonus force
+# HF_HUB_OFFLINE=1, so a present venv with a missing model cache fails with a raw
+# OSError traceback instead of a message that names the fix.
 ensure-ready:
 	@if [ ! -x "$(VENV)/bin/pip" ] \
 		|| ! $(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers,rank_bm25,httpx,yaml" 2>/dev/null; then \
 		echo "[!] IoC runtime not ready under $(IOC_DIR) (missing after fclean, or never set up)."; \
 		echo "    1) make setup"; \
-		echo "    2) make p1, make p2, or make p3"; \
+		echo "    2) make p1, make p2, make p3, or make bonus"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(EMBED_CACHE)" ]; then \
+		echo "[!] Embedding model $(EMBED_MODEL) is missing from $(HF_HOME)."; \
+		echo "    The parts run fully offline, so they cannot download it on demand."; \
+		echo "    Run: make setup"; \
 		exit 1; \
 	fi
 	@echo "[*] Runtime ready: $(VENV)"
@@ -218,7 +228,10 @@ ensure-embed: ensure-deps
 	@echo "[*] Prefetching embedding model $(EMBED_MODEL) into $(HF_HOME)"
 	@$(PYTHON) -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('$(EMBED_MODEL)'); print('[+] embedding model ready')"
 
-setup: ensure-deps ensure-ollama ensure-embed
+# ensure-lint-tools is part of setup because demo_app/ioc.config.yml uses
+# flake8 in its validation command: the patch loop must never fail for lack of
+# a tool the project itself asks for.
+setup: ensure-deps ensure-ollama ensure-embed ensure-lint-tools
 	@echo
 	@echo "[+] Setup complete under $(IOC_DIR)"
 	@echo "    Next: make p1 or p2 or p3 or bonus  →  http://127.0.0.1:$(PORT)"
@@ -281,7 +294,7 @@ stop:
 		echo "[*] Stopped ollama via $(IOC_DIR)/ollama.pid"; \
 	fi
 	@# Orphans after lost pid: only ollama whose environ uses IoC models dir.
-	@# Never pkill -f MODELS/HOST strings — that matches this recipe and kills make.
+	@# Never pkill -f MODELS/HOST strings - that matches this recipe and kills make.
 	@for pid in $$(pgrep -x ollama 2>/dev/null || true); do \
 		if [ -r /proc/$$pid/environ ] \
 			&& tr '\0' '\n' < /proc/$$pid/environ 2>/dev/null \
@@ -317,10 +330,14 @@ mypy: ensure-lint-tools
 lint: flake mypy
 	@echo "[+] lint OK (flake8 + mypy)"
 
-# Soft clean: stop ollama + docker container/network + local caches (keep venv + docker image)
+# Soft clean: stop ollama + docker container/network + local caches.
+# Keeps the venv AND the embedding weights: deleting $(HF_HOME) left every part
+# broken (they run offline and cannot refetch it), which is not what a soft
+# clean should do. Use make fclean for a full wipe.
 clean: stop docker-clean
-	@rm -rf $(CHROMA_DIR) $(PIP_CACHE) $(HF_HOME) $(IOC_DIR)/logs $(IOC_DIR)/.deps-ok
-	@echo "[*] Cleaned caches and chroma db under $(IOC_DIR) (venv kept)"
+	@rm -rf $(CHROMA_DIR) $(PIP_CACHE) $(IOC_DIR)/logs
+	@echo "[*] Cleaned chroma db, pip cache and logs under $(IOC_DIR)"
+	@echo "    (venv and embedding weights kept - make p1/p2/p3/bonus still work)"
 
 # Full clean: stop ollama + remove IoC docker image/network/volumes + wipe /tmp/ioc
 fclean: stop docker-fclean

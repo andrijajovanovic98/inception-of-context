@@ -8,5 +8,15 @@
 #   Validation must be configurable through an ioc.config.yml file at the target
 #   project root. The command can be compilation, tests, linting, or chained checks.
 
-validation_command: "python3 -m py_compile {files} && python3 main.py"
+# Three gates, each catching something the previous one cannot:
+#   py_compile                    - the file parses
+#   flake8 --select=E9,F63,F7,F82 - the standard "stop the build" subset: syntax
+#                                   errors and undefined names. A full-file
+#                                   rewrite that drops an import still compiles
+#                                   fine, so py_compile alone would miss it.
+#                                   Style codes (F401 unused import, E1xx
+#                                   layout) are deliberately NOT selected - the
+#                                   loop must not fail on cosmetics.
+#   python3 main.py               - it actually runs
+validation_command: "python3 -m py_compile {files} && python3 -m flake8 --select=E9,F63,F7,F82 {files} && python3 main.py"
 

@@ -125,10 +125,13 @@ def main() -> int:
         stats_before = db.get_stats()
         for fpath in stats_before.get("files", {}).keys():
             db.delete_file_chunks(fpath)
+        # Drop the tracked hashes too, otherwise the scan below sees every file
+        # as "unchanged", re-inserts nothing, and leaves the collection empty.
+        indexer.reset_state()
 
     # 4. Perform initial index scan
     print("[*] Scanning target directory and indexing code chunks...")
-    summary = indexer.index_all()
+    summary = indexer.index_all(force=args.reindex)
 
     print("[+] Initial scan complete:")
     print(f"    - Indexed files : {summary['indexed_files']}")

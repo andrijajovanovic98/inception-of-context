@@ -98,10 +98,17 @@ def create_patch_api(
     # Store engine on app.state for access from dashboard or tests
     app.state.engine = engine
 
-    # In-memory history and execution state
+    # In-memory history and execution state. These live on app.state rather than
+    # in this closure so every patch entry point - including the bonus suite's
+    # /bonus/patch/run - shares ONE lock and ONE audit trail. Keeping them local
+    # let the bonus route run concurrently with this one against the same files
+    # and the same applier snapshot, and kept its runs out of /patch/history.
     patch_lock = asyncio.Lock()
     patch_history: List[PatchLoopResult] = []
     latest_result_holder: Dict[str, Optional[PatchLoopResult]] = {"result": None}
+    app.state.patch_lock = patch_lock
+    app.state.patch_history = patch_history
+    app.state.latest_result_holder = latest_result_holder
 
     # -------------------------------------------------------------------------
     # Helper: Broadcast Patch Event to Activity & SSE
@@ -211,9 +218,14 @@ def create_patch_api(
                 detail="Cannot trigger manual rollback while a patch loop is actively running.",
             )
 
-        success = engine.applier.rollback()
-        rollback_status = "ok" if success else "no-op"
-        _broadcast_event("PATCH_ROLLBACK", "manual", f"Manual rollback triggered: {rollback_status}")
+        # rollback() alone only covers a run still in flight; after a committed
+        # or already-rolled-back run its snapshot is empty and the call does
+        # nothing. rollback_last_run() reverts the last run's files to their
+        # pre-run bytes, which is what this endpoint promises.
+        outcome = engine.applier.rollback_last_run()
+        touched = len(outcome["restored"]) + len(outcome["removed"])
+        rollback_status = f"{touched} file(s) reverted" if touched else "nothing to revert"
+        _broadcast_event("PATCH_ROLLBACK", "manual", f"Manual rollback: {rollback_status}")
 
         # Reindex in case files were rolled back
         if indexer:
@@ -224,8 +236,12 @@ def create_patch_api(
                 pass
 
         return {
-            "status": "rolled_back",
-            "success": success,
+            "status": "rolled_back" if touched else "nothing_to_roll_back",
+            "success": True,
+            "scope": outcome["scope"],
+            "restored": outcome["restored"],
+            "removed": outcome["removed"],
+            "message": rollback_status,
             "target_dir": engine.target_dir,
         }
 

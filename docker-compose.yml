@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   ioc:
     build:
@@ -12,10 +10,11 @@ services:
     volumes:
       # Mount demo_app so autonomous patches reflect on the host filesystem
       - ./demo_app:/app/demo_app
-      # Reuse host embedding cache from `make setup` (required when HF_*_OFFLINE=1)
-      - /tmp/ioc/hf-cache:/tmp/ioc/hf-cache
       # Persist ChromaDB across container restarts
       - /tmp/ioc/chroma_db:/tmp/ioc/chroma_db
+      # NOTE: /tmp/ioc/hf-cache is deliberately NOT mounted. The embedding
+      # weights are baked into the image, so `make up` works on a clean machine
+      # and `make clean` (which wipes the host cache) cannot break the container.
     environment:
       - PYTHONUNBUFFERED=1
       - OLLAMA_HOST=http://127.0.0.1:11435
