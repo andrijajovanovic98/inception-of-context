@@ -9,7 +9,7 @@ Supports:
 
 import difflib
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 def compute_file_diff(
@@ -17,15 +17,23 @@ def compute_file_diff(
     rel_path: str,
     op: str,
     new_content: str,
+    originals: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """
-    Computes unified diff for a single file operation against current disk state.
+    Computes unified diff for a single file operation.
     Does NOT touch the filesystem.
+
+    `originals` maps target-relative paths to their pre-run contents. Pass it
+    whenever the patch may already have been applied: diffing an applied patch
+    against current disk state yields an empty diff, so a GREEN patch - the one
+    worth looking at - would render as "No differences detected". Without it,
+    current disk state is used, which is correct for dry runs.
     """
     full_path = os.path.abspath(os.path.join(target_dir, rel_path))
 
-    # Read original content from disk if file exists
-    if os.path.isfile(full_path):
+    if originals is not None and rel_path in originals:
+        original_text = originals[rel_path]
+    elif os.path.isfile(full_path):
         try:
             with open(full_path, "r", encoding="utf-8", errors="replace") as f:
                 original_text = f.read()
@@ -70,9 +78,14 @@ def compute_file_diff(
     }
 
 
-def compute_patch_diff(target_dir: str, patch: Dict[str, Any]) -> List[Dict[str, Any]]:
+def compute_patch_diff(
+    target_dir: str,
+    patch: Dict[str, Any],
+    originals: Optional[Dict[str, str]] = None,
+) -> List[Dict[str, Any]]:
     """
     Computes diffs for all file operations in a structured patch payload.
+    See compute_file_diff for the meaning of `originals`.
     """
     files = patch.get("files", [])
     diffs: List[Dict[str, Any]] = []
@@ -80,11 +93,17 @@ def compute_patch_diff(target_dir: str, patch: Dict[str, Any]) -> List[Dict[str,
     for item in files:
         if not isinstance(item, dict):
             continue
-        rel_path = item.get("path", "").strip()
-        op = item.get("op", "").strip().lower() or item.get("action", "").strip().lower()
-        content = item.get("content", "")
+        rel_path = str(item.get("path") or "").strip()
+        op = (
+            str(item.get("op") or "").strip().lower()
+            or str(item.get("action") or "").strip().lower()
+        )
+        raw = item.get("content", "")
+        content = raw if isinstance(raw, str) else ""
         if rel_path:
-            diffs.append(compute_file_diff(target_dir, rel_path, op, content))
+            diffs.append(
+                compute_file_diff(target_dir, rel_path, op, content, originals=originals)
+            )
 
     return diffs
 

@@ -15,6 +15,14 @@ import sys
 import time
 from typing import Optional
 
+# Ensure 100% offline local HuggingFace operation (same guard as p2/p3/bonus).
+# Without this p1 contacts huggingface.co on every start and hangs when the
+# network is unavailable - which is exactly the README's local-only defence step.
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+if "HF_HOME" not in os.environ and os.path.exists("/tmp/ioc/hf-cache"):
+    os.environ["HF_HOME"] = "/tmp/ioc/hf-cache"
+
 # Ensure project root is on sys.path so p1.* imports resolve cleanly
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -110,10 +118,13 @@ def main() -> int:
         stats_before = db.get_stats()
         for fpath in stats_before.get("files", {}).keys():
             db.delete_file_chunks(fpath)
+        # Drop the tracked hashes too, otherwise the scan below sees every file
+        # as "unchanged", re-inserts nothing, and leaves the collection empty.
+        indexer.reset_state()
 
     # 4. Perform initial index scan
     print("[*] Scanning target directory and indexing code chunks...")
-    summary = indexer.index_all()
+    summary = indexer.index_all(force=args.reindex)
 
     print("[+] Initial scan complete:")
     print(f"    - Indexed files : {summary['indexed_files']}")

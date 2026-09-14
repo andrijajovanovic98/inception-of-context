@@ -38,6 +38,15 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
         -r /app/bonus/requirements.txt \
         uvicorn pillow
 
+# Bake the embedding weights into the image. HF_HUB_OFFLINE=1 is set above, so
+# without this layer the container can only start when a host cache happens to be
+# mounted at /tmp/ioc/hf-cache - which makes `make up` fail on a clean machine and
+# after `make fclean`. HF_HUB_OFFLINE is lifted for this one RUN only.
+RUN HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 python3 -c \
+    "from sentence_transformers import SentenceTransformer; \
+     SentenceTransformer('all-MiniLM-L6-v2'); \
+     print('[+] embedding weights baked into image')"
+
 # Copy source trees and demo application
 COPY p1/ /app/p1/
 COPY p2/ /app/p2/

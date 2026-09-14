@@ -15,6 +15,14 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from p1.markers import (  # noqa: E402
+    PATCH_CONTEXT_HEADER,
+    PATCH_EXISTING_PREFIX,
+    PATCH_FEEDBACK_PREFIX,
+    PATCH_FILE_PREFIX,
+    PATCH_INTENT_HEADER,
+    PATCH_OUTPUT_HEADER,
+)
 from p2.llm import OllamaClient  # noqa: E402
 
 
@@ -254,7 +262,7 @@ class PatchGenerator:
 
         # 1. Context Chunks from the Codebase
         if context_chunks:
-            sections.append("=== RELEVANT CODEBASE CONTEXT ===")
+            sections.append(PATCH_CONTEXT_HEADER)
             for idx, c in enumerate(context_chunks, 1):
                 fpath = c.get("file_path", "")
                 sym = c.get("symbol_name", "")
@@ -262,7 +270,8 @@ class PatchGenerator:
                 e_line = c.get("end_line", "")
                 content = mask_docstrings(c.get("content", "").strip())
                 sections.append(
-                    f"--- File: {fpath} | Symbol: {sym} (Lines {s_line}-{e_line}) ---\n"
+                    f"{PATCH_FILE_PREFIX} {fpath} | Symbol: {sym} "
+                    f"(Lines {s_line}-{e_line}) ---\n"
                     f"{content}\n"
                 )
 
@@ -279,7 +288,7 @@ class PatchGenerator:
                     with open(full_path, "r", encoding="utf-8", errors="replace") as f:
                         file_text = mask_docstrings(f.read())
                     existing_files_text.append(
-                        f"=== EXISTING CURRENT CONTENT OF: {rel_path} ===\n"
+                        f"{PATCH_EXISTING_PREFIX} {rel_path} ===\n"
                         f"{file_text}\n\n"
                         f"CRITICAL INSTRUCTION FOR '{rel_path}':\n"
                         f"If modifying '{rel_path}', the 'content' field in your JSON MUST contain "
@@ -297,14 +306,14 @@ class PatchGenerator:
 
         # 3. User Coding Intent
         sections.append(
-            f"=== USER CODING INTENT ===\n"
+            f"{PATCH_INTENT_HEADER}\n"
             f"{intent}\n"
         )
 
         # 4. Error Feedback (for Retry Loop attempts 2 and 3)
         if error_feedback:
             sections.append(
-                f"=== PREVIOUS ATTEMPT FAILED (ATTEMPT {attempt - 1}) ===\n"
+                f"{PATCH_FEEDBACK_PREFIX} (ATTEMPT {attempt - 1}) ===\n"
                 f"Your previous patch produced the following validation or sanity errors:\n"
                 f"{error_feedback}\n\n"
                 f"CRITICAL: You MUST correct these specific errors in this attempt. "
@@ -313,7 +322,7 @@ class PatchGenerator:
 
         # 5. Output Instructions
         sections.append(
-            "=== OUTPUT FORMAT ===\n"
+            f"{PATCH_OUTPUT_HEADER}\n"
             "Return a valid JSON object conforming to the schema:\n"
             '{\n  "summary": "Brief description of changes",\n  "files": [\n    {\n'
             '      "path": "path/to/file.py",\n      "op": "modify",\n'

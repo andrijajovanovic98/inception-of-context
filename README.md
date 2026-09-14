@@ -81,9 +81,9 @@ flowchart TD
 - **Gutter Chunk Viewer:** Interactive code explorer displaying `▶` markers at every AST chunk boundary.
 
 ### 3. Part 3 - Autonomous Patch Loop & 100% Rollback
-- **Structured JSON Patches:** Sits on a strict schema (`{"explanation": "...", "files": [{"path": "...", "op": "...", "content": "..."}]}`). Free-form diffs are forbidden.
+- **Structured JSON Patches:** Sits on a strict schema (`{"summary": "...", "files": [{"path": "...", "op": "...", "content": "..."}]}`). Free-form diffs are forbidden.
 - **6 Hard Refusal Sanity Checks:**
-  1. No leaked retrieval markers (`=== RETRIEVED`, `--- Chunk`).
+  1. No leaked prompt markers. The list is derived from `p1/markers.py`, the single source both prompt builders format their section headers from, so the rule can never drift from the prompts it guards.
   2. No overwriting existing files via `create`.
   3. No empty/null file replacements (`""`, `"None"`, `"null"`).
   4. No stub functions containing only `pass`, `...`, or `return None`.
@@ -111,12 +111,23 @@ flowchart TD
 
 ### Option A: Running with Docker Compose (Recommended for Evaluation)
 
+The image bakes in the `all-MiniLM-L6-v2` embedding weights, so the build needs
+network access once and the container then runs fully offline. The only host
+requirement is a running Ollama with `qwen2.5:3b` on `127.0.0.1:11435`, which
+`make setup` provides (or start your own).
+
 ```bash
+# One-time: start the local Ollama runtime and pull qwen2.5:3b
+make setup
+
 # Build and start the containerized system
 make up
 
 # Open the dashboard in your browser
 http://127.0.0.1:8000
+
+# Rebuild the image after changing code, then recreate the container
+make docker-restart
 
 # Stop and tear down containers
 make down
@@ -143,6 +154,15 @@ make p3
 make bonus
 ```
 
+### Cleaning up
+
+```bash
+make clean    # stop ollama + IoC container, drop chroma/pip caches
+              # keeps the venv AND the embedding weights, so the parts still run
+make fclean   # the above + remove the IoC docker image and wipe /tmp/ioc entirely
+make re       # fclean + setup
+```
+
 ---
 
 ### Option C: Headless CLI Execution
@@ -164,6 +184,11 @@ python3 bonus/index.py demo_app --intent "add divide method" --dry-run
 
 ## REST API Reference
 
+Every endpoint below is served at the documented root path and at an `/api/...`
+alias, in all parts. `/status`, `/files` and `/file` work identically under
+`make p1`, `make p2`, `make p3` and `make bonus`; the patch and bonus endpoints
+appear from Part 3 and the Bonus Suite respectively.
+
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `GET` | `/status` | Vector database stats, chunk counts, Ollama connectivity |
@@ -178,7 +203,7 @@ python3 bonus/index.py demo_app --intent "add divide method" --dry-run
 | `GET` | `/patch/history` | Audit trail of all patch runs and attempts |
 | `POST`| `/patch/rollback` | Manually revert to the last pre-patch snapshot |
 | `GET` | `/patch/config` | Active `ioc.config.yml` validation command |
-| `POST`| `/reindex` | **[Bonus]** On-demand full index refresh |
+| `POST`| `/reindex` | **[Bonus]** On-demand full index refresh (re-chunks and re-embeds every file; `?full=false` for an incremental sync) |
 | `POST`| `/bonus/patch/run` | **[Bonus]** Patch run with `dry_run` and `auto_commit` |
 
 ---
@@ -198,9 +223,10 @@ python3 bonus/index.py demo_app --intent "add divide method" --dry-run
 │   └── ioc.config.yml          # Validation command configuration
 ├── p1/                         # Part 1: Indexing and Synchronization
 │   ├── requirements.txt
+│   ├── markers.py              # Prompt section markers shared by P2, P3 & sanity
 │   ├── chunker.py              # AST logical parser & SHA256 hashing
 │   ├── db.py                   # ChromaDB PersistentClient wrapper
-│   ├── indexer.py              # Incremental codebase walker
+│   ├── indexer.py              # Incremental codebase walker & path containment
 │   ├── watcher.py              # Filesystem event watcher (watchdog + polling)
 │   ├── dashboard.py            # Overview UI & SSE feed
 │   └── index.py                # Part 1 CLI entry point

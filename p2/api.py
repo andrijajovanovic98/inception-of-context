@@ -28,7 +28,7 @@ except ImportError:
     FASTAPI_AVAILABLE = False
 
 from p1.chunker import chunk_file  # noqa: E402
-from p1.indexer import CodebaseIndexer  # noqa: E402
+from p1.indexer import CodebaseIndexer, safe_join  # noqa: E402
 from p1.watcher import CodebaseWatcher  # noqa: E402
 from p2.llm import OllamaClient, ask_rag  # noqa: E402
 from p2.retriever import Retriever  # noqa: E402
@@ -43,6 +43,14 @@ _FAVICON_SVG = (
 )
 
 _SSE_STOP = object()
+
+# Origins permitted to call the API cross-origin. The dashboard itself is
+# same-origin; this list exists only so a browser opening the dashboard on the
+# alternate loopback spelling still works.
+LOCAL_ORIGINS: List[str] = [
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+]
 
 
 if FASTAPI_AVAILABLE:
@@ -118,20 +126,28 @@ def create_architect_api(
         lifespan=lifespan,
     )
 
+    # The dashboard is served from this same origin, so a loopback allow-list is
+    # all that is needed. A wildcard origin is reflected back by Starlette, which
+    # would let any page in any other tab call /file, /ask and /patch/run and read
+    # the responses. Credentials are not used, so they are not allowed either.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=LOCAL_ORIGINS,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type"],
     )
 
     app.close_sse_clients = close_sse_clients  # type: ignore[attr-defined]
 
-    # Synchronize Retriever BM25 and Symbol inventory whenever watcher detects changes
+    # Actions after which the BM25 corpus and symbol inventory are stale.
+    # POLL_SYNC matters most: on Docker bind mounts and overlayfs inotify drops
+    # events, so the polling fallback is the ONLY thing that notices a change.
+    INDEX_CHANGING_ACTIONS = ("MODIFIED", "DELETED", "POLL_SYNC", "REINDEX")
+
     def on_watcher_change(entry: Dict[str, Any]) -> None:
         action = entry.get("action", "")
-        if action in ("CREATED", "MODIFIED", "DELETED"):
+        if action in INDEX_CHANGING_ACTIONS:
             retriever.refresh_index()
         if sse_stop.is_set():
             return
@@ -204,7 +220,14 @@ def create_architect_api(
     # File Endpoint: GET /file?path=... (and /api/file)
     # -------------------------------------------------------------------------
     async def _handle_file(path: str) -> Dict[str, Any]:
-        abs_path = os.path.join(indexer.target_dir, path)
+        # Containment first: this parameter is attacker-controlled and must never
+        # reach a file outside the indexed target directory.
+        abs_path = safe_join(indexer.target_dir, path)
+        if abs_path is None:
+            raise HTTPException(
+                status_code=403,
+                detail="Path escapes the indexed target directory",
+            )
         if not os.path.isfile(abs_path):
             raise HTTPException(status_code=404, detail=f"File not found on disk: {path}")
 
@@ -238,13 +261,15 @@ def create_architect_api(
     # Chunks Endpoint with Pagination: GET /chunks (and /api/chunks)
     # -------------------------------------------------------------------------
     async def _handle_chunks(limit: int, offset: int) -> Dict[str, Any]:
-        total_count = len(retriever.chunk_ids)
+        # One consistent view: the watcher thread can swap the corpus mid-request.
+        all_ids, all_docs, all_metas = retriever.snapshot_corpus()
+        total_count = len(all_ids)
         clamped_offset = max(0, min(offset, total_count))
         clamped_limit = max(1, min(limit, 100))
 
-        slice_ids = retriever.chunk_ids[clamped_offset:clamped_offset + clamped_limit]
-        slice_docs = retriever.documents[clamped_offset:clamped_offset + clamped_limit]
-        slice_metas = retriever.metadatas[clamped_offset:clamped_offset + clamped_limit]
+        slice_ids = all_ids[clamped_offset:clamped_offset + clamped_limit]
+        slice_docs = all_docs[clamped_offset:clamped_offset + clamped_limit]
+        slice_metas = all_metas[clamped_offset:clamped_offset + clamped_limit]
 
         chunk_items: List[Dict[str, Any]] = []
         for cid, doc, meta in zip(slice_ids, slice_docs, slice_metas):

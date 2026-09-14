@@ -587,9 +587,19 @@ def setup_bonus_dashboard(
                         </div>
                     `;
                 }});
-                container.innerHTML = diffHtml || (
-                    '<div style="color:var(--text-muted);">No diff produced.</div>'
+                const dryPills = renderSanityPills(
+                    result.sanity_rules, result.sanity_rule_labels, result.sanity_passed
                 );
+                const dryErrors = (result.sanity_errors || []).length
+                    ? '<div class="error-feedback-box" style="margin-top:10px;">'
+                      + '<strong>Sanity Violations:</strong><ul style="margin-left:18px;">'
+                      + result.sanity_errors.map(e => `<li>${{escapeHtml(e)}}</li>`).join('')
+                      + '</ul></div>'
+                    : '';
+                container.innerHTML =
+                    '<div style="margin-bottom:14px;"><label>Sanity Checks '
+                    + '(Subject VI.3 Rules):</label>' + dryPills + dryErrors + '</div>'
+                    + (diffHtml || '<div style="color:var(--text-muted);">No diff produced.</div>');
                 return;
             }}
 
@@ -674,7 +684,8 @@ def setup_bonus_dashboard(
                     '<div style="color:var(--text-muted); font-size:13px;">'
                     + 'No diff available.</div>'
                 );
-                const explanation = (att.patch || {{}}).explanation || '';
+                const patchObj = att.patch || {{}};
+                const explanation = patchObj.summary || patchObj.explanation || '';
                 html += `
                 <div class="attempt-card">
                     <div class="attempt-header">
@@ -687,6 +698,12 @@ def setup_bonus_dashboard(
                             ${{escapeHtml(explanation)}}</span>
                     </div>
                     <div class="attempt-body">
+                        <div>
+                            <label>Sanity Checks (Subject VI.3 Rules):</label>
+                            ${{renderSanityPills(
+                                att.sanity_rules, att.sanity_rule_labels, att.sanity_passed
+                            )}}
+                        </div>
                         <div>
                             <label>Visual Patch Diff (+ Additions / - Deletions):</label>
                             <div style="margin-top:8px;">
@@ -791,6 +808,88 @@ def setup_bonus_dashboard(
                 "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }}
 
+
+        // Real per-rule Subject VI.3 verdicts, reported by the sanity checker.
+        const SANITY_RULE_ORDER = ['1', '2', '3', '0', '4', '5', '6'];
+        const SANITY_FALLBACK_LABELS = {{
+            '0': 'Python Syntax Parse',
+            '1': 'Retrieval Markers Guard',
+            '2': 'No Overwrite on Create',
+            '3': 'Non-Empty Content',
+            '4': 'AST No-Stub Body',
+            '5': 'File Shrinkage \u2264 60%',
+            '6': 'Touches \u2264 3 Files'
+        }};
+
+        function renderSanityPills(rules, labels, fallbackPassed) {{
+            rules = rules || {{}};
+            labels = labels || {{}};
+            const hasRules = Object.keys(rules).length > 0;
+            let pills = '';
+            SANITY_RULE_ORDER.forEach(key => {{
+                const passed = hasRules ? rules[key] !== false : !!fallbackPassed;
+                const label = labels[key] || SANITY_FALLBACK_LABELS[key] || ('Rule ' + key);
+                pills += `
+                    <div class="sanity-pill ${{passed ? 'passed' : 'failed'}}">
+                        ${{passed ? '\u2713' : '\u2717'}} ${{escapeHtml(label)}}
+                    </div>
+                `;
+            }});
+            return '<div class="sanity-grid">' + pills + '</div>';
+        }}
+
+        // Keep the Overview cards, the file table and the Files dropdown live.
+        // Watcher events carry no chunk counts, so a `data.total_chunks` guard
+        // would never fire and the cards would stay frozen until a reload.
+        async function refreshStats() {{
+            try {{
+                const statusRes = await fetch('/status');
+                if (statusRes.ok) {{
+                    const data = await statusRes.json();
+                    const chunkEl = document.getElementById('card-total-chunks');
+                    const fileEl = document.getElementById('card-total-files');
+                    if (chunkEl) chunkEl.innerText = data.total_chunks;
+                    if (fileEl) fileEl.innerText = data.total_files;
+                }}
+
+                const filesRes = await fetch('/files');
+                if (!filesRes.ok) return;
+                const filesData = await filesRes.json();
+                const files = filesData.files || [];
+
+                const tbody = document.getElementById('files-table-body');
+                if (tbody) {{
+                    tbody.innerHTML = files.length
+                        ? files.map(f => `
+                            <tr>
+                                <td><code>${{escapeHtml(f.path)}}</code></td>
+                                <td><strong>${{f.chunk_count}}</strong> chunks</td>
+                                <td><span style="color:var(--accent-green)">Synced</span></td>
+                            </tr>`).join('')
+                        : '<tr><td colspan="3" style="text-align:center; '
+                          + 'color:var(--text-muted);">No files indexed yet.</td></tr>';
+                }}
+
+                const select = document.getElementById('file-select');
+                if (select) {{
+                    const current = select.value;
+                    const wanted = files.map(f => f.path).join('\u0000');
+                    if (select.dataset.paths !== wanted) {{
+                        select.innerHTML = files
+                            .map(f => {{
+                                const p = escapeHtml(f.path);
+                                return `<option value="${{p}}">${{p}}</option>`;
+                            }})
+                            .join('');
+                        select.dataset.paths = wanted;
+                        if (files.some(f => f.path === current)) select.value = current;
+                    }}
+                }}
+            }} catch (e) {{
+                console.error('Stats refresh failed', e);
+            }}
+        }}
+
         const eventSource = new EventSource('/events');
         eventSource.onmessage = function(e) {{
             try {{
@@ -807,6 +906,9 @@ def setup_bonus_dashboard(
                         ''}}</div><div>${{data.details || ''}}</div>`;
                     feed.insertBefore(li, feed.firstChild);
                 }}
+
+                // Refresh Overview cards, file table and Files dropdown
+                refreshStats();
 
                 if (data.action && data.action.startsWith('PATCH_')) {{
                     const statusCard = document.getElementById('patch-status-card');

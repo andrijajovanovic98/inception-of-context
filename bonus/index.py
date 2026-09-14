@@ -108,7 +108,11 @@ async def run_headless_bonus(
     if result.status == "success":
         print("[✓] GREEN: Code modifications validated and committed to disk!")
         if auto_commit:
-            explanation = (result.final_patch or {}).get("explanation", intent)
+            patch_obj = result.final_patch or {}
+            # Schema field is "summary"; "explanation" kept as a fallback.
+            explanation = (
+                patch_obj.get("summary") or patch_obj.get("explanation") or intent
+            )
             applied = engine.applier.last_applied_files
             msg = await generate_commit_message(llm_client, intent, explanation, applied)
             c_res = commit_validated_patch(target_dir, msg, applied)
@@ -147,8 +151,11 @@ def main() -> int:
         print("[*] Chapter VII: Performing on-demand clean reindex...")
         for f in db.get_stats().get("files", {}).keys():
             db.delete_file_chunks(f)
+        # Drop the tracked hashes too, otherwise the scan below sees every file
+        # as "unchanged", re-inserts nothing, and leaves the collection empty.
+        indexer.reset_state()
 
-    summary = indexer.index_all()
+    summary = indexer.index_all(force=args.reindex)
     print(f"[+] Index scan complete: {summary['total_chunks']} chunks across {summary['total_files']} files.")
 
     retriever = Retriever(db=db)
