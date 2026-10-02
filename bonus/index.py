@@ -5,11 +5,14 @@ Launches the enhanced Bonus Dashboard and API, or executes headless patches with
   - Dry-run simulation mode (--dry-run)
   - Automatic Git commits on validation success (--auto-commit)
   - On-demand clean reindexing (--reindex)
+  - Docker SDK crash watcher (--watch-container): follow a service's logs and
+    run the patch loop when it crashes
 
 Usage:
     python3 bonus/index.py demo_app --dashboard --port 8000
     python3 bonus/index.py demo_app --intent "add multiply method" --dry-run
     python3 bonus/index.py demo_app --intent "add multiply method" --auto-commit
+    python3 bonus/index.py demo_app --dashboard --watch-container ioc-demo-service
 """
 
 import argparse
@@ -63,7 +66,63 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--auto-commit", action="store_true", help="Automatically git commit validated patch")
     parser.add_argument("--k", type=int, default=3, help="Context chunks to retrieve")
+    parser.add_argument("--max-attempts", type=int, default=3, help="Patch loop retry iterations")
+    parser.add_argument(
+        "--watch-container",
+        default=None,
+        help="Docker container whose logs to follow; a crash runs the patch loop (Docker SDK)",
+    )
+    parser.add_argument(
+        "--no-restart",
+        action="store_true",
+        help="With --watch-container: do not start the service again after a green patch",
+    )
     return parser.parse_args()
+
+
+def start_crash_watch_when_up(base_url: str, container: str, auto_restart: bool) -> None:
+    """Start the dashboard's crash watcher through its own API once the server answers."""
+    import httpx
+
+    for _ in range(240):
+        try:
+            res = httpx.post(f"{base_url}/bonus/crash-watch",
+                             json={"container": container, "auto_restart": auto_restart}, timeout=15)
+        except httpx.TransportError:
+            time.sleep(0.5)
+            continue
+        body = res.json()
+        if res.status_code == 200:
+            print(f"[+] Crash watcher on '{container}': {body.get('state')}")
+        else:
+            print(f"[!] Crash watcher not started: {body.get('detail')}", file=sys.stderr)
+        return
+
+
+def run_headless_crash_watch(engine: PatchLoopEngine, container: str, k: int, auto_restart: bool) -> int:
+    """Foreground crash watcher: every event is printed; Ctrl+C stops it."""
+    from bonus.crash_watcher import CrashWatcher
+
+    def run_patch(intent: str) -> dict:
+        print(f"[*] Patch loop intent:\n{intent}")
+        return asyncio.run(engine.run(intent=intent, k=k)).to_dict()
+
+    def on_event(action: str, target: str, details: str) -> None:
+        print(f"[{time.strftime('%H:%M:%S')}] {action:17} {target}: {details}")
+
+    try:
+        crash_watcher = CrashWatcher(container, run_patch, on_event=on_event,
+                                     target_dir=engine.target_dir, auto_restart=auto_restart).start()
+    except Exception as e:
+        print(f"[ERROR] Docker SDK: {e}", file=sys.stderr)
+        return 1
+    try:
+        while crash_watcher.watching:
+            time.sleep(1.0)
+    except KeyboardInterrupt:
+        pass
+    crash_watcher.stop()
+    return 0
 
 
 async def run_headless_bonus(
@@ -81,11 +140,11 @@ async def run_headless_bonus(
     print("-" * 65)
 
     if dry_run:
-        context_chunks = engine.retriever.retrieve(query=intent, k=k) if engine.retriever else []
+        context_chunks = engine.patch_context(intent, k)
         patch = await engine.generator.generate_patch(
             intent=intent, context_chunks=context_chunks, error_feedback=None, previous_patch=None, attempt=1
         )
-        sanity = engine.sanity_checker.check(patch)
+        sanity = engine.sanity_checker.check(patch, intent)
         diffs = compute_patch_diff(target_dir=target_dir, patch=patch)
 
         print("\n=== DRY-RUN SIMULATION OUTCOME ===")
@@ -121,10 +180,12 @@ async def run_headless_bonus(
             else:
                 print(f"[!] Git commit skipped: {c_res.get('error')}")
         return 0
-    else:
-        print(f"[✗] RED: {result.error_message}")
-        print("[✓] 100% Rollback verified.")
-        return 1
+    print(f"[✗] RED: {result.error_message}")
+    if result.rollback_verified:
+        print("[✓] Rollback verified: every touched file matches its pre-call snapshot byte-for-byte.")
+    elif result.rollback_mismatches:
+        print(f"[!] Rollback INCOMPLETE for: {', '.join(result.rollback_mismatches)}")
+    return 1
 
 
 def main() -> int:
@@ -165,17 +226,28 @@ def main() -> int:
         retriever=retriever,
         llm_client=llm_client,
         indexer=indexer,
+        max_attempts=args.max_attempts,
     )
 
     if args.intent:
-        return asyncio.run(run_headless_bonus(
-            engine=engine,
-            llm_client=llm_client,
-            intent=args.intent,
-            k=args.k,
-            dry_run=args.dry_run,
-            auto_commit=args.auto_commit,
-        ))
+        # Ctrl+C cancels the loop task; PatchLoopEngine.run() rolls back first.
+        try:
+            return asyncio.run(run_headless_bonus(
+                engine=engine,
+                llm_client=llm_client,
+                intent=args.intent,
+                k=args.k,
+                dry_run=args.dry_run,
+                auto_commit=args.auto_commit,
+            ))
+        except KeyboardInterrupt:
+            mismatches = engine.applier.verify_restored()
+            state = "restored" if not mismatches else f"NOT restored: {', '.join(mismatches)}"
+            print(f"\n[*] Interrupted - patch loop rolled back, target {state}.", file=sys.stderr)
+            return 130
+
+    if args.watch_container and not args.dashboard:
+        return run_headless_crash_watch(engine, args.watch_container, args.k, not args.no_restart)
 
     watcher: Optional[CodebaseWatcher] = None
     if args.watch or args.dashboard:
@@ -189,7 +261,15 @@ def main() -> int:
 
         dashboard_url = f"http://{args.host}:{args.port}"
         print(f"[+] Bonus Dashboard running at: {dashboard_url}")
-        print("    • Features: Visual Diff, Dry-Run Mode, Auto Git Commit, POST /reindex")
+        print("    • Features: Visual Diff, Dry-Run Mode, Auto Git Commit, POST /reindex, Crash Watcher")
+        if args.watch_container:
+            import threading
+
+            threading.Thread(
+                target=start_crash_watch_when_up,
+                args=(dashboard_url, args.watch_container, not args.no_restart),
+                daemon=True,
+            ).start()
 
         try:
             config = uvicorn.Config(
@@ -230,4 +310,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        print("\n[*] Interrupted.", file=sys.stderr)
+        sys.exit(0)

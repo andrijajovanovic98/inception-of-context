@@ -5,11 +5,13 @@ Figures VI.1, VI.2, and VI.3 of the official 42 Subject.
 100% local, zero external network or CDN dependencies.
 """
 
+from html import escape
 from typing import Optional
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
+from p1.dashboard_files import FILEVIEW_CSS, FILEVIEW_HTML, FILEVIEW_JS
 from p1.dashboard_modal import MODAL_CSS, MODAL_HTML, MODAL_JS
 from p1.indexer import CodebaseIndexer
 from p1.watcher import CodebaseWatcher
@@ -31,10 +33,11 @@ def setup_dashboard(
         stats = indexer.db.get_stats()
         recent_logs = watcher.get_recent_activity(limit=20) if watcher else []
 
-        # Build initial server-rendered Overview file rows
+        # Build initial server-rendered Overview file rows (escaped: file
+        # names come from the filesystem)
         if stats["files"]:
             files_rows = "".join(
-                f'<tr><td><code>{f}</code></td>'
+                f'<tr><td><code>{escape(f)}</code></td>'
                 f'<td><strong>{c}</strong> chunks</td>'
                 f'<td><span style="color:var(--accent-green)">Synced</span></td></tr>'
                 for f, c in sorted(stats["files"].items())
@@ -49,10 +52,11 @@ def setup_dashboard(
             activity_items = "".join(
                 f'<li class="feed-item">'
                 f'<div class="feed-header">'
-                f'<span class="feed-action {entry.get("action", "")}">{entry.get("action", "")}</span>'
-                f'<span>{entry.get("timestamp", "")}</span></div>'
-                f'<div class="feed-path">{entry.get("path", "")}</div>'
-                f'<div style="color:var(--text-muted);">{entry.get("details", "")}</div></li>'
+                f'<span class="feed-action {escape(entry.get("action", ""))}">'
+                f'{escape(entry.get("action", ""))}</span>'
+                f'<span>{escape(entry.get("timestamp", ""))}</span></div>'
+                f'<div class="feed-path">{escape(entry.get("path", ""))}</div>'
+                f'<div style="color:var(--text-muted);">{escape(entry.get("details", ""))}</div></li>'
                 for entry in recent_logs
             )
         else:
@@ -60,12 +64,6 @@ def setup_dashboard(
                 '<li class="feed-item" style="color:var(--text-muted); text-align:center;">'
                 'Waiting for filesystem events...</li>'
             )
-
-        # File options for Files tab
-        file_options = "".join(
-            f'<option value="{f}">{f}</option>'
-            for f in sorted(stats["files"].keys())
-        )
 
         query_placeholder = (
             "e.g. how does calculate_tax work? OR is there a function called authenticate?"
@@ -398,7 +396,17 @@ def setup_dashboard(
             font-weight: bold;
             margin-right: 8px;
         }}
+        .feed-action.ERROR {{ background: rgba(248, 113, 113, 0.2); color: var(--accent-red); }}
+        .source-badge {{
+            padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;
+            border: 1px solid var(--border); color: var(--text-muted);
+        }}
+        .source-badge.index {{
+            color: var(--accent-green); border-color: rgba(74, 222, 128, 0.35);
+            background: rgba(74, 222, 128, 0.12);
+        }}
 {MODAL_CSS}
+{FILEVIEW_CSS}
     </style>
 </head>
 <body>
@@ -423,9 +431,9 @@ def setup_dashboard(
 
     <!-- Navigation Tabs (Subject Figure VI.1, VI.2, VI.3) -->
     <div class="nav-tabs">
-        <button class="tab-btn" onclick="showTab('overview')">Overview</button>
-        <button class="tab-btn" onclick="showTab('files')">Files</button>
-        <button class="tab-btn active" onclick="showTab('ask')">Ask &amp; Retrieve</button>
+        <button class="tab-btn" id="tab-btn-overview" onclick="showTab('overview')">Overview</button>
+        <button class="tab-btn" id="tab-btn-files" onclick="showTab('files')">Files</button>
+        <button class="tab-btn active" id="tab-btn-ask" onclick="showTab('ask')">Ask &amp; Retrieve</button>
         <button class="tab-btn disabled" title="Available in Part 3">Patch Loop (Part 3)</button>
     </div>
 
@@ -437,7 +445,12 @@ def setup_dashboard(
             <div class="card">
                 <div class="title">Target Codebase</div>
                 <div class="val highlight"
-                     style="font-size:16px; word-break:break-all;">{indexer.target_dir}</div>
+                     style="font-size:16px; word-break:break-all;">{escape(indexer.target_dir)}</div>
+            </div>
+            <div class="card">
+                <div class="title">Vector Store</div>
+                <div class="val"
+                     style="font-size:14px; word-break:break-all;">{escape(stats['persist_dir'])}</div>
             </div>
             <div class="card">
                 <div class="title">Indexed Chunks</div>
@@ -454,7 +467,8 @@ def setup_dashboard(
             </div>
             <div class="card">
                 <div class="title">Local LLM</div>
-                <div class="val" style="font-size:15px; color:var(--accent-purple);">{llm_client.model}</div>
+                <div class="val"
+                     style="font-size:15px; color:var(--accent-purple);">{escape(llm_client.model)}</div>
             </div>
         </div>
 
@@ -488,27 +502,7 @@ def setup_dashboard(
     <!-- TAB 2: FILES (Figure VI.2)                                        -->
     <!-- ================================================================= -->
     <div id="tab-files" class="tab-content">
-        <div class="file-browser">
-            <div class="form-row">
-                <div class="form-group" style="min-width:300px;">
-                    <label for="file-select">Select File to Inspect Chunks (▶ gutter markers):</label>
-                    <select id="file-select" onchange="loadFileChunks()">
-                        <option value="">-- Choose file --</option>
-                        {file_options}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>&nbsp;</label>
-                    <button class="btn btn-secondary" onclick="loadFileChunks()">Load File</button>
-                </div>
-            </div>
-
-            <div id="file-chunks-container">
-                <div style="color:var(--text-muted); text-align:center; padding:40px;">
-                    Select an indexed source file above to view AST chunk boundaries.
-                </div>
-            </div>
-        </div>
+{FILEVIEW_HTML}
     </div>
 
     <!-- ================================================================= -->
@@ -519,8 +513,7 @@ def setup_dashboard(
             <div class="form-row">
                 <div class="form-group flex-1">
                     <label for="query-input">Intent / Question about Codebase:</label>
-                    <textarea id="query-input" placeholder="{query_placeholder}">
-                    </textarea>
+                    <textarea id="query-input" placeholder="{query_placeholder}"></textarea>
                 </div>
                 <div class="form-group" style="width:90px;">
                     <label for="k-input">Top-k:</label>
@@ -549,8 +542,11 @@ def setup_dashboard(
                     <div class="answer-title">
                         <span>Grounded Model Answer</span>
                     </div>
-                    <span id="ground-truth-badge" class="ground-truth-badge" style="display:none;">
-                        AST Ground Truth Verified
+                    <span style="display:flex; gap:8px; align-items:center;">
+                        <span id="answer-source" class="source-badge"></span>
+                        <span id="ground-truth-badge" class="ground-truth-badge" style="display:none;">
+                            AST Ground Truth Verified
+                        </span>
                     </span>
                 </div>
                 <div class="answer-text" id="answer-text"></div>
@@ -571,18 +567,22 @@ def setup_dashboard(
     <!-- JavaScript Client Logic -->
     <script>
 {MODAL_JS}
+{FILEVIEW_JS}
+        const ANSWER_SOURCES = {{
+            'index': 'Answered from the index (model not consulted)',
+            'model+index': 'Verified fact + model explanation',
+            'model': 'Model answer'
+        }};
+
         function showTab(tabName) {{
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
             const targetTab = document.getElementById('tab-' + tabName);
             if (targetTab) targetTab.classList.add('active');
-
-            // Find matching button
-            const buttons = document.querySelectorAll('.tab-btn');
-            if (tabName === 'overview') buttons[0].classList.add('active');
-            else if (tabName === 'files') buttons[1].classList.add('active');
-            else if (tabName === 'ask') buttons[2].classList.add('active');
+            const button = document.getElementById('tab-btn-' + tabName);
+            if (button) button.classList.add('active');
+            if (tabName === 'files') fvRefresh();
         }}
 
         // Check Ollama status on startup
@@ -641,6 +641,7 @@ def setup_dashboard(
                         body: JSON.stringify({{ query: query, k: k }})
                     }});
                     const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
                     answerBox.style.display = 'none';
                     renderChunks(data.chunks || []);
                     resultBox.style.display = 'block';
@@ -652,8 +653,12 @@ def setup_dashboard(
                         body: JSON.stringify({{ query: query, k: k }})
                     }});
                     const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
                     answerBox.style.display = 'block';
                     answerText.innerText = data.answer || 'No response generated.';
+                    const srcBadge = document.getElementById('answer-source');
+                    srcBadge.innerText = ANSWER_SOURCES[data.answer_source] || '';
+                    srcBadge.className = 'source-badge' + (data.answer_source === 'index' ? ' index' : '');
                     if (data.pre_resolved) {{
                         gtBadge.style.display = 'inline-block';
                     }} else {{
@@ -688,9 +693,11 @@ def setup_dashboard(
                     <div class="chunk-header">
                         <div class="chunk-meta">
                             <span style="font-weight:700; color:var(--accent);">▶ Chunk #${{idx + 1}}</span>
-                            <span style="color:var(--text); font-family:monospace;">${{c.file_path}}</span>
-                            <span style="color:var(--text-muted);">[${{c.symbol_type || 'code'}}: \
-${{c.symbol_name || 'block'}}]</span>
+                            <span style="color:var(--text); font-family:monospace;">
+                                ${{escapeHtml(c.file_path)}}</span>
+                            <span style="color:var(--text-muted);">
+                                [${{escapeHtml(c.symbol_type || 'code')}}: \
+${{escapeHtml(c.symbol_name || 'block')}}]</span>
                             <span style="color:var(--text-muted); font-size:12px;">\
 Lines ${{c.start_line}}-${{c.end_line}}</span>
                         </div>
@@ -701,49 +708,6 @@ Lines ${{c.start_line}}-${{c.end_line}}</span>
                 `;
             }});
             container.innerHTML = html;
-        }}
-
-        // Files Tab: Load specific file chunks (Figure VI.2)
-        async function loadFileChunks() {{
-            const select = document.getElementById('file-select');
-            const filePath = select.value;
-            if (!filePath) return;
-
-            const container = document.getElementById('file-chunks-container');
-            container.innerHTML =
-                '<div style="color:var(--accent); text-align:center; padding:20px;">Loading chunks...</div>';
-
-            try {{
-                const res = await fetch('/file?path=' + encodeURIComponent(filePath));
-                if (!res.ok) throw new Error('File not found');
-                const data = await res.json();
-
-                let html = '<div style="margin-bottom:16px; font-weight:600; color:var(--accent-green);">' +
-                           data.total_chunks + ' AST chunks found in ' + data.file_path + '</div>';
-
-                data.chunks.forEach((c, i) => {{
-                    html += `
-                    <div class="chunk-card">
-                        <div class="chunk-header">
-                            <div class="chunk-meta">
-                                <span class="gutter-marker">▶</span>
-                                <span style="font-weight:700; color:var(--accent);">${{c.symbol_name}}</span>
-                                <span style="color:var(--text-muted); font-size:12px;">\
-(${{c.symbol_type}}, lines ${{c.start_line}}-${{c.end_line}})</span>
-                            </div>
-                            <span style="font-size:11px; color:var(--text-muted); font-family:monospace;">\
-${{c.content_hash.substring(0, 10)}}...</span>
-                        </div>
-                        <pre class="code-pre"><code>${{escapeHtml(c.content)}}</code></pre>
-                    </div>
-                    `;
-                }});
-                container.innerHTML = html;
-            }} catch (err) {{
-                container.innerHTML =
-                    '<div style="color:var(--accent-red); padding:20px;">Error loading file: '
-                    + err.message + '</div>';
-            }}
         }}
 
         function escapeHtml(text) {{
@@ -789,22 +753,7 @@ ${{c.content_hash.substring(0, 10)}}...</span>
                           + 'color:var(--text-muted);">No files indexed yet.</td></tr>';
                 }}
 
-                // Preserve the user's selection while refreshing the options
-                const select = document.getElementById('file-select');
-                if (select) {{
-                    const current = select.value;
-                    const wanted = files.map(f => f.path).join('\u0000');
-                    if (select.dataset.paths !== wanted) {{
-                        select.innerHTML = files
-                            .map(f => {{
-                                const p = escapeHtml(f.path);
-                                return `<option value="${{p}}">${{p}}</option>`;
-                            }})
-                            .join('');
-                        select.dataset.paths = wanted;
-                        if (files.some(f => f.path === current)) select.value = current;
-                    }}
-                }}
+                if (document.getElementById('tab-files').classList.contains('active')) fvRefresh();
             }} catch (e) {{
                 console.error('Stats refresh failed', e);
             }}
@@ -822,11 +771,12 @@ ${{c.content_hash.substring(0, 10)}}...</span>
                 li.className = 'feed-item';
                 li.innerHTML = `
                     <div class="feed-header">
-                        <span class="feed-action ${{data.action}}">${{data.action}}</span>
-                        <span>${{data.timestamp || 'just now'}}</span>
+                        <span class="feed-action ${{escapeHtml(data.action)}}">
+                            ${{escapeHtml(data.action)}}</span>
+                        <span>${{escapeHtml(data.timestamp || 'just now')}}</span>
                     </div>
-                    <div class="feed-path">${{data.path || ''}}</div>
-                    <div style="color:var(--text-muted);">${{data.details || ''}}</div>
+                    <div class="feed-path">${{escapeHtml(data.path || '')}}</div>
+                    <div style="color:var(--text-muted);">${{escapeHtml(data.details || '')}}</div>
                 `;
                 feed.insertBefore(li, feed.firstChild);
 

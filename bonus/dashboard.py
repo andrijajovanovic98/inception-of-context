@@ -7,11 +7,13 @@ Extends Part 3 dashboard with:
   - On-Demand Full Reindex button (POST /reindex)
 """
 
+from html import escape
 from typing import Optional
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
+from p1.dashboard_files import FILEVIEW_CSS, FILEVIEW_HTML, FILEVIEW_JS
 from p1.dashboard_modal import MODAL_CSS, MODAL_HTML, MODAL_JS
 from p1.indexer import CodebaseIndexer
 from p1.watcher import CodebaseWatcher
@@ -31,16 +33,18 @@ def setup_bonus_dashboard(
     """Register the complete Bonus dashboard HTML route on the FastAPI app."""
 
     target_dir = indexer.target_dir
-    val_cmd = load_validation_command(target_dir)
+    max_attempts = engine.max_attempts if engine is not None else 3
 
     @app.get("/", response_class=HTMLResponse)
     async def render_bonus_dashboard(request: Request) -> str:
         stats = indexer.db.get_stats()
         recent_logs = watcher.get_recent_activity(limit=25) if watcher else []
+        # Read per request: the badge must show the command the NEXT run uses.
+        val_cmd = load_validation_command(target_dir)
 
         if stats["files"]:
             files_rows = "".join(
-                f'<tr><td><code>{f}</code></td>'
+                f'<tr><td><code>{escape(f)}</code></td>'
                 f'<td><strong>{c}</strong> chunks</td>'
                 f'<td><span style="color:var(--accent-green)">Synced</span></td></tr>'
                 for f, c in sorted(stats["files"].items())
@@ -55,10 +59,11 @@ def setup_bonus_dashboard(
             activity_items = "".join(
                 f'<li class="feed-item">'
                 f'<div class="feed-header">'
-                f'<span class="feed-action {entry.get("action", "")}">{entry.get("action", "")}</span>'
-                f'<span>{entry.get("timestamp", "")}</span></div>'
-                f'<div class="feed-path">{entry.get("path", "")}</div>'
-                f'<div style="color:var(--text-muted);">{entry.get("details", "")}</div></li>'
+                f'<span class="feed-action {escape(entry.get("action", ""))}">'
+                f'{escape(entry.get("action", ""))}</span>'
+                f'<span>{escape(entry.get("timestamp", ""))}</span></div>'
+                f'<div class="feed-path">{escape(entry.get("path", ""))}</div>'
+                f'<div style="color:var(--text-muted);">{escape(entry.get("details", ""))}</div></li>'
                 for entry in recent_logs
             )
         else:
@@ -66,11 +71,6 @@ def setup_bonus_dashboard(
                 '<li class="feed-item" style="color:var(--text-muted); text-align:center;">'
                 'Waiting for events...</li>'
             )
-
-        file_options = "".join(
-            f'<option value="{f}">{f}</option>'
-            for f in sorted(stats["files"].keys())
-        )
 
         return f"""<!DOCTYPE html>
 <html lang="en">
@@ -231,7 +231,31 @@ def setup_bonus_dashboard(
 
         /* Visual Diff Styling */
         .visual-diff-container div {{ font-family: monospace; white-space: pre-wrap; }}
+        .feed-action.ERROR {{ background: rgba(248, 113, 113, 0.2); color: var(--accent-red); }}
+        .feed-action.CREATED {{ background: rgba(74, 222, 128, 0.2); color: var(--accent-green); }}
+        .final-patch {{
+            background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+            margin-bottom: 20px; overflow: hidden;
+        }}
+        .final-patch summary {{
+            cursor: pointer; padding: 12px 18px; font-weight: 700; font-size: 14px;
+            background: rgba(255,255,255,0.02); list-style-position: inside;
+        }}
+        .final-patch pre {{
+            margin: 0; padding: 14px 18px; font-family: monospace; font-size: 12px;
+            line-height: 1.45; color: #e2e8f0; white-space: pre-wrap; word-break: break-word;
+            max-height: 460px; overflow: auto; border-top: 1px solid var(--border);
+        }}
+        .source-badge {{
+            padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;
+            border: 1px solid var(--border); color: var(--text-muted);
+        }}
+        .source-badge.index {{
+            color: var(--accent-green); border-color: rgba(74, 222, 128, 0.35);
+            background: rgba(74, 222, 128, 0.12);
+        }}
 {MODAL_CSS}
+{FILEVIEW_CSS}
     </style>
 </head>
 <body>
@@ -267,7 +291,13 @@ def setup_bonus_dashboard(
         <div class="grid">
             <div class="card">
                 <div class="title">Target Codebase</div>
-                <div class="val highlight" style="font-size:16px; word-break:break-all;">{target_dir}</div>
+                <div class="val highlight"
+                     style="font-size:16px; word-break:break-all;">{escape(target_dir)}</div>
+            </div>
+            <div class="card">
+                <div class="title">Vector Store</div>
+                <div class="val"
+                     style="font-size:14px; word-break:break-all;">{escape(stats['persist_dir'])}</div>
             </div>
             <div class="card">
                 <div class="title">Indexed Chunks</div>
@@ -284,7 +314,8 @@ def setup_bonus_dashboard(
             </div>
             <div class="card">
                 <div class="title">Local LLM</div>
-                <div class="val" style="font-size:15px; color:var(--accent-purple);">{llm_client.model}</div>
+                <div class="val"
+                     style="font-size:15px; color:var(--accent-purple);">{escape(llm_client.model)}</div>
             </div>
         </div>
 
@@ -305,19 +336,7 @@ def setup_bonus_dashboard(
 
     <!-- TAB 2: FILES -->
     <div id="tab-files" class="tab-content">
-        <div class="form-panel">
-            <div class="form-row">
-                <div class="form-group flex-1">
-                    <label for="file-select">Select Indexed File:</label>
-                    <select id="file-select" onchange="loadFileChunks()">
-                        <option value="">-- Choose a file --</option>
-                        {file_options}
-                    </select>
-                </div>
-                <button class="btn btn-secondary" onclick="loadFileChunks()">Refresh Chunks</button>
-            </div>
-            <div id="file-chunks-container" style="margin-top:16px;"></div>
-        </div>
+{FILEVIEW_HTML}
     </div>
 
     <!-- TAB 3: ASK & RETRIEVE -->
@@ -347,8 +366,11 @@ def setup_bonus_dashboard(
                     margin-bottom:12px;">
                     <div style="font-weight:700; color:var(--accent-purple);
                         font-size:15px;">Model Response</div>
-                    <span id="ground-truth-badge" class="badge badge-purple" style="display:none;">Ground
-                        Truth Verified</span>
+                    <span style="display:flex; gap:8px; align-items:center;">
+                        <span id="answer-source" class="source-badge"></span>
+                        <span id="ground-truth-badge" class="badge badge-purple" style="display:none;">Ground
+                            Truth Verified</span>
+                    </span>
                 </div>
                 <div id="answer-text" style="font-size:15px; line-height:1.6; white-space:pre-wrap;
                     color:#e2e8f0;"></div>
@@ -375,8 +397,8 @@ def setup_bonus_dashboard(
                 </div>
                 <div style="display:flex; gap:8px;">
                     <span class="badge" title="Active validation command in ioc.config.yml">Cmd:
-                        <code>{val_cmd}</code></span>
-                    <span class="badge badge-amber">Max: 3 Attempts</span>
+                        <code>{escape(val_cmd)}</code></span>
+                    <span class="badge badge-amber">Max: {max_attempts} Attempts</span>
                 </div>
             </div>
 
@@ -395,8 +417,9 @@ def setup_bonus_dashboard(
                 </label>
                 <label style="display:flex; align-items:center; gap:8px; cursor:pointer;
                     color:var(--accent-green);">
-                    <input type="checkbox" id="check-auto-commit" checked style="width:16px; height:16px;">
-                    <strong>Auto Git Commit</strong> (Chapter VII: Automatic commit with LLM message)
+                    <input type="checkbox" id="check-auto-commit" style="width:16px; height:16px;">
+                    <strong>Auto Git Commit</strong> (Chapter VII: commit the validated patch with an
+                    LLM-written message - writes to the repository's history, so it is opt-in)
                 </label>
             </div>
 
@@ -419,6 +442,38 @@ def setup_bonus_dashboard(
             </div>
         </div>
 
+        <!-- Chapter VII: Docker SDK crash watcher -->
+        <div class="form-panel" id="crash-watch-panel">
+            <h2 style="font-size:16px; font-weight:700; color:#fff; margin-bottom:4px;">
+                Crash Watcher (Docker SDK)</h2>
+            <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+                Follows a service container's log. When the service exits with a non-zero code, the end of
+                its log becomes the intent of a patch loop run (same loop, lock and history as above), and
+                after a green patch the service is started again.
+                Demo service: <code>make demo-service</code>.
+            </p>
+            <div class="form-row">
+                <div class="form-group" style="width:260px;">
+                    <label for="crash-container">Container:</label>
+                    <input type="text" id="crash-container" value="ioc-demo-service">
+                </div>
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" id="crash-auto-restart" checked style="width:16px; height:16px;">
+                    Restart the service after a green patch
+                </label>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-primary" id="btn-crash-start" onclick="startCrashWatch()">
+                        ▶ Watch</button>
+                    <button class="btn btn-secondary" onclick="stopCrashWatch()">■ Stop</button>
+                </div>
+            </div>
+            <div id="crash-watch-status" style="font-size:13px; color:var(--text-muted); margin-top:6px;">
+                Not watching.</div>
+            <div id="crash-watch-crashes" style="margin-top:10px;"></div>
+            <pre id="crash-watch-log" class="terminal-box" style="display:none; margin-top:10px;
+                max-height:160px;"></pre>
+        </div>
+
         <!-- Loop Execution Status Banner -->
         <div class="card" id="patch-status-card" style="margin-bottom:24px; display:none;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -439,6 +494,94 @@ def setup_bonus_dashboard(
 
     <script>
 {MODAL_JS}
+{FILEVIEW_JS}
+        const MAX_ATTEMPTS = {max_attempts};
+        const ANSWER_SOURCES = {{
+            'index': 'Answered from the index (model not consulted)',
+            'model+index': 'Verified fact + model explanation',
+            'model': 'Model answer'
+        }};
+        const ATTEMPT_PILLS = {{
+            'sanity_failed': '<span class="badge badge-amber">Sanity Refusal</span>',
+            'validation_failed': '<span class="badge badge-red">Validation Failed</span>',
+            'generation_failed': '<span class="badge badge-red">Generation Failed</span>',
+            'apply_failed': '<span class="badge badge-red">Apply Failed</span>'
+        }};
+
+        // Subject Figure VI.4: "surfaces the final patch as JSON".
+        function renderFinalPatch(result) {{
+            const patch = result.final_patch || (result.dry_run ? result.patch : null);
+            if (!patch) return '';
+            const title = result.dry_run
+                ? 'Proposed patch (dry run, nothing written) - structured JSON'
+                : result.status === 'success'
+                ? 'Final patch (applied) - structured JSON'
+                : 'Last attempted patch (rolled back) - structured JSON';
+            return '<details class="final-patch"' + (result.status === 'success' ? ' open' : '') + '>'
+                + '<summary>' + title + '</summary>'
+                + '<pre>' + escapeHtml(JSON.stringify(patch, null, 2)) + '</pre></details>';
+        }}
+
+        // Chapter VII: Docker SDK crash watcher
+        let crashPoll = null;
+        function renderCrashWatch(data) {{
+            const status = document.getElementById('crash-watch-status');
+            status.innerHTML = (data.watching
+                ? '<span class="badge">WATCHING</span> '
+                : '<span class="badge badge-amber">NOT WATCHING</span> ')
+                + escapeHtml((data.container ? data.container + ': ' : '') + (data.state || ''));
+            const rows = (data.crashes || []).slice().reverse().map(c =>
+                '<tr><td>' + new Date(c.detected_at * 1000).toLocaleTimeString() + '</td>'
+                + '<td>' + escapeHtml(String(c.exit_code)) + '</td>'
+                + '<td><code>' + escapeHtml(c.error) + '</code></td>'
+                + '<td>' + escapeHtml(c.status)
+                + (c.attempts ? ' (' + c.attempts + ' attempt(s))' : '') + '</td>'
+                + '<td>' + escapeHtml(c.restarted ? 'restarted' : (c.detail || '')) + '</td></tr>').join('');
+            document.getElementById('crash-watch-crashes').innerHTML = rows
+                ? '<table><thead><tr><th>Time</th><th>Exit</th><th>Error</th><th>Patch loop</th>'
+                  + '<th>Service</th></tr></thead><tbody>' + rows + '</tbody></table>'
+                : '';
+            const log = document.getElementById('crash-watch-log');
+            const lines = data.log_tail || [];
+            log.style.display = lines.length ? 'block' : 'none';
+            log.textContent = lines.join('\\n');
+        }}
+
+        async function refreshCrashWatch() {{
+            try {{
+                const data = await (await fetch('/bonus/crash-watch')).json();
+                renderCrashWatch(data);
+                if (data.watching && !crashPoll) crashPoll = setInterval(refreshCrashWatch, 3000);
+                if (!data.watching && crashPoll) {{ clearInterval(crashPoll); crashPoll = null; }}
+            }} catch (e) {{ /* server restarting: the next poll retries */ }}
+        }}
+
+        async function startCrashWatch() {{
+            const container = document.getElementById('crash-container').value.trim();
+            if (!container) {{ showAlert('Enter the name of the container to watch.', 'error'); return; }}
+            const res = await fetch('/bonus/crash-watch', {{
+                method: 'POST',
+                headers: {{ 'Content-Type': 'application/json' }},
+                body: JSON.stringify({{
+                    container: container,
+                    auto_restart: document.getElementById('crash-auto-restart').checked
+                }})
+            }});
+            const data = await res.json();
+            if (!res.ok) {{
+                showAlert(data.detail || ('HTTP ' + res.status), 'error', 'Crash watcher');
+                return;
+            }}
+            renderCrashWatch(data);
+            refreshCrashWatch();
+        }}
+
+        async function stopCrashWatch() {{
+            const data = await (await fetch('/bonus/crash-watch', {{ method: 'DELETE' }})).json();
+            renderCrashWatch(data);
+            refreshCrashWatch();
+        }}
+
         function showTab(tabId) {{
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(panel => panel.classList.remove('active'));
@@ -446,7 +589,7 @@ def setup_bonus_dashboard(
             const panel = document.getElementById('tab-' + tabId);
             if (btn) btn.classList.add('active');
             if (panel) panel.classList.add('active');
-            if (tabId === 'files') loadFileChunks();
+            if (tabId === 'files') fvRefresh();
         }}
 
         async function triggerOnDemandReindex() {{
@@ -484,6 +627,7 @@ def setup_bonus_dashboard(
             }}
         }}
         checkOllama();
+        refreshCrashWatch();  // a watcher started from the CLI shows up too
 
         async function runBonusPatchLoop() {{
             const intent = document.getElementById('patch-intent').value.trim();
@@ -599,12 +743,13 @@ def setup_bonus_dashboard(
                 container.innerHTML =
                     '<div style="margin-bottom:14px;"><label>Sanity Checks '
                     + '(Subject VI.3 Rules):</label>' + dryPills + dryErrors + '</div>'
-                    + (diffHtml || '<div style="color:var(--text-muted);">No diff produced.</div>');
+                    + (diffHtml || '<div style="color:var(--text-muted);">No diff produced.</div>')
+                    + renderFinalPatch(result);
                 return;
             }}
 
             // Full Loop outcome
-            attemptsBadge.innerText = `Attempts: ${{result.attempts_count}} / 3`;
+            attemptsBadge.innerText = `Attempts: ${{result.attempts_count}} / ${{MAX_ATTEMPTS}}`;
             if (result.status === 'success') {{
                 statusBadge.className = 'badge';
                 statusBadge.innerText = 'GREEN (PASSED)';
@@ -612,6 +757,13 @@ def setup_bonus_dashboard(
                     attempt(s)!`;
                 statusMsg.innerText = 'All tests passed. Code committed to codebase.';
 
+                if (result.git_commit && !result.git_commit.committed) {{
+                    // A skipped commit must be visible, not silently absent.
+                    gitBanner.style.display = 'block';
+                    gitBanner.innerHTML = '<div class="error-feedback-box">'
+                        + '<strong>Auto Git Commit skipped:</strong> '
+                        + escapeHtml(result.git_commit.error || 'unknown error') + '</div>';
+                }}
                 if (result.git_commit && result.git_commit.committed) {{
                     gitBanner.style.display = 'block';
                     gitBanner.innerHTML = `
@@ -621,15 +773,16 @@ def setup_bonus_dashboard(
                             <span><strong>Auto Git Commit:</strong>
                                 <code>${{escapeHtml(result.git_commit.message)}}</code></span>
                             <span class="badge" style="background:#090d16;">commit
-                                ${{result.git_commit.commit_hash}}</span>
+                                ${{escapeHtml(result.git_commit.commit_hash)}}</span>
                         </div>
                     `;
                 }}
             }} else {{
+                const verified = result.rollback_verified === true;
                 statusBadge.className = 'badge badge-red';
-                statusBadge.innerText = 'FAILED (100% ROLLED BACK)';
-                statusTitle.innerText = `Loop failed after ${{result.attempts_count}}
-                    attempt(s). Codebase restored.`;
+                statusBadge.innerText = verified ? 'FAILED (ROLLED BACK, VERIFIED)' : 'FAILED';
+                statusTitle.innerText = `Loop failed after ${{result.attempts_count}} attempt(s).`
+                    + (verified ? ' Codebase restored byte-for-byte.' : '');
                 statusMsg.innerText = result.error_message || (
                     'Project cleanly restored to pre-patch snapshot.'
                 );
@@ -641,9 +794,7 @@ def setup_bonus_dashboard(
                 const isPassed = att.status === 'success';
                 const statusPill = isPassed
                     ? '<span class="badge">GREEN (Passed)</span>'
-                    : att.status === 'sanity_failed'
-                    ? '<span class="badge badge-amber">Sanity Refusal</span>'
-                    : '<span class="badge badge-red">Validation Failed</span>';
+                    : (ATTEMPT_PILLS[att.status] || '<span class="badge badge-red">Failed</span>');
 
                 let diffsHtml = '';
                 (att.diffs || []).forEach(d => {{
@@ -686,6 +837,25 @@ def setup_bonus_dashboard(
                 );
                 const patchObj = att.patch || {{}};
                 const explanation = patchObj.summary || patchObj.explanation || '';
+                // Entries the generator dropped: the model rewrote files it was not
+                // shown in full (and the intent did not name) - listed, not hidden.
+                const droppedHtml = (patchObj.dropped_unrequested || []).length
+                    ? '<div class="feedback-note" style="margin-top:6px;">Ignored unrequested edit(s) of '
+                      + patchObj.dropped_unrequested.map(p => '<code>' + escapeHtml(p) + '</code>').join(', ')
+                      + ' - the model was not shown these files in full.</div>'
+                    : '';
+                // A pure rename is kept to the renamed lines; what the model
+                // changed besides them was reverted - listed, not hidden.
+                const keptHtml0 = (patchObj.kept_to_rename || []).length
+                    ? '<div class="feedback-note" style="margin-top:6px;">Kept to the rename: '
+                      + patchObj.kept_to_rename.map(n => escapeHtml(n)).join('; ') + '</div>'
+                    : '';
+                // A module docstring the model dropped was put back - listed, not hidden.
+                const keptHtml = keptHtml0 + ((patchObj.restored_docstrings || []).length
+                    ? '<div class="feedback-note" style="margin-top:6px;">Restored the module docstring '
+                      + 'the model dropped: ' + patchObj.restored_docstrings.map(
+                          p => '<code>' + escapeHtml(p) + '</code>').join(', ') + '</div>'
+                    : '');
                 html += `
                 <div class="attempt-card">
                     <div class="attempt-header">
@@ -708,6 +878,7 @@ def setup_bonus_dashboard(
                             <label>Visual Patch Diff (+ Additions / - Deletions):</label>
                             <div style="margin-top:8px;">
                                 ${{diffsHtml || emptyDiff}}</div>
+                            ${{droppedHtml}}${{keptHtml}}
                         </div>
                         ${{valHtml}}
                     </div>
@@ -715,7 +886,7 @@ def setup_bonus_dashboard(
                 `;
             }});
 
-            container.innerHTML = html;
+            container.innerHTML = renderFinalPatch(result) + html;
         }}
 
         async function triggerManualRollback() {{
@@ -725,8 +896,19 @@ def setup_bonus_dashboard(
             );
             if (!ok) return;
             try {{
-                await fetch('/patch/rollback', {{ method: 'POST' }});
-                await showAlert('Rollback completed. Codebase restored to snapshot.', 'success', 'Rollback');
+                const res = await fetch('/patch/rollback', {{ method: 'POST' }});
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+                const changed = (data.restored || []).concat(data.removed || []);
+                const clean = !(data.mismatches || []).length;
+                await showAlert(
+                    (changed.length
+                        ? 'Reverted: ' + changed.join(', ')
+                        : 'Nothing to revert - the files already match their pre-run state.')
+                    + (clean ? '' : '\\nStill different: ' + data.mismatches.join(', ')),
+                    clean ? 'success' : 'error',
+                    'Rollback'
+                );
             }} catch (e) {{
                 await showAlert(e.message, 'error', 'Rollback');
             }}
@@ -764,12 +946,18 @@ def setup_bonus_dashboard(
                     body: JSON.stringify({{ query: query, k: k }})
                 }});
                 const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
                 document.getElementById('answer-box').style.display = retrieveOnly ? 'none' : 'block';
                 document.getElementById('answer-text').innerText = data.answer || '';
+                const srcBadge = document.getElementById('answer-source');
+                srcBadge.innerText = ANSWER_SOURCES[data.answer_source] || '';
+                srcBadge.className = 'source-badge' + (data.answer_source === 'index' ? ' index' : '');
                 document.getElementById('ground-truth-badge').style.display = data.pre_resolved ?
                     'inline-block' : 'none';
                 renderChunks(retrieveOnly ? data.chunks : data.retrieved_chunks);
                 resBox.style.display = 'block';
+            }} catch (err) {{
+                await showAlert('Error processing request: ' + err.message, 'error', 'Ask & Retrieve');
             }} finally {{ loading.style.display = 'none'; }}
         }}
 
@@ -780,24 +968,13 @@ def setup_bonus_dashboard(
                 <div class="chunk-card">
                     <div class="chunk-header">
                         <span style="font-weight:700;
-                            color:var(--accent);">▶ #${{i+1}} ${{c.file_path}}</span>
+                            color:var(--accent);">▶ #${{i+1}} ${{escapeHtml(c.file_path)}}
+                            <span style="color:var(--text-muted); font-weight:400;">
+                            [${{escapeHtml(c.symbol_type || 'code')}}: ${{escapeHtml(c.symbol_name || '')}},
+                            lines ${{c.start_line}}-${{c.end_line}}]</span></span>
                         <span class="badge">${{c.similarity_score ? (c.similarity_score*100).toFixed(1)+'%' :
                             ''}}</span>
                     </div>
-                    <pre class="code-pre"><code>${{escapeHtml(c.content)}}</code></pre>
-                </div>
-            `).join('');
-        }}
-
-        async function loadFileChunks() {{
-            const sel = document.getElementById('file-select');
-            if (!sel.value) return;
-            const res = await fetch('/file?path=' + encodeURIComponent(sel.value));
-            const data = await res.json();
-            document.getElementById('file-chunks-container').innerHTML = (data.chunks || []).map(c => `
-                <div class="chunk-card">
-                    <div class="chunk-header"><span style="font-weight:700;
-                        color:var(--accent);">▶ ${{c.symbol_name}} (${{c.symbol_type}})</span></div>
                     <pre class="code-pre"><code>${{escapeHtml(c.content)}}</code></pre>
                 </div>
             `).join('');
@@ -870,21 +1047,7 @@ def setup_bonus_dashboard(
                           + 'color:var(--text-muted);">No files indexed yet.</td></tr>';
                 }}
 
-                const select = document.getElementById('file-select');
-                if (select) {{
-                    const current = select.value;
-                    const wanted = files.map(f => f.path).join('\u0000');
-                    if (select.dataset.paths !== wanted) {{
-                        select.innerHTML = files
-                            .map(f => {{
-                                const p = escapeHtml(f.path);
-                                return `<option value="${{p}}">${{p}}</option>`;
-                            }})
-                            .join('');
-                        select.dataset.paths = wanted;
-                        if (files.some(f => f.path === current)) select.value = current;
-                    }}
-                }}
+                if (document.getElementById('tab-files').classList.contains('active')) fvRefresh();
             }} catch (e) {{
                 console.error('Stats refresh failed', e);
             }}
@@ -901,9 +1064,9 @@ def setup_bonus_dashboard(
                     const li = document.createElement('li');
                     li.className = 'feed-item';
                     li.innerHTML = `<div class="feed-header"><span class="feed-action
-                        ${{data.action}}">${{data.action}}</span><span>${{data.timestamp ||
-                        'now'}}</span></div><div class="feed-path">${{data.path ||
-                        ''}}</div><div>${{data.details || ''}}</div>`;
+                        ${{escapeHtml(data.action)}}">${{escapeHtml(data.action)}}</span><span>${{
+                        escapeHtml(data.timestamp || 'now')}}</span></div><div class="feed-path">${{
+                        escapeHtml(data.path || '')}}</div><div>${{escapeHtml(data.details || '')}}</div>`;
                     feed.insertBefore(li, feed.firstChild);
                 }}
 

@@ -124,6 +124,45 @@ class VectorDB:
             self.collection.delete(ids=ids_to_delete)
         return len(ids_to_delete)
 
+    @staticmethod
+    def chunk_signature(meta: Dict[str, Any]) -> str:
+        """
+        Everything that must match for a stored chunk to be reused as-is: the
+        content hash AND its position/name metadata (a header chunk keeps its
+        text but moves when a blank line is inserted above the next symbol).
+        """
+        return "|".join(
+            str(meta.get(key, ""))
+            for key in ("content_hash", "start_line", "end_line", "symbol_name", "symbol_type")
+        )
+
+    def get_file_signatures(self, file_path: str) -> Dict[str, str]:
+        """chunk_id -> signature for every stored chunk of one file."""
+        existing = cast(
+            Dict[str, Any],
+            self.collection.get(where={"file_path": file_path}, include=["metadatas"]),
+        )
+        ids = list(existing.get("ids") or [])
+        metas = cast(List[Dict[str, Any]], existing.get("metadatas") or [])
+        return {cid: self.chunk_signature(meta or {}) for cid, meta in zip(ids, metas)}
+
+    def delete_ids(self, ids: List[str]) -> int:
+        """Delete specific chunks by id."""
+        if ids:
+            self.collection.delete(ids=ids)
+        return len(ids)
+
+    def indexed_files(self) -> Dict[str, List[str]]:
+        """file_path -> chunk ids, for every file the collection holds chunks of."""
+        if self.collection.count() == 0:
+            return {}
+        data = cast(Dict[str, Any], self.collection.get(include=["metadatas"]))
+        files: Dict[str, List[str]] = {}
+        for cid, meta in zip(data.get("ids") or [], data.get("metadatas") or []):
+            fpath = str((meta or {}).get("file_path", ""))
+            files.setdefault(fpath, []).append(cid)
+        return files
+
     def upsert_chunks(self, chunks: List[CodeChunk]) -> int:
         """
         Upsert a list of CodeChunks into the collection.

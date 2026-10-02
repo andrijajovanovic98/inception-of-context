@@ -9,11 +9,13 @@ Renders the complete 4-tab web interface:
 100% local, zero external network or CDN dependencies.
 """
 
+from html import escape
 from typing import Optional
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
+from p1.dashboard_files import FILEVIEW_CSS, FILEVIEW_HTML, FILEVIEW_JS
 from p1.dashboard_modal import MODAL_CSS, MODAL_HTML, MODAL_JS
 from p1.indexer import CodebaseIndexer
 from p1.watcher import CodebaseWatcher
@@ -33,17 +35,19 @@ def setup_p3_dashboard(
     """Register the complete 4-tab dashboard HTML route on the FastAPI application."""
 
     target_dir = indexer.target_dir
-    val_cmd = load_validation_command(target_dir)
+    max_attempts = engine.max_attempts if engine is not None else 3
 
     @app.get("/", response_class=HTMLResponse)
     async def render_dashboard(request: Request) -> str:
         stats = indexer.db.get_stats()
         recent_logs = watcher.get_recent_activity(limit=25) if watcher else []
+        # Read per request: the badge must show the command the NEXT run uses.
+        val_cmd = load_validation_command(target_dir)
 
         # Server-rendered Overview file rows
         if stats["files"]:
             files_rows = "".join(
-                f'<tr><td><code>{f}</code></td>'
+                f'<tr><td><code>{escape(f)}</code></td>'
                 f'<td><strong>{c}</strong> chunks</td>'
                 f'<td><span style="color:var(--accent-green)">Synced</span></td></tr>'
                 for f, c in sorted(stats["files"].items())
@@ -58,10 +62,11 @@ def setup_p3_dashboard(
             activity_items = "".join(
                 f'<li class="feed-item">'
                 f'<div class="feed-header">'
-                f'<span class="feed-action {entry.get("action", "")}">{entry.get("action", "")}</span>'
-                f'<span>{entry.get("timestamp", "")}</span></div>'
-                f'<div class="feed-path">{entry.get("path", "")}</div>'
-                f'<div style="color:var(--text-muted);">{entry.get("details", "")}</div></li>'
+                f'<span class="feed-action {escape(entry.get("action", ""))}">'
+                f'{escape(entry.get("action", ""))}</span>'
+                f'<span>{escape(entry.get("timestamp", ""))}</span></div>'
+                f'<div class="feed-path">{escape(entry.get("path", ""))}</div>'
+                f'<div style="color:var(--text-muted);">{escape(entry.get("details", ""))}</div></li>'
                 for entry in recent_logs
             )
         else:
@@ -69,11 +74,6 @@ def setup_p3_dashboard(
                 '<li class="feed-item" style="color:var(--text-muted); text-align:center;">'
                 'Waiting for events...</li>'
             )
-
-        file_options = "".join(
-            f'<option value="{f}">{f}</option>'
-            for f in sorted(stats["files"].keys())
-        )
 
         ask_query_placeholder = (
             "e.g. What functions exist in calculator.py? or What does format_number do?"
@@ -474,7 +474,31 @@ def setup_p3_dashboard(
             background: rgba(251, 191, 36, 0.1);
             border-radius: 6px;
         }}
+        .feed-action.ERROR {{ background: rgba(248, 113, 113, 0.2); color: var(--accent-red); }}
+        .feed-action.CREATED {{ background: rgba(74, 222, 128, 0.2); color: var(--accent-green); }}
+        .final-patch {{
+            background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+            margin-bottom: 20px; overflow: hidden;
+        }}
+        .final-patch summary {{
+            cursor: pointer; padding: 12px 18px; font-weight: 700; font-size: 14px;
+            background: rgba(255,255,255,0.02); list-style-position: inside;
+        }}
+        .final-patch pre {{
+            margin: 0; padding: 14px 18px; font-family: monospace; font-size: 12px;
+            line-height: 1.45; color: #e2e8f0; white-space: pre-wrap; word-break: break-word;
+            max-height: 460px; overflow: auto; border-top: 1px solid var(--border);
+        }}
+        .source-badge {{
+            padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;
+            border: 1px solid var(--border); color: var(--text-muted);
+        }}
+        .source-badge.index {{
+            color: var(--accent-green); border-color: rgba(74, 222, 128, 0.35);
+            background: rgba(74, 222, 128, 0.12);
+        }}
 {MODAL_CSS}
+{FILEVIEW_CSS}
     </style>
 </head>
 <body>
@@ -511,7 +535,13 @@ def setup_p3_dashboard(
         <div class="grid">
             <div class="card">
                 <div class="title">Target Codebase</div>
-                <div class="val highlight" style="font-size:16px; word-break:break-all;">{target_dir}</div>
+                <div class="val highlight"
+                     style="font-size:16px; word-break:break-all;">{escape(target_dir)}</div>
+            </div>
+            <div class="card">
+                <div class="title">Vector Store</div>
+                <div class="val"
+                     style="font-size:14px; word-break:break-all;">{escape(stats['persist_dir'])}</div>
             </div>
             <div class="card">
                 <div class="title">Indexed Chunks</div>
@@ -529,7 +559,8 @@ def setup_p3_dashboard(
             </div>
             <div class="card">
                 <div class="title">Local LLM</div>
-                <div class="val" style="font-size:15px; color:var(--accent-purple);">{llm_client.model}</div>
+                <div class="val"
+                     style="font-size:15px; color:var(--accent-purple);">{escape(llm_client.model)}</div>
             </div>
         </div>
 
@@ -552,23 +583,7 @@ def setup_p3_dashboard(
     <!-- TAB 2: FILES (Figure VI.2)                                        -->
     <!-- ================================================================= -->
     <div id="tab-files" class="tab-content">
-        <div class="form-panel">
-            <div class="form-row">
-                <div class="form-group flex-1">
-                    <label for="file-select">Select Indexed File:</label>
-                    <select id="file-select" onchange="loadFileChunks()">
-                        <option value="">-- Choose a file --</option>
-                        {file_options}
-                    </select>
-                </div>
-                <button class="btn btn-secondary" onclick="loadFileChunks()">Refresh Chunks</button>
-            </div>
-            <div id="file-chunks-container" style="margin-top:16px;">
-                <div style="color:var(--text-muted); text-align:center; padding:30px;">
-                    Select a source file above to inspect its AST-parsed logical chunks and gutter markers.
-                </div>
-            </div>
-        </div>
+{FILEVIEW_HTML}
     </div>
 
     <!-- ================================================================= -->
@@ -607,8 +622,11 @@ def setup_p3_dashboard(
                     <div style="font-weight:700; color:var(--accent-purple); font-size:15px;">
                         Model Response
                     </div>
-                    <span id="ground-truth-badge" class="badge badge-purple" style="display:none;">
-                        Ground Truth Verified
+                    <span style="display:flex; gap:8px; align-items:center;">
+                        <span id="answer-source" class="source-badge"></span>
+                        <span id="ground-truth-badge" class="badge badge-purple" style="display:none;">
+                            Ground Truth Verified
+                        </span>
                     </span>
                 </div>
                 <div id="answer-text"
@@ -642,9 +660,9 @@ def setup_p3_dashboard(
                 </div>
                 <div style="display:flex; gap:8px;">
                     <span class="badge" title="Active validation command in ioc.config.yml">
-                        Cmd: <code>{val_cmd}</code>
+                        Cmd: <code>{escape(val_cmd)}</code>
                     </span>
-                    <span class="badge badge-amber">Max: 3 Attempts</span>
+                    <span class="badge badge-amber">Max: {max_attempts} Attempts</span>
                 </div>
             </div>
 
@@ -693,6 +711,14 @@ def setup_p3_dashboard(
     <!-- Client-side Logic (Vanilla JS, 0 External Dependencies) -->
     <script>
 {MODAL_JS}
+{FILEVIEW_JS}
+        const MAX_ATTEMPTS = {max_attempts};
+        const ANSWER_SOURCES = {{
+            'index': 'Answered from the index (model not consulted)',
+            'model+index': 'Verified fact + model explanation',
+            'model': 'Model answer'
+        }};
+
         // Tab switching
         function showTab(tabId) {{
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -703,7 +729,7 @@ def setup_p3_dashboard(
             if (btn) btn.classList.add('active');
             if (panel) panel.classList.add('active');
 
-            if (tabId === 'files') loadFileChunks();
+            if (tabId === 'files') fvRefresh();
             if (tabId === 'patch') checkPatchStatus();
         }}
 
@@ -797,6 +823,13 @@ def setup_p3_dashboard(
             }}
         }}
 
+        const ATTEMPT_PILLS = {{
+            'sanity_failed': '<span class="badge badge-amber">Sanity Refusal</span>',
+            'validation_failed': '<span class="badge badge-red">Validation Failed</span>',
+            'generation_failed': '<span class="badge badge-red">Generation Failed</span>',
+            'apply_failed': '<span class="badge badge-red">Apply Failed</span>'
+        }};
+
         // Order the Subject VI.3 rules are shown in. Labels come from the API
         // when present so they can never drift from the checker.
         const SANITY_RULE_ORDER = ['1', '2', '3', '0', '4', '5', '6'];
@@ -838,7 +871,7 @@ def setup_p3_dashboard(
             const container = document.getElementById('patch-attempts-container');
 
             statusCard.style.display = 'block';
-            attemptsBadge.innerText = `Attempts: ${{result.attempts_count}} / 3`;
+            attemptsBadge.innerText = `Attempts: ${{result.attempts_count}} / ${{MAX_ATTEMPTS}}`;
 
             if (result.status === 'success') {{
                 statusBadge.className = 'badge';
@@ -848,10 +881,12 @@ def setup_p3_dashboard(
                 );
                 statusMsg.innerText = 'All validation tests passed. Codebase committed and re-indexed.';
             }} else {{
+                const verified = result.rollback_verified === true;
                 statusBadge.className = 'badge badge-red';
-                statusBadge.innerText = 'FAILED (100% ROLLED BACK)';
+                statusBadge.innerText = verified ? 'FAILED (ROLLED BACK, VERIFIED)' : 'FAILED';
                 statusTitle.innerText = (
-                    `Loop failed after ${{result.attempts_count}} attempt(s). Codebase restored.`
+                    `Loop failed after ${{result.attempts_count}} attempt(s).`
+                    + (verified ? ' Codebase restored byte-for-byte.' : '')
                 );
                 statusMsg.innerText = (
                     result.error_message || 'Project cleanly restored to exact pre-loop snapshot.'
@@ -864,9 +899,7 @@ def setup_p3_dashboard(
                 const isPassed = att.status === 'success';
                 const statusPill = isPassed
                     ? '<span class="badge">GREEN (Passed)</span>'
-                    : att.status === 'sanity_failed'
-                    ? '<span class="badge badge-amber">Sanity Refusal</span>'
-                    : '<span class="badge badge-red">Validation Failed</span>';
+                    : (ATTEMPT_PILLS[att.status] || '<span class="badge badge-red">Failed</span>');
 
                 // Sanity checks pills
                 const sErrors = att.sanity_errors || [];
@@ -879,7 +912,7 @@ def setup_p3_dashboard(
 
                 if (!sPassed && sErrors.length > 0) {{
                     sanityHtml += `
-                        <div class="error-feedback-box" style="margin-top:10px;">
+                        <div class="error-feedback-box" style="margin-top:10px; white-space:normal;">
                             <strong>Sanity Violations (Fed back to LLM):</strong>
                             <ul style="margin-left:18px; margin-top:4px;">
                                 ${{sErrors.map(e => `<li>${{escapeHtml(e)}}</li>`).join('')}}
@@ -891,6 +924,25 @@ def setup_p3_dashboard(
                 // Files modified
                 const patchObj = att.patch || {{}};
                 const patchFiles = patchObj.files || [];
+                // Entries the generator dropped: the model rewrote files it was not
+                // shown in full (and the intent did not name) - listed, not hidden.
+                const droppedHtml = (patchObj.dropped_unrequested || []).length
+                    ? '<div class="feedback-note" style="margin-top:6px;">Ignored unrequested edit(s) of '
+                      + patchObj.dropped_unrequested.map(p => '<code>' + escapeHtml(p) + '</code>').join(', ')
+                      + ' - the model was not shown these files in full.</div>'
+                    : '';
+                // A pure rename is kept to the renamed lines; what the model
+                // changed besides them was reverted - listed, not hidden.
+                const keptHtml0 = (patchObj.kept_to_rename || []).length
+                    ? '<div class="feedback-note" style="margin-top:6px;">Kept to the rename: '
+                      + patchObj.kept_to_rename.map(n => escapeHtml(n)).join('; ') + '</div>'
+                    : '';
+                // A module docstring the model dropped was put back - listed, not hidden.
+                const keptHtml = keptHtml0 + ((patchObj.restored_docstrings || []).length
+                    ? '<div class="feedback-note" style="margin-top:6px;">Restored the module docstring '
+                      + 'the model dropped: ' + patchObj.restored_docstrings.map(
+                          p => '<code>' + escapeHtml(p) + '</code>').join(', ') + '</div>'
+                    : '');
                 let filesHtml = '';
                 if (patchFiles.length > 0) {{
                     filesHtml = patchFiles.map(f => `
@@ -967,6 +1019,7 @@ def setup_p3_dashboard(
                                 '<div style="color:var(--text-muted); font-size:13px;">'
                                 + 'No files generated.</div>'
                             )}}
+                            ${{droppedHtml}}${{keptHtml}}
                         </div>
                         ${{valHtml}}
                         ${{feedbackBanner}}
@@ -975,7 +1028,18 @@ def setup_p3_dashboard(
                 `;
             }});
 
-            container.innerHTML = html;
+            container.innerHTML = renderFinalPatch(result) + html;
+        }}
+
+        // Subject Figure VI.4: "surfaces the final patch as JSON".
+        function renderFinalPatch(result) {{
+            if (!result.final_patch) return '';
+            const title = result.status === 'success'
+                ? 'Final patch (applied) - structured JSON'
+                : 'Last attempted patch (rolled back) - structured JSON';
+            return '<details class="final-patch"' + (result.status === 'success' ? ' open' : '') + '>'
+                + '<summary>' + title + '</summary>'
+                + '<pre>' + escapeHtml(JSON.stringify(result.final_patch, null, 2)) + '</pre></details>';
         }}
 
         async function triggerManualRollback() {{
@@ -987,9 +1051,15 @@ def setup_p3_dashboard(
             try {{
                 const res = await fetch('/patch/rollback', {{ method: 'POST' }});
                 const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+                const changed = (data.restored || []).concat(data.removed || []);
+                const clean = !(data.mismatches || []).length;
                 await showAlert(
-                    'Rollback completed. Codebase restored to snapshot.',
-                    'success',
+                    (changed.length
+                        ? 'Reverted: ' + changed.join(', ')
+                        : 'Nothing to revert - the files already match their pre-run state.')
+                    + (clean ? '' : '\\nStill different: ' + data.mismatches.join(', ')),
+                    clean ? 'success' : 'error',
                     'Rollback'
                 );
                 checkPatchStatus();
@@ -1069,8 +1139,12 @@ def setup_p3_dashboard(
                         body: JSON.stringify({{ query: query, k: k }})
                     }});
                     const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
                     answerBox.style.display = 'block';
                     answerText.innerText = data.answer || 'No response generated.';
+                    const srcBadge = document.getElementById('answer-source');
+                    srcBadge.innerText = ANSWER_SOURCES[data.answer_source] || '';
+                    srcBadge.className = 'source-badge' + (data.answer_source === 'index' ? ' index' : '');
                     gtBadge.style.display = data.pre_resolved ? 'inline-block' : 'none';
                     renderChunks(data.retrieved_chunks || []);
                     resultBox.style.display = 'block';
@@ -1103,9 +1177,11 @@ def setup_p3_dashboard(
                     <div class="chunk-header">
                         <div class="chunk-meta">
                             <span style="font-weight:700; color:var(--accent);">▶ Chunk #${{idx + 1}}</span>
-                            <span style="color:var(--text); font-family:monospace;">${{c.file_path}}</span>
+                            <span style="color:var(--text); font-family:monospace;">
+                                ${{escapeHtml(c.file_path)}}</span>
                             <span style="color:var(--text-muted);">
-                                [${{c.symbol_type || 'code'}}: ${{c.symbol_name || 'block'}}]
+                                [${{escapeHtml(c.symbol_type || 'code')}}:
+                                ${{escapeHtml(c.symbol_name || 'block')}}]
                             </span>
                             <span style="color:var(--text-muted); font-size:12px;">
                                 Lines ${{c.start_line}}-${{c.end_line}}
@@ -1118,59 +1194,6 @@ def setup_p3_dashboard(
                 `;
             }});
             container.innerHTML = html;
-        }}
-
-        // ---------------------------------------------------------------------
-        // PART 2: FILES TAB
-        // ---------------------------------------------------------------------
-        async function loadFileChunks() {{
-            const select = document.getElementById('file-select');
-            const filePath = select.value;
-            if (!filePath) return;
-
-            const container = document.getElementById('file-chunks-container');
-            container.innerHTML = (
-                '<div style="color:var(--accent); text-align:center; padding:20px;">'
-                + 'Loading chunks...</div>'
-            );
-
-            try {{
-                const res = await fetch('/file?path=' + encodeURIComponent(filePath));
-                if (!res.ok) throw new Error('File not found');
-                const data = await res.json();
-
-                let html = (
-                    '<div style="margin-bottom:16px; font-weight:600; color:var(--accent-green);">'
-                    + data.total_chunks + ' AST chunks found in ' + data.file_path + '</div>'
-                );
-
-                data.chunks.forEach((c, i) => {{
-                    html += `
-                    <div class="chunk-card">
-                        <div class="chunk-header">
-                            <div class="chunk-meta">
-                                <span style="color:var(--accent); font-weight:bold;
-                                             margin-right:8px;">▶</span>
-                                <span style="font-weight:700; color:var(--accent);">${{c.symbol_name}}</span>
-                                <span style="color:var(--text-muted); font-size:12px;">
-                                    (${{c.symbol_type}}, lines ${{c.start_line}}-${{c.end_line}})
-                                </span>
-                            </div>
-                            <span style="font-size:11px; color:var(--text-muted); font-family:monospace;">
-                                ${{c.content_hash.substring(0, 10)}}...
-                            </span>
-                        </div>
-                        <pre class="code-pre"><code>${{escapeHtml(c.content)}}</code></pre>
-                    </div>
-                    `;
-                }});
-                container.innerHTML = html;
-            }} catch (err) {{
-                container.innerHTML = (
-                    '<div style="color:var(--accent-red); padding:20px;">'
-                    + 'Error loading file: ' + err.message + '</div>'
-                );
-            }}
         }}
 
         function escapeHtml(text) {{
@@ -1216,22 +1239,7 @@ def setup_p3_dashboard(
                           + 'color:var(--text-muted);">No files indexed yet.</td></tr>';
                 }}
 
-                // Preserve the user's selection while refreshing the options
-                const select = document.getElementById('file-select');
-                if (select) {{
-                    const current = select.value;
-                    const wanted = files.map(f => f.path).join('\u0000');
-                    if (select.dataset.paths !== wanted) {{
-                        select.innerHTML = files
-                            .map(f => {{
-                                const p = escapeHtml(f.path);
-                                return `<option value="${{p}}">${{p}}</option>`;
-                            }})
-                            .join('');
-                        select.dataset.paths = wanted;
-                        if (files.some(f => f.path === current)) select.value = current;
-                    }}
-                }}
+                if (document.getElementById('tab-files').classList.contains('active')) fvRefresh();
             }} catch (e) {{
                 console.error('Stats refresh failed', e);
             }}
@@ -1250,11 +1258,12 @@ def setup_p3_dashboard(
                     li.className = 'feed-item';
                     li.innerHTML = `
                         <div class="feed-header">
-                            <span class="feed-action ${{data.action}}">${{data.action}}</span>
-                            <span>${{data.timestamp || 'just now'}}</span>
+                            <span class="feed-action ${{escapeHtml(data.action)}}">
+                            ${{escapeHtml(data.action)}}</span>
+                            <span>${{escapeHtml(data.timestamp || 'just now')}}</span>
                         </div>
-                        <div class="feed-path">${{data.path || ''}}</div>
-                        <div style="color:var(--text-muted);">${{data.details || ''}}</div>
+                        <div class="feed-path">${{escapeHtml(data.path || '')}}</div>
+                        <div style="color:var(--text-muted);">${{escapeHtml(data.details || '')}}</div>
                     `;
                     feed.insertBefore(li, feed.firstChild);
                 }}

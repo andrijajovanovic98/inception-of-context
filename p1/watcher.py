@@ -20,7 +20,7 @@ except ImportError:
     WATCHDOG_AVAILABLE = False
     FileSystemEventHandler = object  # type: ignore
 
-from p1.indexer import CodebaseIndexer, should_ignore_path
+from p1.indexer import CodebaseIndexer
 
 
 class CodebaseChangeHandler(FileSystemEventHandler):
@@ -40,7 +40,9 @@ class CodebaseChangeHandler(FileSystemEventHandler):
         src_path = event.src_path
         rel_path = self.watcher.indexer.get_rel_path(src_path)
 
-        if should_ignore_path(rel_path):
+        # is_ignored() also knows where the vector store lives: its own
+        # writes must never come back as change events.
+        if self.watcher.indexer.is_ignored(rel_path):
             return
 
         self.watcher.enqueue_change(src_path, is_deletion=is_deletion)
@@ -60,9 +62,9 @@ class CodebaseChangeHandler(FileSystemEventHandler):
             dest_rel = self.watcher.indexer.get_rel_path(event.dest_path)
             src_rel = self.watcher.indexer.get_rel_path(event.src_path)
 
-            if not should_ignore_path(src_rel):
+            if not self.watcher.indexer.is_ignored(src_rel):
                 self.watcher.enqueue_change(event.src_path, is_deletion=True)
-            if not should_ignore_path(dest_rel):
+            if not self.watcher.indexer.is_ignored(dest_rel):
                 self.watcher.enqueue_change(event.dest_path, is_deletion=False)
 
 
@@ -98,6 +100,9 @@ class CodebaseWatcher:
         self._observer: Optional[Any] = None
         self._worker_thread: Optional[threading.Thread] = None
         self._polling_thread: Optional[threading.Thread] = None
+        # Last error reported per file, so a file that keeps failing is logged
+        # once instead of on every 10-second poll.
+        self._reported_errors: Dict[str, str] = {}
 
     def add_activity_listener(self, callback: Callable[[Dict[str, Any]], None]) -> None:
         """Register a callback for new activity events (e.g. SSE stream)."""
@@ -113,6 +118,9 @@ class CodebaseWatcher:
     def log_activity(self, action: str, path: str, details: str = "") -> None:
         """Record an action in the ring buffer and notify all live listeners."""
         rel_path = self.indexer.get_rel_path(path)
+        if rel_path == ".":
+            # Events about the target itself read better as its real path.
+            rel_path = self.indexer.target_dir
         entry = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "action": action,
@@ -155,16 +163,29 @@ class CodebaseWatcher:
                     _, is_deletion = self._pending_events.pop(p)
                     to_process.append((p, is_deletion))
 
-            for path, is_deletion in to_process:
+            for path, _is_deletion in to_process:
                 rel_path = self.indexer.get_rel_path(path)
-                if is_deletion or not os.path.exists(path):
-                    removed = self.indexer.remove_file(rel_path)
-                    if removed:
-                        self.log_activity("DELETED", rel_path, "Removed chunks from index")
-                else:
-                    changed = self.indexer.index_file(rel_path)
-                    if changed:
-                        self.log_activity("MODIFIED", rel_path, "Updated chunks in index")
+                # The flag records the LAST event seen, but the disk is the
+                # truth: an editor that deletes and re-creates on save, or a
+                # rename onto the path, leaves a file that must be re-indexed,
+                # not dropped.
+                try:
+                    if not os.path.exists(path):
+                        if self.indexer.remove_file(rel_path):
+                            self.log_activity("DELETED", rel_path, "Removed chunks from index")
+                        continue
+                    result = self.indexer.index_file(rel_path)
+                except Exception as e:
+                    # One bad file must not kill this thread: before, a single
+                    # exception ended the debounce worker for good and every
+                    # later change went unnoticed until the next poll.
+                    self.log_activity("ERROR", rel_path, f"{type(e).__name__}: {e}")
+                    continue
+                if result.status == "error":
+                    self.log_activity("ERROR", rel_path, result.describe())
+                elif result:
+                    action = {"created": "CREATED", "deleted": "DELETED"}.get(result.status, "MODIFIED")
+                    self.log_activity(action, rel_path, result.describe())
 
     def _polling_fallback_loop(self) -> None:
         """
@@ -184,6 +205,11 @@ class CodebaseWatcher:
                         self.indexer.target_dir,
                         f"Synced: {res['indexed_files']} updated, {res['deleted_files']} deleted",
                     )
+                current = {f["file"]: f["error"] for f in res.get("errors", [])}
+                for fpath, message in current.items():
+                    if self._reported_errors.get(fpath) != message:
+                        self.log_activity("ERROR", fpath, message)
+                self._reported_errors = current
             except Exception as e:
                 self.log_activity("ERROR", "polling_fallback", str(e))
 

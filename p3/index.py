@@ -157,10 +157,12 @@ async def run_headless_patch(engine: PatchLoopEngine, intent: str, k: int) -> in
     if result.status == "success":
         print("\n[✓] GREEN: Code modifications validated and committed to codebase!")
         return 0
-    else:
-        print(f"\n[✗] RED: {result.error_message}")
-        print("[✓] 100% Rollback verified: Codebase restored to exact pre-call state.")
-        return 1
+    print(f"\n[✗] RED: {result.error_message}")
+    if result.rollback_verified:
+        print("[✓] Rollback verified: every touched file matches its pre-call snapshot byte-for-byte.")
+    elif result.rollback_mismatches:
+        print(f"[!] Rollback INCOMPLETE for: {', '.join(result.rollback_mismatches)}")
+    return 1
 
 
 def main() -> int:
@@ -230,9 +232,16 @@ def main() -> int:
         max_attempts=args.max_attempts,
     )
 
-    # 8. Headless execution mode if --intent is provided
+    # 8. Headless execution mode if --intent is provided. Ctrl+C cancels the
+    # loop task, and PatchLoopEngine.run() rolls the target back before exiting.
     if args.intent:
-        return asyncio.run(run_headless_patch(engine=engine, intent=args.intent, k=args.k))
+        try:
+            return asyncio.run(run_headless_patch(engine=engine, intent=args.intent, k=args.k))
+        except KeyboardInterrupt:
+            mismatches = engine.applier.verify_restored()
+            state = "restored" if not mismatches else f"NOT restored: {', '.join(mismatches)}"
+            print(f"\n[*] Interrupted - patch loop rolled back, target {state}.", file=sys.stderr)
+            return 130
 
     # 9. Initialize Watcher if requested (or required by dashboard)
     watcher: Optional[CodebaseWatcher] = None

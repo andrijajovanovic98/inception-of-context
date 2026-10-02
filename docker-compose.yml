@@ -4,6 +4,13 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: ioc-app
+    # Who the container runs as. `make up` sets IOC_USER to the invoking
+    # user's uid:gid on rootful Docker, so the patch loop's writes into the
+    # bind-mounted demo_app/ and the ChromaDB files stay owned by that user
+    # (as root they became root-owned on the host). On rootless Docker it is
+    # 0:0: container root already IS the host user there, and any other uid
+    # is unmapped and cannot start.
+    user: "${IOC_USER:-0:0}"
     # Host network: required on campus Linux so the container can reach
     # Ollama on 127.0.0.1:11435 (bridge + host.docker.internal is refused).
     network_mode: host

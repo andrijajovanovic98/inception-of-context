@@ -3,9 +3,16 @@ Patch Applier and Atomic Rollback Engine for Inception-of-Context (IoC) Part 3.
 Implements pre-call snapshotting, atomic multi-file writes via *.ioc.tmp staging,
 and guaranteed 100% rollback restoring the exact pre-call codebase state
 as required by Subject VI.3.
+
+Snapshots hold raw BYTES and the file mode, not decoded text: a text-mode
+round trip rewrites CRLF line endings, replaces undecodable bytes with U+FFFD
+and drops the executable bit, so "restored" files would differ from the
+originals. The rollback guarantee is byte-for-byte, and verify_restored()
+checks it rather than asserting it.
 """
 
 import os
+import stat
 import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
@@ -23,7 +30,14 @@ class SnapshotEntry:
     rel_path: str
     full_path: str
     existed: bool
-    content: Optional[str] = None
+    content: Optional[bytes] = None
+    mode: Optional[int] = None
+    uid: Optional[int] = None
+    gid: Optional[int] = None
+
+    def text(self) -> str:
+        """Pre-call content decoded for display (diffs); never used to restore."""
+        return (self.content or b"").decode("utf-8", errors="replace")
 
 
 class PatchApplier:
@@ -35,6 +49,10 @@ class PatchApplier:
         self.target_dir = os.path.abspath(target_dir)
         # Active rollback state: every file touched since the run began, holding
         # the bytes it had BEFORE the run. Cleared by commit() and rollback().
+        # Keyed by the canonical target-relative path, so "./calc.py" and
+        # "calc.py" can never be snapshotted twice: a second entry would be
+        # taken AFTER attempt 1 had written the file, and restoring it last
+        # would leave attempt 1's bytes on disk.
         self.snapshot: Dict[str, SnapshotEntry] = {}
         # Directories this run created, newest last, so rollback can remove them.
         self.created_dirs: List[str] = []
@@ -42,6 +60,21 @@ class PatchApplier:
         # show what changed even after a patch has been committed to disk.
         self.run_originals: Dict[str, SnapshotEntry] = {}
         self.last_applied_files: List[str] = []
+
+    # ------------------------------------------------------------------
+    # Path helpers
+    # ------------------------------------------------------------------
+
+    def resolve(self, rel_path: str) -> Tuple[str, str]:
+        """
+        Return (canonical_rel_path, full_path) for a patch path.
+        Raises IOError when the path escapes the target directory.
+        """
+        full_path = safe_join(self.target_dir, rel_path)
+        if full_path is None:
+            raise IOError(f"Refusing '{rel_path}': resolves outside the target directory")
+        canonical = os.path.relpath(full_path, self.target_dir).replace("\\", "/")
+        return canonical, full_path
 
     # ------------------------------------------------------------------
     # Run lifecycle
@@ -63,10 +96,7 @@ class PatchApplier:
 
     def original_contents(self) -> Dict[str, str]:
         """Pre-run text of every file this run touched, for diffing."""
-        return {
-            rel_path: (entry.content or "")
-            for rel_path, entry in self.run_originals.items()
-        }
+        return {rel_path: entry.text() for rel_path, entry in self.run_originals.items()}
 
     # ------------------------------------------------------------------
     # Snapshot / apply / rollback
@@ -87,24 +117,26 @@ class PatchApplier:
         for file_entry in files:
             if not isinstance(file_entry, dict):
                 continue
-            rel_path = str(file_entry.get("path") or "").strip()
-            if not rel_path or rel_path in self.snapshot:
+            raw_path = str(file_entry.get("path") or "").strip()
+            if not raw_path:
+                continue
+            rel_path, full_path = self.resolve(raw_path)
+            if rel_path in self.snapshot:
                 continue
 
-            full_path = safe_join(self.target_dir, rel_path)
-            if full_path is None:
-                raise IOError(
-                    f"Refusing to snapshot '{rel_path}': resolves outside the target directory"
-                )
-
             existed = os.path.isfile(full_path)
-            content: Optional[str] = None
+            content: Optional[bytes] = None
+            mode: Optional[int] = None
+            uid: Optional[int] = None
+            gid: Optional[int] = None
 
             if existed:
                 try:
-                    with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                    with open(full_path, "rb") as f:
                         content = f.read()
-                except Exception as e:
+                    st = os.stat(full_path)
+                    mode, uid, gid = stat.S_IMODE(st.st_mode), st.st_uid, st.st_gid
+                except OSError as e:
                     raise IOError(f"Failed to snapshot existing file '{rel_path}': {e}")
 
             entry = SnapshotEntry(
@@ -112,6 +144,9 @@ class PatchApplier:
                 full_path=full_path,
                 existed=existed,
                 content=content,
+                mode=mode,
+                uid=uid,
+                gid=gid,
             )
             self.snapshot[rel_path] = entry
             # Keep the first-seen original for the whole run, for diff rendering.
@@ -134,8 +169,43 @@ class PatchApplier:
         os.makedirs(directory, exist_ok=True)
         # Deepest last, so rollback can remove them in reverse order.
         for path in reversed(missing):
+            self._keep_owner(path, None)
             if path not in self.created_dirs:
                 self.created_dirs.append(path)
+
+    @staticmethod
+    def _keep_owner(path: str, entry: Optional[SnapshotEntry]) -> None:
+        """
+        When running as root (the Docker image), give a written file the owner
+        it had before - or, for a new file, the owner of its directory.
+
+        os.replace() installs a NEW inode owned by the writer, so without this
+        every file the containerised loop touched on the bind-mounted target
+        became root-owned on the host and could no longer be edited there.
+        """
+        if not hasattr(os, "geteuid") or os.geteuid() != 0:
+            return
+        try:
+            if entry is not None and entry.uid is not None and entry.gid is not None:
+                os.chown(path, entry.uid, entry.gid)
+            else:
+                parent = os.stat(os.path.dirname(os.path.abspath(path)))
+                os.chown(path, parent.st_uid, parent.st_gid)
+        except OSError:
+            pass
+
+    @classmethod
+    def _write_atomic(cls, full_path: str, data: bytes, entry: SnapshotEntry) -> None:
+        """Write data to <full_path>.ioc.tmp, fsync it, then os.replace it into place."""
+        tmp_path = full_path + ".ioc.tmp"
+        with open(tmp_path, "wb") as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        if entry.mode is not None:
+            os.chmod(tmp_path, entry.mode)
+        cls._keep_owner(tmp_path, entry)
+        os.replace(tmp_path, full_path)
 
     def apply(self, patch: Dict[str, Any]) -> bool:
         """
@@ -152,18 +222,14 @@ class PatchApplier:
         files = patch.get("files", [])
         temp_files: List[Tuple[str, str]] = []  # (tmp_path, target_full_path)
         deletions: List[str] = []               # full paths to delete
+        applied: List[str] = []
 
         try:
             # Phase 1: Write all content changes to *.ioc.tmp staging files
             for file_entry in files:
-                rel_path = str(file_entry.get("path") or "").strip()
+                rel_path, full_path = self.resolve(str(file_entry.get("path") or "").strip())
                 op = str(file_entry.get("op") or "").strip().lower()
                 content = file_entry.get("content", "")
-                full_path = safe_join(self.target_dir, rel_path)
-                if full_path is None:
-                    raise IOError(
-                        f"Refusing to write '{rel_path}': resolves outside the target directory"
-                    )
 
                 if op in ("create", "modify"):
                     if not isinstance(content, str):
@@ -175,15 +241,25 @@ class PatchApplier:
                     tmp_path = full_path + ".ioc.tmp"
                     self._makedirs_tracked(os.path.dirname(tmp_path))
 
-                    with open(tmp_path, "w", encoding="utf-8") as f:
-                        f.write(content)
+                    with open(tmp_path, "wb") as f:
+                        f.write(content.encode("utf-8"))
                         f.flush()
                         os.fsync(f.fileno())
+                    # A modified file keeps its permission bits (e.g. +x)
+                    # and, under root, its owner.
+                    original = self.snapshot.get(rel_path)
+                    if original is not None and original.existed:
+                        if original.mode is not None:
+                            os.chmod(tmp_path, original.mode)
+                        self._keep_owner(tmp_path, original)
+                    else:
+                        self._keep_owner(tmp_path, None)
 
                     temp_files.append((tmp_path, full_path))
 
                 elif op == "delete":
                     deletions.append(full_path)
+                applied.append(full_path)
 
             # Phase 2: Atomic rename (only executed when EVERY temporary file is ready)
             for tmp_path, full_path in temp_files:
@@ -194,14 +270,7 @@ class PatchApplier:
                 if os.path.isfile(del_path):
                     os.remove(del_path)
 
-            self.last_applied_files = []
-            for f in files:
-                rel = str(f.get("path") or "").strip()
-                if not rel:
-                    continue
-                resolved = safe_join(self.target_dir, rel)
-                if resolved is not None:
-                    self.last_applied_files.append(resolved)
+            self.last_applied_files = applied
             return True
 
         except Exception as e:
@@ -221,27 +290,8 @@ class PatchApplier:
             self.cleanup_all_ioc_tmps()
             return True
 
-        for rel_path, entry in self.snapshot.items():
-            full_path = entry.full_path
-
-            if entry.existed:
-                # File originally existed -> restore exact original content
-                os.makedirs(os.path.dirname(full_path), exist_ok=True)
-                tmp_path = full_path + ".ioc.tmp"
-                try:
-                    with open(tmp_path, "w", encoding="utf-8") as f:
-                        f.write(entry.content if entry.content is not None else "")
-                        f.flush()
-                        os.fsync(f.fileno())
-                    os.replace(tmp_path, full_path)
-                except Exception:
-                    # Direct write fallback
-                    with open(full_path, "w", encoding="utf-8") as f:
-                        f.write(entry.content if entry.content is not None else "")
-            else:
-                # File was created during the loop -> delete it
-                if os.path.isfile(full_path):
-                    os.remove(full_path)
+        for entry in self.snapshot.values():
+            self._restore_entry(entry)
 
         # Remove any lingering *.ioc.tmp files across target directory
         self.cleanup_all_ioc_tmps()
@@ -253,6 +303,60 @@ class PatchApplier:
         # rollback restore these same bytes over whatever is on disk by then.
         self.snapshot = {}
         return True
+
+    def _restore_entry(self, entry: SnapshotEntry) -> bool:
+        """
+        Put one file back to its snapshotted state. Returns True when the file
+        was rewritten or removed, False when it already matched.
+        """
+        full_path = entry.full_path
+        if entry.existed:
+            data = entry.content or b""
+            try:
+                with open(full_path, "rb") as f:
+                    unchanged = f.read() == data
+                if unchanged and entry.mode is not None:
+                    unchanged = stat.S_IMODE(os.stat(full_path).st_mode) == entry.mode
+            except OSError:
+                unchanged = False
+            if unchanged:
+                return False
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            try:
+                self._write_atomic(full_path, data, entry)
+            except OSError:
+                # Direct write fallback (e.g. no room for a temporary file)
+                with open(full_path, "wb") as f:
+                    f.write(data)
+                if entry.mode is not None:
+                    os.chmod(full_path, entry.mode)
+            return True
+        # File was created during the loop -> delete it
+        if os.path.isfile(full_path):
+            os.remove(full_path)
+            return True
+        return False
+
+    def verify_restored(self, entries: Optional[Dict[str, SnapshotEntry]] = None) -> List[str]:
+        """
+        Compare the disk with snapshotted pre-call state, byte for byte.
+        Returns the relative paths that do NOT match (empty list = exact restore).
+        """
+        mismatches: List[str] = []
+        for rel_path, entry in (entries if entries is not None else self.run_originals).items():
+            if entry.existed:
+                try:
+                    with open(entry.full_path, "rb") as f:
+                        same = f.read() == (entry.content or b"")
+                    if same and entry.mode is not None:
+                        same = stat.S_IMODE(os.stat(entry.full_path).st_mode) == entry.mode
+                except OSError:
+                    same = False
+            else:
+                same = not os.path.exists(entry.full_path)
+            if not same:
+                mismatches.append(rel_path)
+        return sorted(mismatches)
 
     def rollback_last_run(self) -> Dict[str, Any]:
         """
@@ -272,28 +376,18 @@ class PatchApplier:
                 "scope": "in_flight_snapshot",
                 "restored": sorted(self.run_originals.keys()),
                 "removed": [],
+                "mismatches": self.verify_restored(),
             }
 
         restored: List[str] = []
         removed: List[str] = []
         for rel_path, entry in self.run_originals.items():
-            full_path = entry.full_path
-            if entry.existed:
-                try:
-                    os.makedirs(os.path.dirname(full_path), exist_ok=True)
-                    with open(full_path, "w", encoding="utf-8") as f:
-                        f.write(entry.content if entry.content is not None else "")
-                        f.flush()
-                        os.fsync(f.fileno())
-                    restored.append(rel_path)
-                except OSError:
-                    pass
-            elif os.path.isfile(full_path):
-                try:
-                    os.remove(full_path)
-                    removed.append(rel_path)
-                except OSError:
-                    pass
+            try:
+                changed = self._restore_entry(entry)
+            except OSError:
+                continue
+            if changed:
+                (restored if entry.existed else removed).append(rel_path)
 
         self.cleanup_all_ioc_tmps()
         self._remove_created_dirs()
@@ -301,6 +395,7 @@ class PatchApplier:
             "scope": "last_run_originals",
             "restored": sorted(restored),
             "removed": sorted(removed),
+            "mismatches": self.verify_restored(),
         }
 
     def commit(self) -> None:
