@@ -1,16 +1,20 @@
+# Upper bounds stop the next MAJOR release of a dependency from breaking a
+# fresh `make setup` / image build at evaluation time. Every version in range
+# was verified by docs/md/AUDIT.md (chromadb 1.5.9, sentence-transformers 6.1.0,
+# fastapi 0.141.1, pydantic 2.13.5, watchdog 6.0.0, flake8 7.4.1).
 # Part 1: Indexing and Synchronization Dependencies
 
 # Vector Database (Subject reference requirement)
-chromadb>=0.4.22
+chromadb>=0.4.22,<2
 
 # Local Embedding Model: all-MiniLM-L6-v2 (Subject reference requirement)
-sentence-transformers>=2.2.2
+sentence-transformers>=2.2.2,<7
 
 # Filesystem Event Monitoring (Subject requirement)
-watchdog>=4.0.0
+watchdog>=4.0.0,<7
 
 # HTTP Server & Dashboard Overview (Subject reference requirement)
-fastapi>=0.109.0
-uvicorn>=0.27.0
-pydantic>=2.0.0
+fastapi>=0.109.0,<1
+uvicorn>=0.27.0,<1
+pydantic>=2.0.0,<3
 

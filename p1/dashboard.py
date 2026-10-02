@@ -7,13 +7,14 @@ Designed to run 100% locally with no external CDN or internet dependencies.
 
 import asyncio
 import json
-import os
 import threading
 from contextlib import asynccontextmanager
+from html import escape
 from typing import Any, AsyncGenerator, Dict, List, Optional
-from p1.chunker import chunk_file
+
+from p1.dashboard_files import FILEVIEW_CSS, FILEVIEW_HTML, FILEVIEW_JS, FileViewError, file_view
 from p1.dashboard_modal import MODAL_CSS, MODAL_HTML, MODAL_JS
-from p1.indexer import CodebaseIndexer, safe_join
+from p1.indexer import CodebaseIndexer
 from p1.watcher import CodebaseWatcher
 
 try:
@@ -96,15 +97,25 @@ def create_dashboard_app(
     # Used by index.py signal wrapper to wake SSE before uvicorn waits on tasks
     app.close_sse_clients = close_sse_clients  # type: ignore[attr-defined]
 
-    def on_watcher_activity(entry: Dict[str, Any]) -> None:
-        """Callback invoked by the watcher on every new log entry."""
-        if sse_stop.is_set():
-            return
+    def _fan_out(entry: Dict[str, Any]) -> None:
+        """Runs ON the event loop: asyncio.Queue is not thread-safe."""
         for q in list(sse_queues):
             try:
                 q.put_nowait(entry)
             except asyncio.QueueFull:
                 pass
+
+    def on_watcher_activity(entry: Dict[str, Any]) -> None:
+        """Callback invoked by the watcher (from ITS threads) on every new log entry."""
+        if sse_stop.is_set():
+            return
+        loop = loop_holder.get("loop")
+        if loop is None:
+            return
+        try:
+            loop.call_soon_threadsafe(_fan_out, entry)
+        except RuntimeError:
+            pass  # loop already closed (shutdown)
 
     if watcher:
         watcher.add_activity_listener(on_watcher_activity)
@@ -160,31 +171,10 @@ def create_dashboard_app(
 
     # Subject requirement: GET /file?path=... returning detailed chunks of a file.
     async def _handle_file(path: str) -> Dict[str, Any]:
-        # Containment check first: the parameter is attacker-controlled and must
-        # never be able to read outside the indexed target directory.
-        abs_path = safe_join(indexer.target_dir, path)
-        if abs_path is None:
-            raise HTTPException(
-                status_code=403,
-                detail="Path escapes the indexed target directory",
-            )
-        if not os.path.isfile(abs_path):
-            raise HTTPException(status_code=404, detail="File not found on disk")
-
-        # Parse fresh chunks to get complete source structure
         try:
-            with open(abs_path, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read()
-            chunks = chunk_file(abs_path, source_code=content)
-            chunk_dicts = [c.to_dict() for c in chunks]
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
-
-        return {
-            "file_path": path,
-            "total_chunks": len(chunk_dicts),
-            "chunks": chunk_dicts,
-        }
+            return file_view(indexer, path)
+        except FileViewError as e:
+            raise HTTPException(status_code=e.status_code, detail=e.detail)
 
     @app.get("/file")
     async def get_file_root(
@@ -257,11 +247,15 @@ def create_dashboard_app(
         """Renders the Part 1 Overview dashboard (Figure VI.1 from Subject)."""
         stats = indexer.db.get_stats()
         recent_logs = watcher.get_recent_activity(limit=20) if watcher else []
+        watcher_on = bool(watcher and watcher.running)
 
+        # Every value interpolated below is escaped: file names and watcher
+        # details come from the filesystem, and a file called
+        # "<img src=x onerror=...>.py" must render as text, not run.
         if stats["files"]:
             files_rows = "".join(
                 (
-                    f'<tr><td><code>{f}</code></td>'
+                    f'<tr><td><code>{escape(f)}</code></td>'
                     f'<td><strong>{c}</strong> chunks</td>'
                     f'<td><span style="color:var(--accent-green)">'
                     f"Synced</span></td></tr>"
@@ -279,12 +273,12 @@ def create_dashboard_app(
                 (
                     f'<li class="feed-item">'
                     f'<div class="feed-header">'
-                    f'<span class="feed-action {entry.get("action", "")}">'
-                    f'{entry.get("action", "")}</span>'
-                    f'<span>{entry.get("timestamp", "")}</span></div>'
-                    f'<div class="feed-path">{entry.get("path", "")}</div>'
+                    f'<span class="feed-action {escape(entry.get("action", ""))}">'
+                    f'{escape(entry.get("action", ""))}</span>'
+                    f'<span>{escape(entry.get("timestamp", ""))}</span></div>'
+                    f'<div class="feed-path">{escape(entry.get("path", ""))}</div>'
                     f'<div style="color:var(--text-muted);">'
-                    f'{entry.get("details", "")}</div></li>'
+                    f'{escape(entry.get("details", ""))}</div></li>'
                 )
                 for entry in recent_logs
             )
@@ -354,6 +348,9 @@ def create_dashboard_app(
             text-decoration: none;
             color: var(--text-muted);
             border: 1px solid transparent;
+            background: none;
+            font-family: inherit;
+            cursor: pointer;
         }}
         .tab.active {{
             background: var(--surface);
@@ -364,9 +361,11 @@ def create_dashboard_app(
             opacity: 0.4;
             cursor: not-allowed;
         }}
+        .tab-content {{ display: none; }}
+        .tab-content.active {{ display: block; }}
         .grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 16px;
             margin-bottom: 24px;
         }}
@@ -383,6 +382,7 @@ def create_dashboard_app(
             margin-bottom: 6px;
         }}
         .card .value {{ font-size: 24px; font-weight: 700; color: var(--text); }}
+        .card .value.path {{ font-size: 14px; font-family: monospace; word-break: break-all; }}
         .card .sub {{
             font-size: 12px;
             color: var(--accent);
@@ -446,8 +446,10 @@ def create_dashboard_app(
             font-size: 11px;
             display: inline-block;
         }}
+        .feed-action.CREATED {{ background: rgba(74, 222, 128, 0.2); color: var(--accent-green); }}
         .feed-action.MODIFIED {{ background: rgba(56, 189, 248, 0.2); color: var(--accent); }}
         .feed-action.DELETED {{ background: rgba(248, 113, 113, 0.2); color: var(--accent-red); }}
+        .feed-action.ERROR {{ background: rgba(248, 113, 113, 0.2); color: var(--accent-red); }}
         .feed-action.WATCHER_START {{ background: rgba(74, 222, 128, 0.2); color: var(--accent-green); }}
         .feed-action.POLL_SYNC {{ background: rgba(251, 191, 36, 0.2); color: var(--accent-amber); }}
         .feed-path {{ color: var(--text); font-weight: 600; word-break: break-all; }}
@@ -460,7 +462,9 @@ def create_dashboard_app(
             margin-right: 6px;
             box-shadow: 0 0 8px var(--accent-green);
         }}
+        .pulse.off {{ background: var(--accent-red); box-shadow: none; }}
 {MODAL_CSS}
+{FILEVIEW_CSS}
     </style>
 </head>
 <body>
@@ -468,36 +472,43 @@ def create_dashboard_app(
     <div class="header">
         <h1>Inception-of-Context (IoC)</h1>
         <div>
-            <span class="pulse"></span>
-            <span class="badge" id="statusBadge">WATCHER ACTIVE</span>
+            <span class="pulse{'' if watcher_on else ' off'}" id="statusPulse"></span>
+            <span class="badge" id="statusBadge">{'WATCHER ACTIVE' if watcher_on else 'WATCHER OFF'}</span>
         </div>
     </div>
 
     <div class="nav-tabs">
-        <a class="tab active" href="/">Overview (P1)</a>
-        <span class="tab disabled">Ask & Retrieve (P2)</span>
-        <span class="tab disabled">Patch Loop (P3)</span>
+        <button class="tab active" id="tab-btn-overview" onclick="showTab('overview')">Overview</button>
+        <button class="tab" id="tab-btn-files" onclick="showTab('files')">Files</button>
+        <span class="tab disabled" title="Part 2">Ask &amp; Retrieve (P2)</span>
+        <span class="tab disabled" title="Part 3">Patch Loop (P3)</span>
     </div>
 
+    <div id="tab-overview" class="tab-content active">
     <div class="grid">
         <div class="card">
             <div class="title">Indexed Chunks</div>
             <div class="value" id="chunkCount">{stats["total_chunks"]}</div>
-            <div class="sub">Across all valid files</div>
+            <div class="sub">Across <span id="fileCount">{stats["total_files"]}</span> indexed files</div>
         </div>
         <div class="card">
-            <div class="title">Source Files</div>
-            <div class="value" id="fileCount">{stats["total_files"]}</div>
-            <div class="sub">In target directory</div>
+            <div class="title">Target Path</div>
+            <div class="value path">{escape(indexer.target_dir)}</div>
+            <div class="sub">Codebase being mirrored</div>
+        </div>
+        <div class="card">
+            <div class="title">Vector Store</div>
+            <div class="value path">{escape(stats["persist_dir"])}</div>
+            <div class="sub">ChromaDB PersistentClient</div>
         </div>
         <div class="card">
             <div class="title">Embedding Model</div>
-            <div class="value" style="font-size: 18px;">{stats["embedding_model"]}</div>
+            <div class="value" style="font-size: 18px;">{escape(stats["embedding_model"])}</div>
             <div class="sub">Local sentence-transformers</div>
         </div>
         <div class="card">
             <div class="title">LLM Model (Local)</div>
-            <div class="value" style="font-size: 18px;">{llm_model_name}</div>
+            <div class="value" style="font-size: 18px;">{escape(llm_model_name)}</div>
             <div class="sub">Ollama local runtime</div>
         </div>
     </div>
@@ -526,9 +537,23 @@ def create_dashboard_app(
             </ul>
         </div>
     </div>
+    </div>
+
+    <div id="tab-files" class="tab-content">
+{FILEVIEW_HTML}
+    </div>
 
     <script>
 {MODAL_JS}
+{FILEVIEW_JS}
+        function showTab(name) {{
+            ['overview', 'files'].forEach(t => {{
+                document.getElementById('tab-' + t).classList.toggle('active', t === name);
+                document.getElementById('tab-btn-' + t).classList.toggle('active', t === name);
+            }});
+            if (name === 'files') fvRefresh();
+        }}
+
         // Connect to real-time Server-Sent Events (SSE)
         const eventSource = new EventSource('/events');
         const feed = document.getElementById('activityFeed');
@@ -538,21 +563,24 @@ def create_dashboard_app(
                 const data = JSON.parse(event.data);
                 if (data.action === 'CONNECTED') return;
 
-                // Create new activity entry
+                // Create new activity entry (every field escaped: paths come
+                // from the filesystem)
                 const li = document.createElement('li');
                 li.className = 'feed-item';
                 li.innerHTML = `
                     <div class="feed-header">
-                        <span class="feed-action ${{data.action || ''}}">${{data.action || 'EVENT'}}</span>
-                        <span>${{data.timestamp || new Date().toLocaleTimeString()}}</span>
+                        <span class="feed-action ${{fvEscape(data.action || '')}}">
+                            ${{fvEscape(data.action || 'EVENT')}}</span>
+                        <span>${{fvEscape(data.timestamp || new Date().toLocaleTimeString())}}</span>
                     </div>
-                    <div class="feed-path">${{data.path || ''}}</div>
-                    <div style="color:var(--text-muted);">${{data.details || ''}}</div>
+                    <div class="feed-path">${{fvEscape(data.path || '')}}</div>
+                    <div style="color:var(--text-muted);">${{fvEscape(data.details || '')}}</div>
                 `;
                 feed.insertBefore(li, feed.firstChild);
 
-                // Refresh status cards and table dynamically
+                // Refresh status cards, table and the Files tab dynamically
                 refreshStats();
+                if (document.getElementById('tab-files').classList.contains('active')) fvRefresh();
             }} catch(e) {{
                 console.error("SSE parse error", e);
             }}
@@ -564,19 +592,25 @@ def create_dashboard_app(
                 const data = await res.json();
                 document.getElementById('chunkCount').innerText = data.total_chunks;
                 document.getElementById('fileCount').innerText = data.total_files;
+                const on = !!data.watcher_running;
+                document.getElementById('statusBadge').innerText = on ? 'WATCHER ACTIVE' : 'WATCHER OFF';
+                document.getElementById('statusPulse').classList.toggle('off', !on);
 
                 const filesRes = await fetch('/api/files');
                 const filesData = await filesRes.json();
                 const tbody = document.getElementById('filesTableBody');
-                if (filesData.files.length > 0) {{
-                    tbody.innerHTML = filesData.files.map(f => `
+                // An empty index must clear the table too: deleting the last
+                // file used to leave its row on screen.
+                tbody.innerHTML = filesData.files.length
+                    ? filesData.files.map(f => `
                         <tr>
-                            <td><code>${{f.path}}</code></td>
+                            <td><code>${{fvEscape(f.path)}}</code></td>
                             <td><strong>${{f.chunk_count}}</strong> chunks</td>
                             <td><span style="color:var(--accent-green)">Synced</span></td>
                         </tr>
-                    `).join('');
-                }}
+                    `).join('')
+                    : '<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">'
+                      + 'No files indexed yet.</td></tr>';
             }} catch (err) {{
                 console.error("Stats refresh error", err);
             }}

@@ -2,7 +2,7 @@
 # Usage:
 #   make setup        # create /tmp/ioc (venv, deps, embeddings, ollama model)
 #   make p1 / p2 / p3 / bonus
-#   make flake / mypy / lint
+#   make flake / mypy / lint / test / test-p1 / test-p2 / test-p3 / test-bonus / gates
 #   make up / down / docker-restart  # Docker Compose
 #   make docker-clean / docker-fclean
 #   make stop / clean / fclean / re
@@ -24,13 +24,20 @@ SITE_PACKAGES:= $(VENV)/lib/python$(PY_VER)/site-packages
 REQ          := p1/requirements.txt
 REQ_P2       := p2/requirements.txt
 REQ_P3       := p3/requirements.txt
+REQ_BONUS    := bonus/requirements.txt
 LLM_MODEL    := qwen2.5:3b
 EMBED_MODEL  := all-MiniLM-L6-v2
 EMBED_CACHE  := $(HF_HOME)/hub/models--sentence-transformers--$(EMBED_MODEL)
 PORT         := 8000
 TARGET       := demo_app
 LINT_DIRS    := p1 p2 p3 bonus demo_app
+TEST_DIRS    := p1/tests p2/tests p3/tests bonus/tests
+TEST_ARGS    ?= -v
 DOCKER_IMAGE := inception-of-context-ioc
+DEMO_SERVICE := ioc-demo-service
+DEMO_IMAGE   ?= python:3.10-slim
+DEMO_INTERVAL ?= 5
+WATCH_CONTAINER ?=
 
 # Campus image: python3 -m venv often lacks ensurepip; virtualenv is available.
 VIRTUALENV   := $(shell command -v virtualenv 2>/dev/null)
@@ -47,21 +54,58 @@ export OLLAMA_HOST
 
 .PHONY: all up down docker-restart docker-clean docker-fclean setup p1 p2 p3 p3-cli \
 	bonus stop clean fclean re help ensure-dirs ensure-venv ensure-deps ensure-ready \
-	ensure-ollama ensure-ollama-quick ensure-embed ensure-lint-tools flake mypy lint
+	ensure-ollama ensure-ollama-quick ensure-ollama-soft ensure-embed ensure-lint-tools \
+	flake mypy lint test test-p1 test-p2 test-p3 test-bonus gates demo-service demo-service-stop
 
 all: setup
 
-up:
-	@docker compose up --build -d 2>/dev/null || docker-compose up --build -d
+# Compose v2 plugin when present, standalone docker-compose otherwise. Chosen
+# once: "v2 2>/dev/null || v1" hid a real build error and then ran the whole
+# build a second time through v1.
+COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
+
+# Container user (docker-compose.yml `user:`). Rootful Docker: the invoking
+# user, so files the patch loop writes into the bind-mounted demo_app/ and
+# $(CHROMA_DIR) stay theirs instead of becoming root-owned. Rootless Docker:
+# 0:0, because container root already maps to the invoking user there and any
+# other uid is unmapped (the container cannot even start).
+IOC_USER = $(shell if docker info --format '{{.SecurityOptions}}' 2>/dev/null | grep -q rootless; \
+	then echo 0:0; else echo "$$(id -u):$$(id -g)"; fi)
+
+up: ensure-ollama-soft
+	@# The bind-mount source must exist BEFORE compose runs, or Docker creates
+	@# it as root and a non-root container cannot write the vector store.
+	@mkdir -p $(CHROMA_DIR)
+	@IOC_USER=$(IOC_USER) $(COMPOSE) up --build -d
+	@echo "[+] IoC is up: http://127.0.0.1:$(PORT)  (logs: $(COMPOSE) logs -f ioc)"
 
 down:
-	@docker compose down 2>/dev/null || docker-compose down
+	@$(COMPOSE) down
 
 # Rebuild image (bonus/p* are not volume-mounted) and recreate the container.
-docker-restart:
-	@docker compose up --build -d --force-recreate 2>/dev/null \
-		|| docker-compose up --build -d --force-recreate
+docker-restart: ensure-ollama-soft
+	@mkdir -p $(CHROMA_DIR)
+	@IOC_USER=$(IOC_USER) $(COMPOSE) up --build -d --force-recreate
 	@echo "[+] docker-restart done (rebuild + recreate ioc-app)"
+
+# The container talks to the host's IoC Ollama on $(OLLAMA_HOST). Start it
+# when it is installed but not running (e.g. after a reboot). Never fails and
+# never pulls: a Docker user may run their own Ollama on that port.
+ensure-ollama-soft: ensure-dirs
+	@if ! command -v ollama >/dev/null 2>&1; then \
+		echo "[!] ollama not in PATH: the container expects one on $(OLLAMA_HOST) (see make setup)"; \
+	elif [ -f $(IOC_DIR)/ollama.pid ] && kill -0 $$(cat $(IOC_DIR)/ollama.pid) 2>/dev/null; then \
+		true; \
+	else \
+		echo "[*] Starting ollama serve for the container (models=$(OLLAMA_DIR), bind=$(OLLAMA_BIND))"; \
+		mkdir -p $(IOC_DIR)/logs $(OLLAMA_DIR); \
+		nohup env HOME="$(IOC_DIR)" OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_BIND)" \
+			ollama serve >$(IOC_DIR)/logs/ollama.log 2>&1 & echo $$! > $(IOC_DIR)/ollama.pid; \
+		sleep 2; \
+	fi
+	@HOME="$(IOC_DIR)" OLLAMA_MODELS="$(OLLAMA_DIR)" OLLAMA_HOST="$(OLLAMA_HOST)" \
+		ollama show $(LLM_MODEL) >/dev/null 2>&1 \
+		|| echo "[!] $(LLM_MODEL) is not available on $(OLLAMA_HOST) yet - run: make setup"
 
 # Soft Docker cleanup (IoC only): stop/remove container + project network, keep image.
 # No error if Docker is missing or IoC was never built.
@@ -70,9 +114,11 @@ docker-clean:
 		echo "[*] Docker not available - skip docker-clean"; \
 	else \
 		echo "[*] Docker clean (container/network; keep image $(DOCKER_IMAGE))"; \
-		docker compose down --remove-orphans >/dev/null 2>&1 \
-			|| docker-compose down --remove-orphans >/dev/null 2>&1 \
-			|| true; \
+		$(COMPOSE) down --remove-orphans >/dev/null 2>&1 || true; \
+		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx '$(DEMO_SERVICE)'; then \
+			docker rm -f $(DEMO_SERVICE) >/dev/null 2>&1 || true; \
+			echo "[*] Removed container $(DEMO_SERVICE)"; \
+		fi; \
 		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx 'ioc-app'; then \
 			docker rm -f ioc-app >/dev/null 2>&1 || true; \
 			echo "[*] Removed container ioc-app"; \
@@ -87,9 +133,7 @@ docker-fclean:
 		echo "[*] Docker not available - skip docker-fclean"; \
 	else \
 		echo "[*] Docker fclean (container/network/volume/image for IoC only)"; \
-		docker compose down --rmi local --volumes --remove-orphans >/dev/null 2>&1 \
-			|| docker-compose down --rmi local --volumes --remove-orphans >/dev/null 2>&1 \
-			|| true; \
+		$(COMPOSE) down --rmi local --volumes --remove-orphans >/dev/null 2>&1 || true; \
 		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx 'ioc-app'; then \
 			docker rm -f ioc-app >/dev/null 2>&1 || true; \
 			echo "[*] Removed container ioc-app"; \
@@ -122,9 +166,15 @@ help:
 	@echo "make p3               - run Part 3 Patch Loop & Dashboard on http://127.0.0.1:$(PORT)"
 	@echo "make p3-cli           - run headless patch loop: make p3-cli INTENT=\"your intent\""
 	@echo "make bonus            - run Chapter VII Bonus Suite & Dashboard on http://127.0.0.1:$(PORT)"
+	@echo "make bonus WATCH_CONTAINER=name - same, with the Docker SDK crash watcher on that container"
+	@echo "make demo-service     - run the target as a service container ($(DEMO_SERVICE)) to crash-watch"
+	@echo "make demo-service-stop - remove the demo service container"
 	@echo "make flake            - run flake8 on $(LINT_DIRS)"
 	@echo "make mypy             - run mypy on $(LINT_DIRS)"
 	@echo "make lint             - run flake8 + mypy on $(LINT_DIRS)"
+	@echo "make test             - offline regression suite (needs make setup, not Ollama)"
+	@echo "make test-p1 / test-p2 / test-p3 / test-bonus - one part's suite only"
+	@echo "make gates            - all quality gates: flake8 + mypy + test"
 	@echo "make stop             - stop IoC ollama (pid file + IoC orphans; safe for make)"
 	@echo "make clean            - docker-clean + remove chroma/pip caches (keep venv + weights)"
 	@echo "make fclean           - docker-fclean + full wipe of /tmp/ioc"
@@ -148,14 +198,15 @@ ensure-venv: ensure-dirs
 
 ensure-deps: ensure-venv
 	@if [ -f "$(IOC_DIR)/.deps-ok" ] && [ "$(IOC_DIR)/.deps-ok" -nt "$(REQ)" ] && [ "$(IOC_DIR)/.deps-ok" -nt "$(REQ_P2)" ] && [ "$(IOC_DIR)/.deps-ok" -nt "$(REQ_P3)" ] \
-		&& $(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers,rank_bm25,httpx,yaml" 2>/dev/null; then \
+		&& [ "$(IOC_DIR)/.deps-ok" -nt "$(REQ_BONUS)" ] \
+		&& $(PYTHON) -c "import chromadb,fastapi,uvicorn,watchdog,sentence_transformers,rank_bm25,httpx,yaml,docker" 2>/dev/null; then \
 		echo "[*] Dependencies already ready (skip pip)"; \
 	else \
-		echo "[*] Installing CPU torch + Part 1, 2 & 3 dependencies"; \
+		echo "[*] Installing CPU torch + Part 1, 2, 3 & bonus dependencies"; \
 		$(VENV)/bin/pip install --upgrade pip setuptools wheel; \
 		$(VENV)/bin/pip install --cache-dir $(PIP_CACHE) \
 			torch --index-url https://download.pytorch.org/whl/cpu; \
-		$(VENV)/bin/pip install --cache-dir $(PIP_CACHE) -r $(REQ) -r $(REQ_P2) -r $(REQ_P3) pillow; \
+		$(VENV)/bin/pip install --cache-dir $(PIP_CACHE) -r $(REQ) -r $(REQ_P2) -r $(REQ_P3) -r $(REQ_BONUS) pillow; \
 		touch "$(IOC_DIR)/.deps-ok"; \
 	fi
 	@printf '%s\n' \
@@ -284,7 +335,24 @@ bonus: ensure-ready ensure-ollama-quick
 		--watch --dashboard \
 		--host 127.0.0.1 --port $(PORT) \
 		--llm-model $(LLM_MODEL) \
-		--ollama-host $(OLLAMA_HOST)
+		--ollama-host $(OLLAMA_HOST) \
+		$(if $(WATCH_CONTAINER),--watch-container $(WATCH_CONTAINER))
+
+# Chapter VII crash-watcher demo: the target app as a service container that runs
+# `python3 main.py` every $(DEMO_INTERVAL) s and exits with its code on the first
+# failure. The target is mounted read-only: patches land on the host copy, and the
+# watcher restarts the container after a green one.
+demo-service:
+	@docker rm -f $(DEMO_SERVICE) >/dev/null 2>&1 || true
+	@docker run -d --name $(DEMO_SERVICE) -e PYTHONDONTWRITEBYTECODE=1 \
+		-v "$(abspath $(TARGET)):/srv/target:ro" -w /srv/target $(DEMO_IMAGE) \
+		sh -c 'while true; do python3 main.py || exit $$?; sleep $(DEMO_INTERVAL); done' >/dev/null
+	@echo "[+] $(DEMO_SERVICE) runs $(TARGET)/main.py every $(DEMO_INTERVAL)s (logs: docker logs -f $(DEMO_SERVICE))"
+	@echo "    Watch it: make bonus WATCH_CONTAINER=$(DEMO_SERVICE)  (or the Crash Watcher card)"
+
+demo-service-stop:
+	@docker rm -f $(DEMO_SERVICE) >/dev/null 2>&1 && echo "[+] $(DEMO_SERVICE) removed" \
+		|| echo "[*] $(DEMO_SERVICE) was not running"
 
 stop:
 	@# Prefer pid file written by ensure-ollama*
@@ -329,6 +397,30 @@ mypy: ensure-lint-tools
 
 lint: flake mypy
 	@echo "[+] lint OK (flake8 + mypy)"
+
+# ---------------------------------------------------------------------------
+# Tests + quality gates
+# ---------------------------------------------------------------------------
+
+# Offline regression suite: p1/tests, p2/tests, p3/tests, bonus/tests. Plain
+# stdlib unittest, so nothing extra is installed. It needs the runtime and the
+# embedding weights (ensure-ready checks both) but never Ollama: every model
+# call in it is a scripted fake. Targets are temp copies of demo_app, so the
+# real one is never touched. Narrow it with e.g. TEST_ARGS="-k rollback".
+test: ensure-ready
+	@echo "[*] unittest → $(TEST_DIRS)"
+	@HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 $(PYTHON) -m unittest discover \
+		-s . -t . -p "test_*.py" $(TEST_ARGS)
+
+# One part's suite only: make test-p1 / test-p2 / test-p3 / test-bonus.
+test-p1 test-p2 test-p3 test-bonus: test-%: ensure-ready
+	@echo "[*] unittest → $*/tests"
+	@HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 $(PYTHON) -m unittest discover \
+		-s $*/tests -t . -p "test_*.py" $(TEST_ARGS)
+
+# Every quality gate, in order: style (flake8), types (mypy), behaviour (unittest).
+gates: lint test
+	@echo "[+] all gates green (flake8 + mypy + unittest)"
 
 # Soft clean: stop ollama + docker container/network + local caches.
 # Keeps the venv AND the embedding weights: deleting $(HF_HOME) left every part

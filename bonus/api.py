@@ -4,11 +4,14 @@ Extends Part 3 API with:
   - POST /reindex       - On-demand full re-index as specified in Chapter VII
   - POST /patch/run     - Enhanced with dry_run and auto_commit options + visual diffs
   - GET  /diff          - Inspect diff between candidate patch and disk state
+  - POST/GET/DELETE /bonus/crash-watch - Docker SDK crash watcher: follow a
+                          service's logs and run the patch loop when it crashes
 """
 
+import asyncio
 import os
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -17,6 +20,7 @@ if PROJECT_ROOT not in sys.path:
 from fastapi import FastAPI, HTTPException  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
+from bonus.crash_watcher import CrashWatcher, docker_client  # noqa: E402
 from bonus.diff_engine import compute_patch_diff  # noqa: E402
 from bonus.git_committer import commit_validated_patch, generate_commit_message  # noqa: E402
 from p1.indexer import CodebaseIndexer  # noqa: E402
@@ -40,6 +44,13 @@ class BonusPatchRunRequest(BaseModel):
     )
 
 
+class CrashWatchRequest(BaseModel):
+    container: str = Field(..., description="Name or id of the Docker container to watch")
+    auto_restart: Optional[bool] = Field(
+        default=True, description="Start the service again after a green patch"
+    )
+
+
 def create_bonus_api(
     indexer: CodebaseIndexer,
     retriever: Retriever,
@@ -47,6 +58,7 @@ def create_bonus_api(
     watcher: Optional[CodebaseWatcher] = None,
     engine: Optional[PatchLoopEngine] = None,
     max_attempts: int = 3,
+    docker_client_factory: Optional[Callable[[], Any]] = None,
 ) -> FastAPI:
     """
     Factory creating the Part 3 + Bonus API application.
@@ -157,7 +169,7 @@ def create_bonus_api(
             _broadcast_event("DRY_RUN", "patch", f"Simulating patch: {intent[:50]}")
             _broadcast_event("PATCH_START", "dry_run", f"Dry-run patch: {intent[:60]}")
 
-            context_chunks = retriever.retrieve(query=intent, k=k)
+            context_chunks = patch_engine.patch_context(intent, k)
             try:
                 patch = await patch_engine.generator.generate_patch(
                     intent=intent,
@@ -170,7 +182,7 @@ def create_bonus_api(
                 _broadcast_event("PATCH_ERROR", "dry_run", f"Dry-run failed: {e}")
                 raise HTTPException(status_code=500, detail=f"Dry-run patch generation failed: {e}")
 
-            sanity_res = patch_engine.sanity_checker.check(patch)
+            sanity_res = patch_engine.sanity_checker.check(patch, intent)
             # Nothing was applied, so current disk state IS the original.
             diffs = compute_patch_diff(target_dir=indexer.target_dir, patch=patch)
 
@@ -279,5 +291,63 @@ def create_bonus_api(
             _broadcast_event(action, commit_res.get("commit_hash", ""), commit_msg)
 
         return res_dict
+
+    # -------------------------------------------------------------------------
+    # BONUS 4: Docker SDK crash watcher
+    # Subject: "Docker SDK integration: watch a target service's logs and
+    # trigger the patch loop on crash."
+    # -------------------------------------------------------------------------
+    crash_state: Dict[str, Optional[CrashWatcher]] = {"watcher": None}
+    app.state.crash_state = crash_state
+
+    @app.post("/bonus/crash-watch")
+    async def crash_watch_start(payload: CrashWatchRequest) -> Dict[str, Any]:
+        name = payload.container.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Container name cannot be empty")
+        loop = asyncio.get_running_loop()
+
+        async def crash_patch(intent: str) -> Dict[str, Any]:
+            # The same lock and history as the Patch Loop tab: a crash-triggered
+            # run waits for a run in progress instead of racing it.
+            async with patch_lock:
+                return await _run_bonus_patch(BonusPatchRunRequest(intent=intent, k=3), intent, 3)
+
+        def run_patch(intent: str) -> Dict[str, Any]:
+            return asyncio.run_coroutine_threadsafe(crash_patch(intent), loop).result()
+
+        try:
+            client = (docker_client_factory or docker_client)()
+            await asyncio.to_thread(client.ping)
+        except Exception as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Docker is not reachable from this process (Docker SDK: {e}). "
+                "Run the bonus on the host (make bonus) with DOCKER_HOST set, or mount the socket.",
+            )
+        previous = crash_state["watcher"]
+        if previous is not None:
+            # Off the event loop: a watcher mid-patch waits on this very loop.
+            await asyncio.to_thread(previous.stop)
+        started = CrashWatcher(
+            name, run_patch, client=client, on_event=_broadcast_event,
+            target_dir=indexer.target_dir, auto_restart=bool(payload.auto_restart),
+        ).start()
+        crash_state["watcher"] = started
+        return started.status()
+
+    @app.get("/bonus/crash-watch")
+    async def crash_watch_status() -> Dict[str, Any]:
+        current = crash_state["watcher"]
+        return current.status() if current else {"watching": False, "state": "not watching"}
+
+    @app.delete("/bonus/crash-watch")
+    async def crash_watch_stop() -> Dict[str, Any]:
+        current = crash_state["watcher"]
+        if current is None:
+            return {"watching": False, "state": "not watching"}
+        await asyncio.to_thread(current.stop)
+        _broadcast_event("CRASH_WATCH", current.container, "Stopped watching")
+        return current.status()
 
     return app

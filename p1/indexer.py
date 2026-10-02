@@ -6,7 +6,8 @@ Scans a target directory, enforces ignore rules, computes hashes, and updates Ch
 import json
 import os
 import threading
-from typing import Any, Callable, Dict, Optional, Set
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from p1.chunker import chunk_file, compute_sha256
 from p1.db import DEFAULT_DB_DIR, VectorDB
@@ -110,6 +111,36 @@ def safe_join(base_dir: str, rel_path: str) -> Optional[str]:
     return candidate
 
 
+@dataclass
+class FileSyncResult:
+    """
+    Outcome of synchronising one file with the vector store.
+
+    Truthy when the index changed, so `if indexer.index_file(p):` keeps
+    working; the counters say how much of the file was actually re-embedded.
+    """
+    rel_path: str
+    status: str  # created | modified | unchanged | deleted | ignored | error
+    upserted: int = 0
+    removed: int = 0
+    kept: int = 0
+    error: str = ""
+
+    def __bool__(self) -> bool:
+        return self.status in ("created", "modified", "deleted")
+
+    def describe(self) -> str:
+        """Short human summary for the activity feed."""
+        if self.status == "deleted":
+            return f"Removed {self.removed} chunk(s) from index"
+        if self.status == "error":
+            return f"Indexing failed: {self.error}"
+        return (
+            f"{self.upserted} chunk(s) re-embedded, {self.kept} unchanged, "
+            f"{self.removed} removed"
+        )
+
+
 class CodebaseIndexer:
     """
     Scans a target directory, detects file modifications via SHA-256 hashes,
@@ -126,6 +157,16 @@ class CodebaseIndexer:
         self.db = db if db is not None else VectorDB()
         self.event_callback = event_callback
         self.state_file = os.path.join(self.db.persist_dir, "index_state.json")
+        # Subject VI.1: the persisted vector store must never be indexed or
+        # watched. The name-based rules only catch the default ".chroma_db";
+        # `--db-dir demo_app/vectors` put the store INSIDE the target under a
+        # name nothing excluded, so every write of index_state.json fired the
+        # watcher, which re-indexed it and wrote the state again - forever.
+        # The store's real location is excluded explicitly instead.
+        self.excluded_dirs: List[str] = []
+        persist = os.path.abspath(self.db.persist_dir)
+        if safe_join(self.target_dir, os.path.relpath(persist, self.target_dir)) is not None:
+            self.excluded_dirs.append(persist)
         # The debounce worker, the polling fallback and HTTP handlers all reach
         # file_hashes and the state file; serialise every mutation through this.
         self._state_lock = threading.RLock()
@@ -136,7 +177,9 @@ class CodebaseIndexer:
         if os.path.isfile(self.state_file):
             try:
                 with open(self.state_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    return {str(k): str(v) for k, v in data.items()}
             except Exception:
                 pass
         return {}
@@ -179,74 +222,118 @@ class CodebaseIndexer:
             rel = absolute_or_rel_path
         return os.path.normpath(rel).replace("\\", "/")
 
-    def index_file(self, file_path: str, force: bool = False) -> bool:
+    def is_ignored(self, rel_path: str) -> bool:
+        """should_ignore_path() plus this indexer's own vector store location."""
+        if should_ignore_path(rel_path):
+            return True
+        if self.excluded_dirs:
+            abs_path = os.path.abspath(os.path.join(self.target_dir, rel_path))
+            for excluded in self.excluded_dirs:
+                if abs_path == excluded or abs_path.startswith(excluded + os.sep):
+                    return True
+        return False
+
+    def index_file(self, file_path: str, force: bool = False, repair: bool = False) -> FileSyncResult:
         """
         Incrementally index a single file.
-        Returns True if the file was updated/indexed, False if unchanged or ignored.
-        Pass force=True to re-chunk and re-embed even when the hash is unchanged.
+
+        Only chunks whose content or position changed are re-embedded; chunks
+        that no longer exist are deleted; untouched chunks are left alone
+        (Subject VI.1: "hash each chunk so you can detect actual changes").
+        force=True re-embeds every chunk even when nothing changed.
+        repair=True re-checks a file whose file hash is unchanged but whose
+        stored chunks may not match it (missing, or ids from an older layout).
         """
         rel_path = self.get_rel_path(file_path)
 
-        if should_ignore_path(rel_path):
-            return False
+        if self.is_ignored(rel_path):
+            return FileSyncResult(rel_path, "ignored")
 
         abs_path = os.path.join(self.target_dir, rel_path)
         if not os.path.isfile(abs_path):
             # If the file no longer exists, remove its chunks
-            return self.remove_file(rel_path)
-
-        if is_binary_file(abs_path):
-            return False
-
-        try:
-            with open(abs_path, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read()
-        except OSError:
-            return False
-
-        current_hash = compute_sha256(content)
+            return self._remove(rel_path)
 
         # One critical section: the watcher's debounce worker and its polling
         # fallback both land here, and interleaving them corrupts the index.
+        # The file is read INSIDE it: reading first let a slower thread
+        # overwrite a newer version's chunks with the older content it had read.
         with self._state_lock:
+            if is_binary_file(abs_path):
+                return self._binary(rel_path)
+            try:
+                with open(abs_path, "r", encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+            except OSError as e:
+                return FileSyncResult(rel_path, "error", error=str(e))
+            # A NUL byte anywhere makes it binary. The sniff above reads only
+            # 1 KB, and a NUL past that point made ast.parse raise ValueError,
+            # which killed the watcher thread and aborted every later scan.
+            if "\x00" in content:
+                return self._binary(rel_path)
+
+            current_hash = compute_sha256(content)
             previous_hash = self.file_hashes.get(rel_path)
 
             # Skip indexing if content has not changed
-            if previous_hash == current_hash and not force:
-                return False
+            if previous_hash == current_hash and not force and not repair:
+                return FileSyncResult(rel_path, "unchanged")
 
-            # Parse into logical chunks
-            chunks = chunk_file(abs_path, source_code=content)
+            # Parse into logical chunks. The RELATIVE path goes in, so chunk
+            # ids are "calculator.py:Calculator.add:16" rather than embedding
+            # the absolute path of whichever machine or container indexed it.
+            chunks = chunk_file(rel_path, source_code=content)
 
-            # Update rel_path on chunks to keep paths relative and portable
-            for chunk in chunks:
-                chunk.file_path = rel_path
+            existing = self.db.get_file_signatures(rel_path)
+            wanted: Dict[str, Any] = {c.chunk_id: c for c in chunks}
+            stale_ids = [cid for cid in existing if cid not in wanted]
+            to_upsert = [
+                c for c in chunks
+                if force
+                or existing.get(c.chunk_id) != VectorDB.chunk_signature(c.to_dict())
+            ]
 
-            # Incremental database sync: delete old chunks and insert updated ones
-            self.db.delete_file_chunks(rel_path)
-            self.db.upsert_chunks(chunks)
-
+            # Incremental database sync: drop vanished chunks, embed new/changed ones
+            self.db.delete_ids(stale_ids)
+            self.db.upsert_chunks(to_upsert)
             self.file_hashes[rel_path] = current_hash
 
+        if previous_hash == current_hash and not to_upsert and not stale_ids:
+            # Nothing to persist either: the polling scan re-checks empty
+            # files (no chunks to find) every cycle.
+            return FileSyncResult(rel_path, "unchanged", kept=len(chunks))
         self._save_state()
         self._emit("file_indexed", rel_path)
-        return True
+        return FileSyncResult(
+            rel_path,
+            "created" if previous_hash is None else "modified",
+            upserted=len(to_upsert),
+            removed=len(stale_ids),
+            kept=len(chunks) - len(to_upsert),
+        )
+
+    def _binary(self, rel_path: str) -> FileSyncResult:
+        """A file that is (or became) binary: never indexed, earlier chunks dropped."""
+        removed = self._remove(rel_path)
+        return removed if removed else FileSyncResult(rel_path, "ignored")
+
+    def _remove(self, rel_path: str) -> FileSyncResult:
+        with self._state_lock:
+            deleted_count = self.db.delete_file_chunks(rel_path)
+            was_tracked = self.file_hashes.pop(rel_path, None) is not None
+        if was_tracked or deleted_count:
+            self._save_state()
+        if deleted_count > 0:
+            self._emit("file_deleted", rel_path)
+            return FileSyncResult(rel_path, "deleted", removed=deleted_count)
+        return FileSyncResult(rel_path, "unchanged")
 
     def remove_file(self, file_path: str) -> bool:
         """
         Remove all chunks belonging to a deleted file from the vector database.
         Returns True if chunks were removed, False otherwise.
         """
-        rel_path = self.get_rel_path(file_path)
-        with self._state_lock:
-            deleted_count = self.db.delete_file_chunks(rel_path)
-            self.file_hashes.pop(rel_path, None)
-        self._save_state()
-
-        if deleted_count > 0:
-            self._emit("file_deleted", rel_path)
-            return True
-        return False
+        return bool(self._remove(self.get_rel_path(file_path)))
 
     def index_all(self, force: bool = False) -> Dict[str, Any]:
         """
@@ -257,40 +344,61 @@ class CodebaseIndexer:
         force=True re-chunks and re-embeds every file even when its hash is
         unchanged. That is what makes an on-demand reindex able to repair an
         index that has drifted from disk (POST /reindex, --reindex).
+
+        The scan reconciles against what the collection ACTUALLY holds, not
+        only against the hash state file: chunks of a file that is gone from
+        disk are removed even after reset_state() forgot it (a full reindex
+        used to leave them behind forever), and a file whose hash is unchanged
+        but whose chunks are missing is re-embedded.
         """
         current_disk_files: Set[str] = set()
         indexed_count = 0
         skipped_count = 0
+        errors: List[Dict[str, str]] = []
+        in_db = self.db.indexed_files()
 
         for root, dirs, files in os.walk(self.target_dir):
             # Prune ignored directories in-place to prevent os.walk from descending
             dirs[:] = [
                 d for d in dirs
-                if not should_ignore_path(self.get_rel_path(os.path.join(root, d)))
+                if not self.is_ignored(self.get_rel_path(os.path.join(root, d)))
             ]
 
             for file in files:
                 abs_file_path = os.path.join(root, file)
                 rel_file_path = self.get_rel_path(abs_file_path)
 
-                if should_ignore_path(rel_file_path):
+                if self.is_ignored(rel_file_path):
                     continue
 
                 current_disk_files.add(rel_file_path)
-                changed = self.index_file(rel_file_path, force=force)
-                if changed:
+                stored_ids = in_db.get(rel_file_path)
+                repair = stored_ids is None or any(
+                    not cid.startswith(rel_file_path + ":") for cid in stored_ids
+                )
+                # One unreadable or pathological file must not abort the scan
+                # and leave every file after it unsynchronised.
+                try:
+                    result = self.index_file(rel_file_path, force=force, repair=repair)
+                except Exception as e:
+                    errors.append({"file": rel_file_path, "error": f"{type(e).__name__}: {e}"})
+                    continue
+                if result:
                     indexed_count += 1
                 else:
                     skipped_count += 1
 
-        # Check for files that were previously indexed but deleted on disk
+        # Files previously indexed (per the state file OR the collection itself)
+        # that are no longer on disk, or are now ignored.
         with self._state_lock:
-            tracked_files = list(self.file_hashes.keys())
+            tracked_files = set(self.file_hashes.keys())
         deleted_count = 0
-        for tracked in tracked_files:
-            if tracked not in current_disk_files:
+        for tracked in sorted((tracked_files | set(in_db.keys())) - current_disk_files):
+            try:
                 if self.remove_file(tracked):
                     deleted_count += 1
+            except Exception as e:
+                errors.append({"file": tracked, "error": f"{type(e).__name__}: {e}"})
 
         stats = self.db.get_stats()
         return {
@@ -298,6 +406,7 @@ class CodebaseIndexer:
             "indexed_files": indexed_count,
             "skipped_unchanged": skipped_count,
             "deleted_files": deleted_count,
+            "errors": errors,
             "total_chunks": stats["total_chunks"],
             "total_files": stats["total_files"],
             "file_breakdown": stats["files"],

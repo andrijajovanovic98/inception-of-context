@@ -1,0 +1,15 @@
+# The image only COPYs p1/ p2/ p3/ bonus/ demo_app/ and the Makefile. Without
+# this file every build uploaded ~190 MB of local caches (.lint-venv,
+# .mypy_cache) and baked host-compiled __pycache__ into the image.
+.git
+.lint-venv
+.mypy_cache
+**/__pycache__
+**/*.pyc
+**/*.ioc.tmp
+.chroma_db
+presentation
+docs
+docu
+# Test suites and their frozen fixture are for `make test` on the host only.
+**/tests

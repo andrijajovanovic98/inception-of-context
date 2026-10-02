@@ -237,10 +237,13 @@ def create_patch_api(
 
         return {
             "status": "rolled_back" if touched else "nothing_to_roll_back",
-            "success": True,
+            # True only when every file of the last run now matches its
+            # pre-run bytes (checked, not assumed).
+            "success": not outcome["mismatches"],
             "scope": outcome["scope"],
             "restored": outcome["restored"],
             "removed": outcome["removed"],
+            "mismatches": outcome["mismatches"],
             "message": rollback_status,
             "target_dir": engine.target_dir,
         }

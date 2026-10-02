@@ -276,25 +276,134 @@ class FallbackChunker:
         return chunks
 
 
+class RegexPythonChunker:
+    """
+    Fallback for Python source that does not parse (a file saved mid-edit).
+
+    One chunk per def / async def / class header, found by a regex anchored at
+    the start of a line at ANY indentation - so methods nested in a class are
+    still split out, which a regex anchored on ^def would miss. Decorators
+    directly above a header belong to it; the body runs while lines stay
+    blank or indented deeper than the header. Anything else (imports, module
+    statements, a trailing __main__ block) becomes a module block, so no line
+    of the file is dropped.
+    """
+
+    HEADER_RE = re.compile(r"^([ \t]*)(async[ \t]+def|def|class)[ \t]+([A-Za-z_]\w*)")
+    DECORATOR_RE = re.compile(r"^[ \t]*@")
+
+    def __init__(self, file_path: str, source_code: str) -> None:
+        self.file_path = file_path
+        self.lines = source_code.splitlines()
+
+    @staticmethod
+    def _indent(line: str) -> int:
+        """Indentation width of a line, or -1 for a blank line."""
+        if not line.strip():
+            return -1
+        expanded = line.expandtabs(4)
+        return len(expanded) - len(expanded.lstrip())
+
+    def _make(self, name: str, kind: str, start: int, end: int) -> Optional[CodeChunk]:
+        """Chunk for 0-indexed inclusive line range [start, end], or None if blank."""
+        while end > start and not self.lines[end].strip():
+            end -= 1
+        content = "\n".join(self.lines[start:end + 1]).strip("\n").rstrip()
+        if not content.strip():
+            return None
+        return CodeChunk(
+            chunk_id=f"{self.file_path}:{name}:{start + 1}",
+            file_path=self.file_path,
+            symbol_name=name,
+            symbol_type=kind,
+            start_line=start + 1,
+            end_line=end + 1,
+            content=content,
+            content_hash=compute_sha256(content),
+        )
+
+    def chunk(self) -> List[CodeChunk]:
+        headers: List[Tuple[int, int, int, str, str]] = []  # (start, header_line, indent, kind, name)
+        for i, line in enumerate(self.lines):
+            m = self.HEADER_RE.match(line)
+            if not m:
+                continue
+            start = i
+            while start > 0 and self.DECORATOR_RE.match(self.lines[start - 1]):
+                start -= 1
+            kind = "class" if m.group(2) == "class" else "def"
+            headers.append((start, i, len(m.group(1).expandtabs(4)), kind, m.group(3)))
+
+        if not headers:
+            return []
+
+        chunks: List[CodeChunk] = []
+        class_stack: List[Tuple[int, str]] = []  # (indent, qualified class name)
+        covered_until = -1  # last 0-indexed line already inside a chunk
+
+        for idx, (start, header_line, indent, kind, name) in enumerate(headers):
+            next_start = headers[idx + 1][0] if idx + 1 < len(headers) else len(self.lines)
+
+            # Lines between the previous chunk and this header belong to no symbol.
+            if start > covered_until + 1:
+                block = self._make("<module>", "block", covered_until + 1, start - 1)
+                if block:
+                    chunks.append(block)
+
+            # The body ends at the first non-blank line indented no deeper than
+            # the header itself (e.g. a dedented `if __name__ == ...`).
+            end = header_line
+            for j in range(header_line + 1, next_start):
+                ind = self._indent(self.lines[j])
+                if ind == -1 or ind > indent:
+                    end = j
+                    continue
+                break
+
+            while class_stack and class_stack[-1][0] >= indent:
+                class_stack.pop()
+            if kind == "class":
+                qualified = ".".join([c[1] for c in class_stack[-1:]] + [name])
+                symbol_type = "class"
+                class_stack.append((indent, qualified))
+            elif class_stack:
+                qualified = f"{class_stack[-1][1]}.{name}"
+                symbol_type = "method"
+            else:
+                qualified = name
+                symbol_type = "function"
+
+            chunk = self._make(qualified, symbol_type, start, end)
+            if chunk:
+                chunks.append(chunk)
+            covered_until = end
+
+        if covered_until + 1 < len(self.lines):
+            block = self._make("<entrypoint>", "block", covered_until + 1, len(self.lines) - 1)
+            if block:
+                chunks.append(block)
+        return chunks
+
+
 def chunk_file(file_path: str, source_code: Optional[str] = None) -> List[CodeChunk]:
     """
     Main chunking entry point.
     Reads file from disk if source_code is not provided.
-    Attempts AST chunking for Python files, falling back to FallbackChunker.
+    Attempts AST chunking for Python files; a Python file that does not parse
+    falls back to the regex chunker, anything else to paragraph blocks.
     """
     if source_code is None:
         with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             source_code = f.read()
 
-    is_python = file_path.endswith(".py")
-    if is_python:
+    if file_path.endswith(".py"):
         try:
-            chunker = ASTChunker(file_path=file_path, source_code=source_code)
-            return chunker.chunk()
-        except SyntaxError:
-            # Fall back to block chunker if code has syntax errors
-            fallback = FallbackChunker(file_path=file_path, source_code=source_code)
-            return fallback.chunk()
-    else:
-        fallback = FallbackChunker(file_path=file_path, source_code=source_code)
-        return fallback.chunk()
+            return ASTChunker(file_path=file_path, source_code=source_code).chunk()
+        except (SyntaxError, ValueError, RecursionError, MemoryError):
+            # SyntaxError: saved mid-edit. ValueError: NUL bytes (Python 3.10
+            # raises ValueError there, not SyntaxError). RecursionError: absurdly
+            # deep nesting. None of these may escape into the watcher thread.
+            regex_chunks = RegexPythonChunker(file_path=file_path, source_code=source_code).chunk()
+            if regex_chunks:
+                return regex_chunks
+    return FallbackChunker(file_path=file_path, source_code=source_code).chunk()

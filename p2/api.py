@@ -27,8 +27,8 @@ try:
 except ImportError:
     FASTAPI_AVAILABLE = False
 
-from p1.chunker import chunk_file  # noqa: E402
-from p1.indexer import CodebaseIndexer, safe_join  # noqa: E402
+from p1.dashboard_files import FileViewError, file_view  # noqa: E402
+from p1.indexer import CodebaseIndexer  # noqa: E402
 from p1.watcher import CodebaseWatcher  # noqa: E402
 from p2.llm import OllamaClient, ask_rag  # noqa: E402
 from p2.retriever import Retriever  # noqa: E402
@@ -143,7 +143,15 @@ def create_architect_api(
     # Actions after which the BM25 corpus and symbol inventory are stale.
     # POLL_SYNC matters most: on Docker bind mounts and overlayfs inotify drops
     # events, so the polling fallback is the ONLY thing that notices a change.
-    INDEX_CHANGING_ACTIONS = ("MODIFIED", "DELETED", "POLL_SYNC", "REINDEX")
+    INDEX_CHANGING_ACTIONS = ("CREATED", "MODIFIED", "DELETED", "POLL_SYNC", "REINDEX")
+
+    def _fan_out(entry: Dict[str, Any]) -> None:
+        """Runs ON the event loop: asyncio.Queue is not thread-safe."""
+        for q in list(sse_queues):
+            try:
+                q.put_nowait(entry)
+            except asyncio.QueueFull:
+                pass
 
     def on_watcher_change(entry: Dict[str, Any]) -> None:
         action = entry.get("action", "")
@@ -151,11 +159,16 @@ def create_architect_api(
             retriever.refresh_index()
         if sse_stop.is_set():
             return
-        for q in list(sse_queues):
-            try:
-                q.put_nowait(entry)
-            except asyncio.QueueFull:
-                pass
+        # Called from the watcher threads. put_nowait() from a foreign thread
+        # neither wakes the waiting consumer nor is safe against the loop
+        # mutating the queue at the same time; hand the entry to the loop.
+        loop = loop_holder.get("loop")
+        if loop is None:
+            return
+        try:
+            loop.call_soon_threadsafe(_fan_out, entry)
+        except RuntimeError:
+            pass  # loop already closed (shutdown)
 
     if watcher:
         watcher.add_activity_listener(on_watcher_change)
@@ -220,30 +233,10 @@ def create_architect_api(
     # File Endpoint: GET /file?path=... (and /api/file)
     # -------------------------------------------------------------------------
     async def _handle_file(path: str) -> Dict[str, Any]:
-        # Containment first: this parameter is attacker-controlled and must never
-        # reach a file outside the indexed target directory.
-        abs_path = safe_join(indexer.target_dir, path)
-        if abs_path is None:
-            raise HTTPException(
-                status_code=403,
-                detail="Path escapes the indexed target directory",
-            )
-        if not os.path.isfile(abs_path):
-            raise HTTPException(status_code=404, detail=f"File not found on disk: {path}")
-
         try:
-            with open(abs_path, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read()
-            chunks = chunk_file(abs_path, source_code=content)
-            chunk_dicts = [c.to_dict() for c in chunks]
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
-
-        return {
-            "file_path": path,
-            "total_chunks": len(chunk_dicts),
-            "chunks": chunk_dicts,
-        }
+            return file_view(indexer, path)
+        except FileViewError as e:
+            raise HTTPException(status_code=e.status_code, detail=e.detail)
 
     @app.get("/file")
     async def get_file_root(
@@ -362,6 +355,8 @@ def create_architect_api(
             question=q,
             context_chunks=context_chunks,
             pre_resolved=pre_resolved,
+            inventory=retriever.symbol_inventory,
+            verifier=retriever.unknown_identifiers,
         )
         return result
 

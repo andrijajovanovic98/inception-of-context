@@ -14,6 +14,7 @@ from typing import List
 
 # --- Part 2: grounded RAG prompt (p2/llm.build_rag_prompt) -----------------
 RAG_GROUND_TRUTH_HEADER = "=== VERIFIED CODEBASE GROUND TRUTH (AST ANALYSIS) ==="
+RAG_INVENTORY_HEADER = "=== EVERY INDEXED SYMBOL (COMPLETE LIST) ==="
 RAG_CONTEXT_HEADER = "=== RETRIEVED CODEBASE CONTEXT CHUNKS ==="
 RAG_CHUNK_PREFIX = "--- [Chunk"
 RAG_RELEVANCE_LABEL = "Relevance:"
@@ -27,11 +28,14 @@ PATCH_EXISTING_PREFIX = "=== EXISTING CURRENT CONTENT OF:"
 PATCH_INTENT_HEADER = "=== USER CODING INTENT ==="
 PATCH_FEEDBACK_PREFIX = "=== PREVIOUS ATTEMPT FAILED"
 PATCH_OUTPUT_HEADER = "=== OUTPUT FORMAT ==="
+PATCH_NEW_FILES_HEADER = "=== FILES TO CREATE (THEY DO NOT EXIST YET) ==="
+PATCH_RENAME_HEADER = "=== EVERY USE OF THE NAME TO RENAME ==="
 
 # Every marker either prompt can emit. Sanity Rule 1 refuses patch content
 # containing any of these, so the list must cover BOTH prompts, not just P2.
 PROMPT_MARKERS: List[str] = [
     RAG_GROUND_TRUTH_HEADER,
+    RAG_INVENTORY_HEADER,
     RAG_CONTEXT_HEADER,
     RAG_CHUNK_PREFIX,
     RAG_RELEVANCE_LABEL,
@@ -43,6 +47,8 @@ PROMPT_MARKERS: List[str] = [
     PATCH_INTENT_HEADER,
     PATCH_FEEDBACK_PREFIX,
     PATCH_OUTPUT_HEADER,
+    PATCH_NEW_FILES_HEADER,
+    PATCH_RENAME_HEADER,
 ]
 
 # Shorter legacy spellings kept so hand-written or older prompts still trip the
