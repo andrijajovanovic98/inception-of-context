@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inception-of-Context - 2. resz: Architect API es RAG</title>
+  <title>Inception-of-Context - 2. rész: Architect API és RAG</title>
   <style>
 /* ==========================================================================
    Inception-of-Context (IoC) - Part 2 Presentation Stylesheet
@@ -744,26 +744,19 @@ html, body {
     <div class="slides-wrapper">
 
       <!-- SLIDE 1: Title Hero -->
-      <section class="slide active" data-title="Cim es attekintes">
+      <section class="slide active" data-title="Cím és áttekintés">
         <div class="slide-title-hero">
-          <div class="hero-pill">
-            <span class="pulse-dot"></span>
-            INCEPTION OF CONTEXT - 2. RESZ
-          </div>
-          <h1 class="hero-title">Architect API es RAG</h1>
-          <div class="hero-subtitle">Hibrid kereses, szimbolum-feloldas es 100% helyi Ollama LLM</div>
-          <p class="hero-desc">
-            A 2. reszben az 1. resz indexere egy FastAPI REST interfeszt epitunk.
-            A RAG folyamat egyesiti a ChromaDB szemantikus vektoros keresest a BM25Okapi lexikalis rangsorolassal,
-            mikozben dedikalt AST szimbolum-feloldassal kuszoboli ki a fuggvenyhallucinaciokat.
-          </p>
+          <div class="hero-pill"><span class="pulse-dot"></span> INCEPTION OF CONTEXT - 2. RÉSZ</div>
+          <h1 class="hero-title">Architect API & RAG</h1>
+          <div class="hero-subtitle">Hibrid keresés, szimbólum-előfeloldás és 100%-ban helyi Ollama LLM</div>
+          <p class="hero-desc">A 2. részben egy FastAPI REST szolgáltatás épül az 1. rész indexe fölé. A Retrieval-Augmented Generation folyamat a ChromaDB sűrű szemantikus vektorait a BM25Okapi ritka lexikális pontozásával kombinálja, és a subject által értékelt két kérdéstípusra közvetlenül az indexből válaszol, így ott a modell nem tud szimbólumokat kitalálni.</p>
           <div class="hero-specs">
             <div class="spec-item">
               <span class="spec-label">Backend</span>
               <span class="spec-value">FastAPI + SSE</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Kereses</span>
+              <span class="spec-label">Visszakeresés</span>
               <span class="spec-value">Dense + BM25Okapi</span>
             </div>
             <div class="spec-item">
@@ -771,700 +764,711 @@ html, body {
               <span class="spec-value">qwen2.5:3b (Ollama)</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Felhasznaloi felulet</span>
-              <span class="spec-value">3 fulu Dashboard</span>
+              <span class="spec-label">Felhasználói felület</span>
+              <span class="spec-value">3 fülös dashboard</span>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 2: Goal of Part 2 -->
-      <section class="slide" data-title="A 2. resz celja">
+      <section class="slide" data-title="A 2. rész célja">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>A 2. resz specifikacioja es kovetelmenyei</h2>
-              <p>Mit kovetel meg a hivatalos subject a masodik fazisban?</p>
+              <h2>A 2. rész specifikációja és követelményei</h2>
+              <p>Mit ír elő a hivatalos subject a második szakaszra?</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Subject Audit</span>
+            <span class="header-tag">Subject audit</span>
           </div>
         </div>
         <div class="grid-3" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">HTTP API az index felett</span>
+              <span class="card-title">HTTP API az index fölött</span>
               <span class="card-badge badge-cyan">FastAPI</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>REST vegpontok:</strong> Az index tartalmanak ellenorzesere es lekerdezesere alkalmas API interfesz.</li>
-                <li><strong>Elirt vegpontok:</strong> <code>/status</code>, <code>/files</code>, <code>/file</code>, <code>/chunks</code>, <code>/context</code>, <code>/ask</code>, <code>/events</code>.</li>
-                <li><strong>Statikus kiszolgalas:</strong> A webes dashboard integralt kiszolgalasa a bongeszo szamara.</li>
+                <li><strong>REST végpontok:</strong> API, amelyen a kliensek lekérdezhetik az index állapotát.</li>
+                <li><strong>Alap végpontok:</strong> <code>/status</code>, <code>/files</code>, <code>/file</code>, <code>/chunks</code>, <code>/context</code>, <code>/ask</code>, <code>/events</code> (a subject által javasolt felület).</li>
+                <li><strong>Ask &amp; Retrieve fül:</strong> szándék és top-k az űrlapon; csak visszakeresés, vagy visszakeresés és megalapozott válasz.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">RAG es Hibrid kereses</span>
-              <span class="card-badge badge-emerald">Retrieval</span>
+              <span class="card-title">RAG és hibrid keresés</span>
+              <span class="card-badge badge-emerald">Visszakeresés</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Kontextus kinyeres:</strong> A <code>POST /context</code> visszaadja a kerdeshez relevans forraskod darabokat.</li>
-                <li><strong>Hallucinaciomentesites:</strong> A szimbolumkerdesekre ("letezik-e X fuggveny?") pontos indexelt valasz adando.</li>
-                <li><strong>Hibrid mod:</strong> Dense (ChromaDB) + Sparse (BM25) re-ranking a tokeletes talalatokert.</li>
+                <li><strong>Kontextus-visszakeresés:</strong> a <code>POST /context</code> bármely szándékhoz a legrelevánsabb kódrészleteket adja vissza.</li>
+                <li><strong>Igaz válaszok:</strong> az „is there a function called X?” és a „what functions exist in this file?” kérdésre a <code>/ask</code> nem találhat ki olyan szimbólumot, amely nincs az indexben.</li>
+                <li><strong>Hibrid stratégia:</strong> a ChromaDB marad a kanonikus tár; egy memóriabeli BM25 index pontos azonosítókra újrarangsorol.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">100% Helyi LLM (Ollama)</span>
-              <span class="card-badge badge-amber">Local AI</span>
+              <span class="card-title">100%-ban helyi LLM (Ollama)</span>
+              <span class="card-badge badge-amber">Helyi AI</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Szigoru szabaly:</strong> Kulso felho API (OpenAI, Claude, Gemini) hivasa szigoruan tilos (0 XP).</li>
-                <li><strong>Modellosztaly:</strong> ~3B parameteres helyi modell (pl. <code>qwen2.5:3b</code> vagy <code>qwen2.5-coder:3b</code>).</li>
-                <li><strong>Megalapozott valasz:</strong> A modell csak a visszakeresett kodreszletekre tamaszkodhat.</li>
+                <li><strong>Szigorú szabály:</strong> bármilyen távoli LLM-szolgáltatás hívása tilos, és nulla pontot eredményez.</li>
+                <li><strong>Modellosztály:</strong> ~3B paraméteres helyi modell (pl. <code>qwen2.5:3b</code> vagy <code>qwen2.5-coder:3b</code>).</li>
+                <li><strong>Megalapozott válasz:</strong> a helyi modell szigorúan a visszakeresett kódkontextusból fogalmaz.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 3: Architecture Pipeline -->
-      <section class="slide" data-title="Architektura-folyamat">
+      <section class="slide" data-title="Architektúra-folyamat">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>Architektura-folyamat: Kerdesbol megalapozott valasz</h2>
-              <p>Hogyan jut el a felhasznaloi kerdes a helyi LLM altal generalt valaszig?</p>
+              <h2>Architektúra-folyamat: a kérdéstől a megalapozott válaszig</h2>
+              <p>Hogyan jut el egy beérkező szándék a helyi modellig, és hogyan lesz belőle ellenőrzött válasz</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Dataflow</span>
+            <span class="header-tag">Adatfolyam</span>
           </div>
         </div>
         <div class="pipeline-flow" style="margin-top: 10px;">
           <div class="flow-row">
             <div class="flow-node">
-              <span class="node-num">1. Lepes</span>
-              <span class="node-title">Keres es Szimbolum-detekcio</span>
+              <span class="node-num">1. lépés</span>
+              <span class="node-title">Kérés és szimbólumfelismerés</span>
               <span class="node-file">p2/api.py</span>
-              <span class="node-desc">POST /ask vagy /context fogadasa. AST szimbolumok pontos ellenorzese a memoriabol.</span>
+              <span class="node-desc">POST /ask: a két értékelt kérdéstípust a memóriabeli szimbólumleltárral veti össze; a tisztán ténykérdésre az index válaszol.</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
-              <span class="node-num">2. Lepes</span>
-              <span class="node-title">Hibrid visszakereses</span>
+              <span class="node-num">2. lépés</span>
+              <span class="node-title">Hibrid visszakeresés</span>
               <span class="node-file">p2/retriever.py</span>
-              <span class="node-desc">ChromaDB vektoros kereses (Dense) + BM25Okapi lexikalis pontozas (Sparse).</span>
+              <span class="node-desc">ChromaDB koszinuszkeresés (sűrű) + BM25Okapi lexikális egyezés (ritka).</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
-              <span class="node-num">3. Lepes</span>
-              <span class="node-title">RRF es Re-ranking</span>
+              <span class="node-num">3. lépés</span>
+              <span class="node-title">Pontszám-fúzió</span>
               <span class="node-file">p2/retriever.py</span>
-              <span class="node-desc">Pontszam-fuzio es Top-K relevans darab kivalasztasa a kontextushoz.</span>
+              <span class="node-desc">0.5 &times; dense + 0.5 &times; BM25 (a maximumával skálázva), plusz bónusz, ha a kérdés megnevez egy szimbólumot vagy fájlt; a top-k marad meg.</span>
             </div>
           </div>
           <div class="flow-row">
             <div class="flow-node">
-              <span class="node-num">4. Lepes</span>
-              <span class="node-title">Prompt konstrukcio</span>
+              <span class="node-num">4. lépés</span>
+              <span class="node-title">Prompt összeállítása</span>
               <span class="node-file">p2/llm.py</span>
-              <span class="node-desc">System prompt osszeallitasa a kinyert kodreszletekkel es szigoru megszoritasokkal.</span>
+              <span class="node-desc">Előbb az ellenőrzött tény, aztán minden indexelt szimbólum a sortartományával, a rangsorolt darabok és a kérdés.</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
-              <span class="node-num">5. Lepes</span>
-              <span class="node-title">Helyi Ollama kiertekeles</span>
+              <span class="node-num">5. lépés</span>
+              <span class="node-title">Helyi Ollama-kiértékelés</span>
               <span class="node-file">127.0.0.1:11435</span>
-              <span class="node-desc">qwen2.5:3b modell futtatasa streamelve vagy blokkolva az API-n keresztul.</span>
+              <span class="node-desc">Következtetés a helyi qwen2.5:3b-vel, külső hálózati forgalom nélkül.</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
-              <span class="node-num">6. Lepes</span>
-              <span class="node-title">Valasz es SSE esemeny</span>
-              <span class="node-file">Dashboard UI</span>
-              <span class="node-desc">Megalapozott valasz kiirasa, forrasdarabok megjelenitese, esemeny sugarzasa.</span>
+              <span class="node-num">6. lépés</span>
+              <span class="node-title">Válasz és indexellenőrzés</span>
+              <span class="node-file">p2/llm.py</span>
+              <span class="node-desc">Visszaadja a választ, a forrását (index, model+index vagy model) és a darabokat; a kódban sehol nem szereplő neveket megjelöli.</span>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 4: Hybrid Retrieval: Dense + Sparse -->
-      <section class="slide" data-title="Hibrid kereses: Dense es BM25">
+      <section class="slide" data-title="Hibrid keresés: dense és BM25">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>Hibrid kereses: Dense vektorok es Sparse BM25Okapi</h2>
-              <p>Miert nem elegendo onmagaban a sima vektoros kereses a forraskodban?</p>
+              <h2>Hibrid visszakeresés: sűrű vektorok és ritka BM25Okapi</h2>
+              <p>Miért nem elég a vektoros hasonlóság forráskódra, és hogyan segít a hibrid keresés</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Search Engine</span>
+            <span class="header-tag">Keresőmotor</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">Dense kereses (ChromaDB + all-MiniLM)</span>
+              <span class="card-title">Sűrű keresés (ChromaDB + all-MiniLM)</span>
               <span class="card-badge badge-cyan">Szemantika</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Hogyan mukodik:</strong> A szoveget 384 dimenzios vektorterbe kepezi le; koszinusz hasonlosagot szamol.</li>
-                <li><strong>Erosseg:</strong> Megerti a szandekot es szinonimakat (pl. "osszeadas muvelet" -&gt; megtalalja az <code>add</code> fuggvenyt).</li>
-                <li><strong>Gyengesege kodnal:</strong> Pontatlan az egzakt azonosito nevekre, fuggvenynevekre, rovid valtozokra.</li>
+                <li><strong>Működés:</strong> a szöveget 384 dimenziós vektortérbe képezi, és koszinusztávolságot számol.</li>
+                <li><strong>Erősség:</strong> körülírt szándék: a „how is a value formatted as currency?” kérdésre a <code>format_currency</code> az első (0.88).</li>
+                <li><strong>Gyengeség kódon:</strong> pontos azonosítókra gyengébb: a „where is X used?” teljesen elvétheti a hívót (subject VI.2).</li>
               </ul>
               <div class="code-box" style="margin-top: 10px;">
-results = collection.query(
-    query_texts=[query],
-    n_results=top_k * 2
-)</div>
+candidate_count = max(target_k * 3, min(total_count, 15))
+chroma_res = self.db.query(query_text=query,
+                           n_results=candidate_count)
+dense = max(0.0, min(1.0, 1.0 - float(dist)))</div>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Sparse kereses (BM25Okapi)</span>
-              <span class="card-badge badge-emerald">Egzakt kulcsszavak</span>
+              <span class="card-title">Ritka keresés (BM25Okapi)</span>
+              <span class="card-badge badge-emerald">Pontos kulcsszavak</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Hogyan mukodik:</strong> Term Frequency - Inverse Document Frequency (TF-IDF) valtozat, szavak elofordulasat meri.</li>
-                <li><strong>Erosseg:</strong> Hibatlanul azonositja az egzakt fuggvenyneveket: <code>format_result</code>, <code>CalculatorError</code>.</li>
-                <li><strong>Gyengesege:</strong> Nem ert semmit a szemantikabol, ha nincs kozos szo a kerdesben es a kodban.</li>
+                <li><strong>Működés:</strong> TF-IDF-változat, amely a pontos szógyakoriságot és az inverz dokumentumgyakoriságot méri.</li>
+                <li><strong>Erősség:</strong> pontos azonosítók: a „where is multiply used?” a <code>main.py</code> <code>calculate_tax</code> hívóját is rangsorolja.</li>
+                <li><strong>Gyengeség:</strong> nincs szemantika: egy könnyű szótövező összevonja a ragozott alakokat (a „divides” illeszkedik a <code>divide</code>-ra), de szinonimát sosem talál meg.</li>
               </ul>
               <div class="code-box" style="margin-top: 10px;">
-tokenized_query = query.lower().split()
-bm25_scores = bm25.get_scores(tokenized_query)</div>
+query_tokens = tokenize_code(query)  # format_currency -&gt;
+                                    # format_currency, format, currency
+                                    # divides -&gt; divid, like divide
+raw_bm25 = bm25.get_scores(query_tokens)
+bm25 = score / max(raw_bm25)        # scaled to [0, 1]</div>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 5: Symbol Pre-Resolution -->
-      <section class="slide" data-title="Szimbolum elofeloldas">
+      <section class="slide" data-title="Szimbólum-előfeloldás">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>Szimbolum elofeloldas: Hallucinaciok kikuszobolese</h2>
-              <p>Hogyan garantaljuk a 100%-os tenyszeru pontossagot a kodszimbolumoknal?</p>
+              <h2>Szimbólum-előfeloldás: igaz válaszok</h2>
+              <p>A subject által értékelt két kérdéstípusra az index válaszol, nem a modell</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Anti-Hallucination</span>
+            <span class="header-tag">Hallucináció ellen</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-rose">
             <div class="card-header">
-              <span class="card-title">A problema: LLM szimbolum hallucinacio</span>
-              <span class="card-badge badge-rose">Kockazat</span>
+              <span class="card-title">A kihívás: kitalált szimbólumok</span>
+              <span class="card-badge badge-rose">Kockázat</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>A subject kovetelmenye:</strong> "The /ask system must avoid hallucinating code symbols. Questions such as 'is there a function called X?' must be answered based on known indexed information."</li>
-                <li>Ha egy 3B-s modellnek csak annyit kerdezunk: "Letezik-e power() fuggveny?", konnyen azt mondhatja: "Igen, a calculator.py tartalmazza", holott nincs benne!</li>
-                <li>A tisztan statisztikai nyelvi modellek hajlamosak a "valoszinunek tuno" valaszokra a tenyek helyett.</li>
+                <li><strong>Subject (VI.2):</strong> az „is there a function called X?” és a „what functions exist in this file?” kérdést egy kis modell könnyen elrontja; ezekre a <code>/ask</code> nem találhat ki az indexben nem szereplő szimbólumot.</li>
+                <li>Mérés a javítás előtt: a <code>main.py</code> függvényeire a 3B modell azt felelte: <code>&lt;entrypoint&gt;</code>, ami az indexelő neve a <code>__main__</code> blokkra.</li>
+                <li>A tisztán generatív tokenjóslók a valószínűséget részesítik előnyben a tényszerű tagadással szemben.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Az IoC megoldas: Determinisztikus elofeloldas</span>
-              <span class="card-badge badge-emerald">Megoldas</span>
+              <span class="card-title">Az IoC megoldása: determinisztikus előfeloldás</span>
+              <span class="card-badge badge-emerald">Megoldás</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>1. Mintafelismeres:</strong> Kiszurjuk a szimbolumkerdeseket regex-szel (pl. <code>van-e X fuggveny?</code>, <code>what functions exist?</code>).</li>
-                <li><strong>2. AST szimbolumtar:</strong> Ellenorizzuk az indexelt szimbolumokat az AST metaadatokbol (fuggvenyek, osztalyok).</li>
-                <li><strong>3. Teny-injekcio:</strong> Ha a felhasznalo a <code>power</code>-rol kerdez, es az AST-ben nem szerepel, a rendszer explicit tenykent adja at az LLM-nek: <em>"A keresett szimbolum NEM letezik a kodbazisban."</em></li>
+                <li><strong>1. Kérdéstípusok:</strong> a <code>resolve_symbol_query()</code> mindkét típust felismeri a természetes változataikban: backtick, <code>Class.method</code>, „does X exist”, „which functions are in &lt;file&gt;”, és magyarul is.</li>
+                <li><strong>2. Szimbólumleltár:</strong> az indexelt AST-darabok függvényei, metódusai és osztályai a sortartományukkal; a modulblokkok nem szimbólumok.</li>
+                <li><strong>3. Az index válaszol:</strong> a csak erre a tényre irányuló kérdés el sem jut a modellig (<code>answer_source: "index"</code>); tágabb kérdésnél az ellenőrzött tény áll elöl, a kódban sehol nem szereplő neveket pedig megjelöli.</li>
               </ul>
-              <div class="callout-box" style="margin-top: 8px;">
-                <strong>Vedesi tipp:</strong> Ezzel a ketlepcsos megoldassal garantaljuk, hogy a 3B modell soha ne talaljon ki nem letezo fuggvenyeket!
-              </div>
+              <div class="callout-box" style="margin-top: 8px;"><strong>Védési tipp:</strong> kérdezd meg: „is there a function called sqrt?”; a jelvényen ez áll: „Answered from the index (model not consulted)”.</div>
             </div>
           </div>
         </div>
       </section>
-
-      <!-- SLIDE 6: Reciprocal Rank Fusion (RRF) -->
-      <section class="slide" data-title="RRF es pontszam-fuzio">
+      <!-- SLIDE 6: Hybrid Score Fusion -->
+      <section class="slide" data-title="Hibrid pontszám-fúzió">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>Reciprocal Rank Fusion (RRF) algoritmus</h2>
-              <p>Ket kulonbozo skalan mozg pontszam matematikai egyesitese</p>
+              <h2>Hibrid pontszám-fúzió: dense + BM25</h2>
+              <p>Hogyan lesz a p2/retriever.py-ban két pontszámskálából darabonként egyetlen hasonlósági pontszám</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Algorithm</span>
+            <span class="header-tag">Algoritmus</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">A fuzios formula</span>
+              <span class="card-title">A fúziós képlet</span>
               <span class="card-badge badge-cyan">Matematika</span>
             </div>
             <div class="card-content">
-              <p style="margin-bottom: 10px;">
-                A vektoros koszinusz hasonlosag (0 es 1 kozott) es a BM25 pontszam (0-tol vegtelenig terjedhet) nem adhato ossze kozvetlenul normalizalas nelkul. Az RRF a helyezesek (rangok) alapjan szamol:
-              </p>
+              <p style="margin-bottom: 10px;">A koszinusz-hasonlóság már [0, 1]-ben van; a BM25 nem korlátos, ezért előbb elosztjuk a kérdés legjobb BM25 pontszámával. Ezután súlyozott összeg:</p>
               <div class="code-box" style="font-size: 13px; text-align: center; padding: 14px;">
-RRF_Score(d) = SUM [ 1 / ( k + rank_i(d) ) ]
-k = 60 (standard simito konstans)</div>
+score = 0.5 &times; dense + 0.5 &times; bm25 / max(bm25)
+      + 0.25 if the query names the symbol
+      + 0.15 if the query names the file
+score = min(score, 1.0)</div>
               <ul style="margin-top: 10px;">
-                <li>Ha egy kodreszlet mindket rangsorban elol vegez, az RRF pontszama maximalis lesz.</li>
-                <li>Ha csak az egyikben van elol, a kiegyensulyozott kiertekeles megakadalyozza a tulindexelest.</li>
+                <li>Jelöltek: a dense találatok és a legjobb BM25 találatok, a demó indexen mindkettőből max(3 &times; k, 15).</li>
+                <li>Egyenlő pontszámnál a fájl és a sor dönt, így egy kérdés mindig ugyanúgy rangsorol.</li>
+                <li>A ChromaDB marad a kanonikus tár: a BM25 korpusz minden indexváltozás után az ő dokumentumaiból épül újra.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-indigo">
             <div class="card-header">
-              <span class="card-title">Implementacio: p2/retriever.py</span>
-              <span class="card-badge badge-indigo">Kod</span>
+              <span class="card-title">Megvalósítás: p2/retriever.py</span>
+              <span class="card-badge badge-indigo">Kód</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%;">
-<span class="token-kw">def</span> <span class="token-fn">hybrid_retrieve</span>(query: str, top_k: int = <span class="token-num">4</span>):
-    dense_hits = chroma_client.query(query, n=top_k*<span class="token-num">2</span>)
-    sparse_scores = bm25.get_scores(query.split())
-    
-    rrf_scores = {}
-    <span class="token-kw">for</span> rank, doc_id <span class="token-kw">in</span> enumerate(dense_hits):
-        rrf_scores[doc_id] = rrf_scores.get(doc_id, <span class="token-num">0</span>) + <span class="token-num">1.0</span> / (<span class="token-num">60</span> + rank)
-        
-    <span class="token-kw">for</span> rank, (doc_id, _) <span class="token-kw">in</span> enumerate(sorted_bm25):
-        rrf_scores[doc_id] = rrf_scores.get(doc_id, <span class="token-num">0</span>) + <span class="token-num">1.0</span> / (<span class="token-num">60</span> + rank)
-        
-    <span class="token-kw">return</span> sorted(rrf_scores.items(), key=<span class="token-kw">lambda</span> x: x[<span class="token-num">1</span>], reverse=<span class="token-kw">True</span>)[:top_k]</div>
+<span class="token-comm"># Retriever.retrieve(query, k=3, alpha=0.5), abridged</span>
+combined_score = (alpha * d_score) + ((<span class="token-num">1.0</span> - alpha) * b_score)
+
+boost = <span class="token-num">0.0</span>
+<span class="token-kw">if</span> symbol_name <span class="token-kw">and</span> (symbol_name <span class="token-kw">in</span> query_words
+                    <span class="token-kw">or</span> short_sym <span class="token-kw">in</span> query_words):
+    boost += <span class="token-num">0.25</span>
+<span class="token-kw">if</span> file_stem <span class="token-kw">and</span> file_stem <span class="token-kw">in</span> query_words:
+    boost += <span class="token-num">0.15</span>
+
+final_score = min(<span class="token-num">1.0</span>, combined_score + boost)
+
+<span class="token-comm"># ties break on location: a stable ranking</span>
+scored_candidates.sort(key=<span class="token-kw">lambda</span> x: (-x[<span class="token-num">0</span>],
+    str(x[<span class="token-num">1</span>][<span class="token-str">"file_path"</span>]),
+    int(x[<span class="token-num">1</span>][<span class="token-str">"start_line"</span>] <span class="token-kw">or</span> <span class="token-num">0</span>)))</div>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 7: Local LLM Integration (Ollama) -->
-      <section class="slide" data-title="Helyi LLM integracio">
+      <section class="slide" data-title="Helyi LLM integráció">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>Helyi LLM Integracio: Ollama es qwen2.5:3b</h2>
-              <p>Teljesen offline, gyors kiertekeles zero felhos adatveszteseggel</p>
+              <h2>Helyi LLM integráció: Ollama és qwen2.5:3b</h2>
+              <p>Teljesen offline kódkövetkeztetés, külső függőségek nélkül</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Local Engine</span>
+            <span class="header-tag">Helyi motor</span>
           </div>
         </div>
         <div class="grid-3" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">Miert qwen2.5:3b?</span>
-              <span class="card-badge badge-cyan">Valasztas</span>
+              <span class="card-title">Miért qwen2.5:3b?</span>
+              <span class="card-badge badge-cyan">Modellválasztás</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>3B parameter:</strong> Gyorsan fut dedikalt GPU nelkul is barmely modern CPU-n (pl. a 42-es iMac-eken).</li>
-                <li><strong>Kivalo kodertes:</strong> Kiemelkedo teljesitmeny Python szintaxis ertelmezeseben es strukturalt JSON valaszokban.</li>
-                <li><strong>Hivatalos referencia:</strong> A subject kifejezetten megengedi a ~3B osztalyu modellek hasznalatat.</li>
+                <li><strong>3B paraméter:</strong> modern CPU-n is elfut, erős GPU nélkül.</li>
+                <li><strong>Instruct modell:</strong> a subject a <code>qwen2.5:3b</code>-t javasolja a <code>/ask</code>-hoz; egy modell is elég, így a patch-ciklust is ez hajtja.</li>
+                <li><strong>Subject:</strong> kifejezetten a ~3B paraméteres modellosztályt említi.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
               <span class="card-title">Ollama REST API</span>
-              <span class="card-badge badge-emerald">Kommunikacio</span>
+              <span class="card-badge badge-emerald">Integráció</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A rendszer HTTP POST keressel fordul a helyi szerverhez: <code>http://127.0.0.1:11435/api/generate</code>.</li>
-                <li>Nem hasznal kulso Python SDK-t: tiszta <code>httpx</code> aszinkron klienssel kezeli a lekerdezeseket.</li>
-                <li>Tamogatja mind a teljes valaszt, mind az inkrementalis streaminget SSE esemenyekhez.</li>
+                <li>Közvetlen HTTP POST: <code>http://127.0.0.1:11435/api/generate</code>.</li>
+                <li>Nincs nehéz külső SDK: aszinkron <code>httpx</code> kérések.</li>
+                <li>Nem streamelt hívások (<code>"stream": false</code>), 0.1-es temperature, minden kérésnél ugyanaz a 8192-es <code>num_ctx</code>.</li>
+                <li>A szabványos <code>:11434</code>-re csak akkor vált, ha a <code>:11435</code> elutasítja a kapcsolatot, és ezt a stderr-en jelzi.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">Biztonsagi izolacio</span>
-              <span class="card-badge badge-amber">Offline Rule</span>
+              <span class="card-title">Biztonság és izoláció</span>
+              <span class="card-badge badge-amber">Offline szabály</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Az alkalmazas Docker kontenerben fut, halozata csak a helyi gep localhost-javal beszelget.</li>
-                <li>Nincs API kulcs, nincs regisztracio, nincs internet-fuggoseg.</li>
-                <li>A vedesen barki ellenorizheti a halozati forgalmat: egyetlen csomag sem hagyja el a gepet.</li>
+                <li>Az Ollama a hoszton fut; az alkalmazás (a <code>make up</code> konténerből is) csak loopbacken éri el.</li>
+                <li>Nincs API-token, nincs előfizetés, nincs külső internetfüggőség.</li>
+                <li>A védésen ellenőrizhető a hálózat lekapcsolásával vagy a forgalom vizsgálatával.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 8: Prompt Engineering & Grounding -->
-      <section class="slide" data-title="Prompt felepites es megalapozas">
+      <section class="slide" data-title="Prompt felépítés és megalapozás">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>Prompt felepites es szigoru forraskod-megalapozas</h2>
-              <p>Hogyan kenyszeritjuk az LLM-et, hogy kizarolag a valos kontextusbol dolgozzon?</p>
+              <h2>Prompt felépítés és szigorú kontextus-megalapozás</h2>
+              <p>A p2/llm.py valódi promptja: az ellenőrzött tények és a teljes szimbólumlista minden visszakeresett darab előtt állnak</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Prompt Engineering</span>
+            <span class="header-tag">Prompt felépítés</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">A rendszerprompt anatomiaja</span>
-              <span class="card-badge badge-cyan">System Prompt</span>
+              <span class="card-title">A rendszerprompt</span>
+              <span class="card-badge badge-cyan">Rendszerprompt</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="font-size: 11px; height: 100%;">
-SYSTEM_PROMPT = """
-On egy specializalt szoftverarchitekt asszisztens.
-KIZAROLAG az alabbi KODRESZLETEK (Context) alapjan valaszoljon.
+GROUNDED_SYSTEM_PROMPT = """You are an expert AI software
+architect and codebase assistant for this project. [...]
 
-SZIGORU SZABALYOK:
-1. Ha a kerdes egy szimbolumrol (fuggveny, osztaly) szol,
-   es az NEM szerepel a kontextusban, pontosan ezt valaszolja:
-   "A keresett szimbolum nem talalhato az indexelt kodban."
-2. Ne talaljon ki nem letezo fuggvenyeket vagy parametereket.
-3. A magyarazatokhoz hasznaljon pontos forraskod hivatkozasokat
-   (fajlnev, sorszamok).
-"""</div>
+CRITICAL NON-NEGOTIABLE RULES:
+1. Be truthful, concise, and grounded in the provided code
+   context.
+2. Under NO circumstances should you hallucinate, invent, or
+   assume functions, methods, classes, or files that do not
+   appear in the context or verified facts.
+3. If a symbol or function does not exist in the codebase,
+   you MUST explicitly and clearly state that it does not exist.
+4. Reference file paths and line numbers when citing code.
+5. Do not include unnecessary conversational filler; focus on
+   technical precision."""</div>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Kontextus injektalasa a felhasznaloi kerdes ele</span>
-              <span class="card-badge badge-emerald">User Prompt</span>
+              <span class="card-title">build_rag_prompt(): a szakaszok sorrendben</span>
+              <span class="card-badge badge-emerald">Felhasználói prompt</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="font-size: 11px; height: 100%;">
-USER_PROMPT = f"""
---- KODRESZLETEK KEZDETE ---
-[FORRAS 1]: {chunk_1.file_path} ({chunk_1.type} {chunk_1.name}, L{chunk_1.start_line}-L{chunk_1.end_line})
-{chunk_1.code}
+=== VERIFIED CODEBASE GROUND TRUTH (AST ANALYSIS) ===
+{fact, when the question matched a graded shape}
+Treat the above verified facts as absolute truth.
 
-[FORRAS 2]: {chunk_2.file_path} ({chunk_2.type} {chunk_2.name}, L{chunk_2.start_line}-L{chunk_2.end_line})
-{chunk_2.code}
---- KODRESZLETEK VEGE ---
+=== EVERY INDEXED SYMBOL (COMPLETE LIST) ===
+- calculator.py: class Calculator (lines 9-36),
+  method Calculator.divide (lines 28-32), ...
+No other function, method or class exists in this codebase.
 
-KERDES: {user_query}
-VALASZ:
-"""</div>
+=== RETRIEVED CODEBASE CONTEXT CHUNKS ===
+--- [Chunk 1] File: calculator.py | method Calculator.divide
+    (Lines 28-32) | Relevance: 0.6825 ---
+{chunk source}
+
+=== USER QUESTION ===
+{question}
+
+=== INSTRUCTIONS FOR YOUR ANSWER ===
+Only mention functions, methods and classes that appear in
+the complete symbol list. [...]</div>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 9: FastAPI REST Endpoints -->
-      <section class="slide" data-title="REST API vegpontok">
+      <section class="slide" data-title="REST API végpontok">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>FastAPI REST API vegpontok attekintese</h2>
-              <p>A p2/api.py altal biztositott interfeszek es felelossegi koreik</p>
+              <h2>FastAPI REST végpontok áttekintése</h2>
+              <p>A p2/api.py felületei; mindegyik /api/... alatt is elérhető</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">API Reference</span>
+            <span class="header-tag">API referencia</span>
           </div>
         </div>
         <div style="margin-top: 14px;">
           <table class="db-mock-table">
             <thead>
               <tr>
-                <th style="width: 15%;">Vegpont</th>
-                <th style="width: 10%;">Metodus</th>
-                <th style="width: 35%;">Leiras es felelosseg</th>
-                <th style="width: 40%;">Visszateresi ertek pelda</th>
+                <th style="width: 15%;">Végpont</th>
+                <th style="width: 10%;">Metódus</th>
+                <th style="width: 35%;">Leírás és felelősség</th>
+                <th style="width: 40%;">Minta válasz</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td><code>/status</code></td>
                 <td><span class="card-badge badge-cyan">GET</span></td>
-                <td>Index allapot, darabszamok, modellek neve es a figyeloi aktivitas.</td>
-                <td><code>{"status":"ready", "chunks":12, "files":3}</code></td>
+                <td>Indexállapot, darabszám, aktív modellek és a figyelő állapota.</td>
+                <td><code>{"status":"ready", "total_chunks":23, "total_files":4, "ollama_available":true, ...}</code></td>
               </tr>
               <tr>
                 <td><code>/files</code></td>
                 <td><span class="card-badge badge-cyan">GET</span></td>
-                <td>Indexelt fajlok listaja azok darabszamaval es meretevel.</td>
-                <td><code>[{"path":"calculator.py", "chunks":5}]</code></td>
+                <td>Az indexelt fájlok a darabszámukkal.</td>
+                <td><code>{"total_files":4, "files":[{"path":"calculator.py", "chunk_count":8}, ...]}</code></td>
               </tr>
               <tr>
                 <td><code>/file</code></td>
                 <td><span class="card-badge badge-cyan">GET</span></td>
-                <td>Egy adott fajl teljes forraskodja az AST darabhatarokkal egyutt.</td>
-                <td><code>{"path":"main.py", "content":"...", "chunks":[...]}</code></td>
+                <td>A fájl szövege és indexelt darabjai; 403 a célkönyvtáron kívül vagy kizárt útvonalra.</td>
+                <td><code>{"file_path":"main.py", "content":"...", "chunks":[...], "in_sync":true}</code></td>
               </tr>
               <tr>
                 <td><code>/chunks</code></td>
                 <td><span class="card-badge badge-cyan">GET</span></td>
-                <td>Az osszes tarolt darab metaadata szuresi lehetoseggel.</td>
-                <td><code>[{"id":"...", "name":"add", "type":"function"}]</code></td>
+                <td>Indexelt darabok fájl/sor sorrendben, lapozva: <code>?limit</code> (max. 100) és <code>?offset</code>.</td>
+                <td><code>{"total_chunks":23, "limit":50, "offset":0, "chunks":[...]}</code></td>
               </tr>
               <tr>
                 <td><code>/context</code></td>
                 <td><span class="card-badge badge-amber">POST</span></td>
-                <td>Hibrid kereses a kerdeshez tartozo legrelevansabb kodreszletekre.</td>
-                <td><code>{"query":"...", "chunks":[...]}</code></td>
+                <td>Hibrid visszakeresés: a kérdéshez legrelevánsabb kódrészletek.</td>
+                <td><code>{"query":"...", "k":3, "total_retrieved":3, "chunks":[{..., "similarity_score":0.8791}]}</code></td>
               </tr>
               <tr>
                 <td><code>/ask</code></td>
                 <td><span class="card-badge badge-emerald">POST</span></td>
-                <td>Teljes RAG folyamat: kereses, helyi LLM generalas, megalapozott valasz.</td>
-                <td><code>{"answer":"...", "retrieved_chunks":[...]}</code></td>
+                <td>Visszakeresés, majd generálás; a két értékelt kérdéstípusra az index válaszol.</td>
+                <td><code>{"answer":"...", "answer_source":"index", "retrieved_chunks":[...]}</code></td>
               </tr>
               <tr>
                 <td><code>/events</code></td>
                 <td><span class="card-badge badge-indigo">GET</span></td>
-                <td>Server-Sent Events (SSE) folyam a dashboard elo frissitesehez.</td>
-                <td><code>event: index_update\ndata: {...}\n\n</code></td>
+                <td>Server-Sent Events (SSE) folyam a dashboard élő frissítéséhez.</td>
+                <td><code>data: {"action":"MODIFIED", "path":"calculator.py", ...}</code></td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
-
       <!-- SLIDE 10: Walkthrough: POST /context -->
-      <section class="slide" data-title="Vegpont bemutato: POST /context">
+      <section class="slide" data-title="Bemutató: POST /context">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>Vegpont bemutato: POST /context</h2>
-              <p>Relevans forraskod kinyerese strukturalt formaban a RAG hatterekent</p>
+              <h2>Bemutató: POST /context</h2>
+              <p>Valódi hívás a demo_app ellen: a top-k darab a hasonlósági pontszámával</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">JSON Contract</span>
+            <span class="header-tag">JSON szerződés</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">Keres JSON (Request)</span>
-              <span class="card-badge badge-cyan">Input</span>
+              <span class="card-title">Kérés (JSON)</span>
+              <span class="card-badge badge-cyan">Bemenet</span>
             </div>
             <div class="card-content">
-              <div class="code-box" style="height: 100%;">
+              <div class="code-box">
 {
-  <span class="token-str">"query"</span>: <span class="token-str">"hogyan mukodik az eredmenyek formazasa?"</span>,
-  <span class="token-str">"top_k"</span>: <span class="token-num">2</span>
+  <span class="token-str">"query"</span>: <span class="token-str">"how is a value formatted as currency?"</span>,
+  <span class="token-str">"k"</span>: <span class="token-num">2</span>
 }</div>
-              <p style="margin-top: 12px; font-size: 11.5px; color: var(--text-muted);">
-                A keresben atadhato a felhasznalo kerdese es a visszakerendo darabok maximalis szama (<code>top_k</code>, alapertelmezett: 4).
-              </p>
+              <p style="margin-top: 12px; font-size: 11.5px; color: var(--text-muted);">A <code>k</code> opcionális: alapértelmezés 3, legfeljebb 20 (fölötte 422); üres kérdésre 400.</p>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Valasz JSON (Response)</span>
-              <span class="card-badge badge-emerald">Output</span>
+              <span class="card-title">Válasz (JSON)</span>
+              <span class="card-badge badge-emerald">Kimenet</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
 {
-  <span class="token-str">"query"</span>: <span class="token-str">"hogyan mukodik az eredmenyek formazasa?"</span>,
+  <span class="token-str">"query"</span>: <span class="token-str">"how is a value formatted as currency?"</span>,
+  <span class="token-str">"k"</span>: <span class="token-num">2</span>,
+  <span class="token-str">"total_retrieved"</span>: <span class="token-num">2</span>,
   <span class="token-str">"chunks"</span>: [
     {
-      <span class="token-str">"id"</span>: <span class="token-str">"formatter.py:format_result:1:18"</span>,
+      <span class="token-str">"chunk_id"</span>: <span class="token-str">"formatter.py:format_currency:10"</span>,
       <span class="token-str">"file_path"</span>: <span class="token-str">"formatter.py"</span>,
-      <span class="token-str">"name"</span>: <span class="token-str">"format_result"</span>,
-      <span class="token-str">"type"</span>: <span class="token-str">"function"</span>,
-      <span class="token-str">"start_line"</span>: <span class="token-num">1</span>,
-      <span class="token-str">"end_line"</span>: <span class="token-num">18</span>,
-      <span class="token-str">"score"</span>: <span class="token-num">0.894</span>,
-      <span class="token-str">"content"</span>: <span class="token-str">"def format_result(val, fmt=\"json\"): ..."</span>
-    }
+      <span class="token-str">"symbol_name"</span>: <span class="token-str">"format_currency"</span>,
+      <span class="token-str">"symbol_type"</span>: <span class="token-str">"function"</span>,
+      <span class="token-str">"start_line"</span>: <span class="token-num">10</span>,
+      <span class="token-str">"end_line"</span>: <span class="token-num">12</span>,
+      <span class="token-str">"content"</span>: <span class="token-str">"def format_currency(value: float, ..."</span>,
+      <span class="token-str">"similarity_score"</span>: <span class="token-num">0.8791</span>
+    },
+    { <span class="token-str">"chunk_id"</span>: <span class="token-str">"formatter.py:format_percentage:15"</span>, ...,
+      <span class="token-str">"similarity_score"</span>: <span class="token-num">0.5348</span> }
   ]
 }</div>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 11: Walkthrough: POST /ask -->
-      <section class="slide" data-title="Vegpont bemutato: POST /ask">
+      <section class="slide" data-title="Bemutató: POST /ask">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>Vegpont bemutato: POST /ask (Teljes RAG valasz)</h2>
-              <p>Megalapozott szoveges valasz es audit forrasok egyetlen hivassal</p>
+              <h2>Bemutató: POST /ask</h2>
+              <p>Valódi hívás: értékelt kérdéstípus, az index válaszol</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Full RAG</span>
+            <span class="header-tag">Teljes RAG</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">Keres JSON</span>
-              <span class="card-badge badge-cyan">Request</span>
+              <span class="card-title">Kérés (JSON)</span>
+              <span class="card-badge badge-cyan">Kérés</span>
             </div>
             <div class="card-content">
-              <div class="code-box" style="height: 100%;">
+              <div class="code-box">
 {
-  <span class="token-str">"question"</span>: <span class="token-str">"Milyen muveleteket tamogat a Calculator osztaly?"</span>,
-  <span class="token-str">"top_k"</span>: <span class="token-num">3</span>
+  <span class="token-str">"query"</span>: <span class="token-str">"what methods does the Calculator class have?"</span>,
+  <span class="token-str">"k"</span>: <span class="token-num">3</span>
 }</div>
               <ul style="margin-top: 12px;">
-                <li>A vegpont automatikusan lefuttatja a hibrid keresot.</li>
-                <li>Osszegyujti a <code>calculator.py</code> metodusait (add, subtract, multiply, divide).</li>
-                <li>Atadja a helyi <code>qwen2.5:3b</code> modellnek a szigoruan korlatozott prompttal.</li>
+                <li>A kérdés értékelt típus (egy osztály tagjai), ezért a <code>resolve_symbol_query()</code> az indexből válaszol.</li>
+                <li>A modell nem fut: az <code>answer_source</code> értéke <code>"index"</code>, és a dashboard jelvénye is ezt mutatja.</li>
+                <li>A tágabb kérdések a <code>qwen2.5:3b</code>-hez mennek, elöl az ellenőrzött ténnyel; a választ utána az indexszel veti össze.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Valasz JSON</span>
-              <span class="card-badge badge-emerald">Response</span>
+              <span class="card-title">Válasz (JSON)</span>
+              <span class="card-badge badge-emerald">Válasz</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
 {
-  <span class="token-str">"question"</span>: <span class="token-str">"Milyen muveleteket tamogat a Calculator osztaly?"</span>,
-  <span class="token-str">"answer"</span>: <span class="token-str">"A calculator.py fajlban levo Calculator osztaly negy alapmuveletet tamogat: add (osszeadas), subtract (kivonas), multiply (szorzas) es divide (osztas, nullaval valo osztas vedelemrel)."</span>,
+  <span class="token-str">"query"</span>: <span class="token-str">"what methods does the Calculator class have?"</span>,
+  <span class="token-str">"answer"</span>: <span class="token-str">"Class `Calculator` (calculator.py, lines 9-36)
+     defines 6 method(s): __init__ (lines 12-14),
+     add (lines 16-18), subtract (lines 20-22),
+     multiply (lines 24-26), divide (lines 28-32),
+     power (lines 34-36)."</span>,
+  <span class="token-str">"answer_source"</span>: <span class="token-str">"index"</span>,
   <span class="token-str">"model"</span>: <span class="token-str">"qwen2.5:3b"</span>,
-  <span class="token-str">"duration_ms"</span>: <span class="token-num">482</span>,
-  <span class="token-str">"retrieved_chunks"</span>: [
-    <span class="token-str">"calculator.py:Calculator.add:10:14"</span>,
-    <span class="token-str">"calculator.py:Calculator.divide:25:30"</span>
-  ]
+  <span class="token-str">"retrieved_chunks"</span>: [ <span class="token-comm">/* 3 ranked chunks */</span> ],
+  <span class="token-str">"pre_resolved"</span>: { <span class="token-str">"query_type"</span>: <span class="token-str">"class_members"</span>, <span class="token-str">"pure"</span>: <span class="token-kw">true</span>, ... },
+  <span class="token-str">"index_check"</span>: { <span class="token-str">"unknown_identifiers"</span>: [] }
 }</div>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 12: Server-Sent Events & Realtime -->
-      <section class="slide" data-title="Valos ideju esemenyek (SSE)">
+      <section class="slide" data-title="Valós idejű események (SSE)">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>Valos ideju esemenyfolyam (Server-Sent Events)</h2>
-              <p>GET /events vegpont: live ertesitesek a bongeszo reszere polling nelkul</p>
+              <h2>Valós idejű eseményfolyam (Server-Sent Events)</h2>
+              <p>GET /events: élő frissítés a böngészőnek, periodikus lekérdezés nélkül</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Reactivity</span>
+            <span class="header-tag">Reaktivitás</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">Miert SSE a WebSocket vagy Polling helyett?</span>
-              <span class="card-badge badge-cyan">Architektura</span>
+              <span class="card-title">Miért SSE, és nem WebSocket vagy polling?</span>
+              <span class="card-badge badge-cyan">Architektúra</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Egyszeruseg:</strong> Standard HTTP kapcsolat, nincs szukseg bonyolult ketiranyu handshake-re vagy WS konyvtarra.</li>
-                <li><strong>Auto-reconnect:</strong> A bongeszo beepitett <code>EventSource</code> API-ja automatikusan ujracsatlakozik megszakadas eseten.</li>
-                <li><strong>Zero halozati terheles:</strong> Nem general masodpercenkenti felesleges HTTP kereseket (nincs periodikus polling).</li>
+                <li><strong>Egyszerűség:</strong> tiszta HTTP folyam, kétirányú kézfogás és extra protokollréteg nélkül.</li>
+                <li><strong>Beépített újrakapcsolódás:</strong> a böngésző <code>EventSource</code>-a kezeli a kapcsolatszakadást.</li>
+                <li><strong>Nincs fölösleges forgalom:</strong> nincs folyamatos kérésáradat, mint a naiv kliensoldali pollingnál.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-indigo">
             <div class="card-header">
-              <span class="card-title">Esemenytipusok a rendszerben</span>
-              <span class="card-badge badge-indigo">Event Stream</span>
+              <span class="card-title">A valódi folyam (rögzítve)</span>
+              <span class="card-badge badge-indigo">Eseményfolyam</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%;">
-<span class="token-comm"># 1. Index valtozas esemeny (amikor egy fajl modositva lett)</span>
-event: index_updated
-data: {"file": "calculator.py", "action": "modified", "chunks": 5}
+<span class="token-comm"># GET /events: one JSON object per "data:" line</span>
+data: {"action": "CONNECTED", "details": "SSE stream connected"}
+: keep-alive
+data: {"timestamp": "2026-10-04 00:15:35",
+       "action": "MODIFIED", "path": "calculator.py",
+       "details": "1 chunk(s) re-embedded, 7 unchanged, 0 removed"}
 
-<span class="token-comm"># 2. RAG lekerdezes esemeny (audit naplohoz)</span>
-event: query_executed
-data: {"query": "osszeadas", "top_k": 3, "duration_ms": 120}
-
-<span class="token-comm"># 3. Rendszerallapot szivveres (heartbeat)</span>
-event: heartbeat
-data: {"status": "healthy", "timestamp": 1718000000}</div>
+<span class="token-comm"># actions: WATCHER_START, CREATED, MODIFIED, DELETED,</span>
+<span class="token-comm">#   POLL_SYNC, ERROR; Part 3 adds PATCH_ATTEMPT,</span>
+<span class="token-comm">#   PATCH_SANITY, PATCH_APPLY, PATCH_VALIDATION, ...</span>
+<span class="token-comm"># an idle stream sends ": keep-alive" every 0.5 s</span></div>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 13: Files Browser & Chunk Gutter -->
-      <section class="slide" data-title="Fajlbongeszo es darab jelolok">
+      <section class="slide" data-title="Fájlböngésző és darabjelölők">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>Fajlbongeszo es darab-jelolok (Chunk Gutter)</h2>
-              <p>A forraskod vizualis ellenorzese es az AST darabhatarok megjelenitese</p>
+              <h2>Fájlböngésző és darabjelölők a margón</h2>
+              <p>Subject VI.2. ábra: minden darabhatár egy definícióra esik</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">UI Component</span>
+            <span class="header-tag">UI komponens</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">AST darabhatarok a sorszam savban</span>
-              <span class="card-badge badge-cyan">Vizualis elmeny</span>
+              <span class="card-title">Darabjelölők a margón</span>
+              <span class="card-badge badge-cyan">Vizuális terv</span>
             </div>
             <div class="card-content">
-              <p style="margin-bottom: 10px;">
-                A Files fulon kivalasztott forrasfajlnal a kodsorok mellett kis ikonok jelzik a kulonbozo AST egysegeket:
-              </p>
+              <p style="margin-bottom: 10px;">Egy fájlt kiválasztva az egész fájl látszik, minden indexelt darab első során &#9654; jellel a margón:</p>
               <ul>
-                <li><strong>Osztaly kezdet:</strong> Lila keret es cimke (<code>class Calculator</code>).</li>
-                <li><strong>Fuggveny kezdet:</strong> Ciankek nyil es funkciocimke (<code>def add()</code>).</li>
-                <li><strong>Interaktiv elonezet:</strong> Ha az ertekeles soran a vedo a darabra kattint, megjelenik annak egyedi hashe es embedding metaadata.</li>
+                <li><strong>Darabcímke:</strong> minden darab fölött: sorszám, típus és név, sortartomány és az SHA-256 első 10 hexa jegye.</li>
+                <li><strong>Az indexből:</strong> a <code>GET /file</code> adja, amely azt mutatja, ami a ChromaDB-ben van, nem friss elemzést; amíg a figyelő utoléri, „re-indexing&hellip;” látszik.</li>
+                <li><strong>Közös:</strong> ugyanez a fül (<code>p1/dashboard_files.py</code>) minden dashboardban ott van, az 1. résztől a bónuszig.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Pelda a kodmegjelenitesre</span>
-              <span class="card-badge badge-emerald">Mock View</span>
+              <span class="card-title">calculator.py a Files fülön</span>
+              <span class="card-badge badge-emerald">Valódi nézet</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
-<span class="token-num">1</span>  <span class="token-kw">class</span> <span class="token-cls">Calculator</span>:  <span style="color: #a78bfa;">[AST CLASS: Calculator]</span>
-<span class="token-num">2</span>      <span class="token-str">"""Alapmuveleteket vegzo osztaly."""</span>
-<span class="token-num">3</span>      
-<span class="token-num">4</span>      <span class="token-kw">def</span> <span class="token-fn">add</span>(self, a: float, b: float) -> float:  <span style="color: var(--cyan);">[AST FN: add]</span>
-<span class="token-num">5</span>          <span class="token-kw">return</span> a + b
-<span class="token-num">6</span>          
-<span class="token-num">7</span>      <span class="token-kw">def</span> <span class="token-fn">subtract</span>(self, a: float, b: float) -> float:  <span style="color: var(--cyan);">[AST FN: subtract]</span>
-<span class="token-num">8</span>          <span class="token-kw">return</span> a - b</div>
+<span style="color: var(--cyan);">chunk #3 &middot; method Calculator.__init__ &middot; lines 12-14 &middot; 166eb04999</span>
+&#9654; <span class="token-num">12</span>     <span class="token-kw">def</span> <span class="token-fn">__init__</span>(self, precision: int = 2) -&gt; None:
+  <span class="token-num">13</span>         <span class="token-str">"""Initialize the calculator with a rounding precision."""</span>
+  <span class="token-num">14</span>         self.precision = precision
+  <span class="token-num">15</span>
+<span style="color: var(--cyan);">chunk #4 &middot; method Calculator.add &middot; lines 16-18 &middot; 754be3851e</span>
+&#9654; <span class="token-num">16</span>     <span class="token-kw">def</span> <span class="token-fn">add</span>(self, a: float, b: float) -&gt; float:
+  <span class="token-num">17</span>         <span class="token-str">"""Return the sum of two numbers rounded to precision."""</span>
+  <span class="token-num">18</span>         <span class="token-kw">return</span> round(a + b, self.precision)
+  <span class="token-num">19</span>
+<span style="color: var(--cyan);">chunk #5 &middot; method Calculator.subtract &middot; lines 20-22 &middot; 2f0dc8637e</span>
+&#9654; <span class="token-num">20</span>     <span class="token-kw">def</span> <span class="token-fn">subtract</span>(self, a: float, b: float) -&gt; float:</div>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 14: Subject Compliance -->
-      <section class="slide" data-title="Subject megfeleles">
+      <section class="slide" data-title="Subject megfelelés">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>Subject megfeleles es ellenorzesi lista</h2>
-              <p>Hogyan teljesiti az implementacionk a hivatalos subject osszes pontjat?</p>
+              <h2>Subject megfelelés és ellenőrzőlista</h2>
+              <p>A hivatalos subject 2. részének minden követelménye, ellenőrizve</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1475,102 +1479,113 @@ data: {"status": "healthy", "timestamp": 1718000000}</div>
           <table class="db-mock-table">
             <thead>
               <tr>
-                <th style="width: 35%;">Subject kovetelmeny</th>
-                <th style="width: 25%;">Megvalositas a kodban</th>
-                <th style="width: 15%;">Allapot</th>
-                <th style="width: 25%;">Hogyan ellenorizheto?</th>
+                <th style="width: 35%;">Subject követelmény</th>
+                <th style="width: 25%;">Megvalósítás</th>
+                <th style="width: 15%;">Állapot</th>
+                <th style="width: 25%;">Ellenőrző parancs</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>FastAPI HTTP API az index felett</td>
-                <td><code>p2/api.py</code> (FastAPI app)</td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
+                <td>FastAPI HTTP API az index fölött</td>
+                <td><code>p2/api.py</code> (FastAPI alkalmazás)</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
                 <td><code>curl http://localhost:8000/status</code></td>
               </tr>
               <tr>
-                <td>POST /context relevans kodreszletekre</td>
-                <td><code>p2/retriever.py</code> (Hibrid kereso)</td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td><code>curl -X POST /context -d '{"query":"add"}'</code></td>
+                <td>POST /context a releváns kódrészletekhez</td>
+                <td><code>p2/retriever.py</code> (hibrid keresés)</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>curl -X POST http://127.0.0.1:8000/context -H 'Content-Type: application/json' -d '{"query":"where is multiply used?","k":3}'</code></td>
               </tr>
               <tr>
-                <td>POST /ask Retrieval-Augmented Generation</td>
+                <td>POST /ask: Retrieval-Augmented Generation</td>
                 <td><code>p2/llm.py</code> + <code>p2/api.py</code></td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td>Dashboard "Ask &amp; Retrieve" fulon keresztul</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>A dashboard „Ask &amp; Retrieve” füle</td>
               </tr>
               <tr>
-                <td>100% helyi modell futtatas (Ollama ~3B)</td>
+                <td>100%-ban helyi modellfuttatás (Ollama ~3B)</td>
                 <td><code>qwen2.5:3b</code> helyi szerveren</td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td>Offline mukodes internetkabel kihuzasaval</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>Offline futás internetkapcsolat nélkül</td>
               </tr>
               <tr>
-                <td>Kodszimbolumok hallucinaciojanak tiltasa</td>
-                <td>AST szimbolum elofeloldas a prompt elott</td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td>"Letezik-e power() fuggveny?" tesztelese</td>
+                <td>Nincsenek kitalált kódszimbólumok</td>
+                <td>Az értékelt kérdéstípusokra az index válaszol (<code>p2/retriever.py</code>)</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>Kérdezd: „is there a function called sqrt?” és „what functions exist in this file?”</td>
               </tr>
               <tr>
-                <td>Ask &amp; Retrieve felhasznaloi felulet</td>
-                <td>FastAPI HTML/JS iranyitopult</td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td>Bongeszoben: <code>http://localhost:8000</code></td>
+                <td>BM25 újrarangsoroló a Chroma dokumentumain</td>
+                <td><code>rank_bm25</code> (<code>p2/retriever.py</code>)</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>a „where is multiply used?” a <code>calculate_tax</code> hívót is rangsorolja</td>
+              </tr>
+              <tr>
+                <td>Fájlesemények SSE-n (<code>GET /events</code>)</td>
+                <td><code>p2/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>curl -N http://127.0.0.1:8000/events</code>, majd szerkessz egy fájlt</td>
+              </tr>
+              <tr>
+                <td>Ask &amp; Retrieve felület</td>
+                <td>FastAPI HTML/JS dashboard</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>Böngésző: <code>http://localhost:8000</code></td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
-
       <!-- SLIDE 15: Summary & Defense Tips -->
-      <section class="slide" data-title="Osszefoglalo es vedesi tippek">
+      <section class="slide" data-title="Összefoglaló és védési tippek">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 2</span>
+            <span class="ioc-badge">2. rész</span>
             <div class="slide-title-group">
-              <h2>Osszefoglalo es vedesi utmutato</h2>
-              <p>Mire fognak rakérdezni az ertekelok a Part 2 defense soran?</p>
+              <h2>Összefoglaló és védési útmutató</h2>
+              <p>A 2. rész védésének fő érvei az értékelőknek</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Defense Ready</span>
+            <span class="header-tag">Védésre kész</span>
           </div>
         </div>
         <div class="grid-3" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">1. Miert hibrid a kereso?</span>
-              <span class="card-badge badge-cyan">Kereses</span>
+              <span class="card-title">1. Miért hibrid keresés?</span>
+              <span class="card-badge badge-cyan">Visszakeresés</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Valasz:</strong> A tiszta vektoros kereses elteveszti az egzakt valtozo- es fuggvenyneveket, a BM25 viszont nem erti a jelentest.</li>
-                <li>A kettot RRF (Reciprocal Rank Fusion) algoritmussal kombinaljuk a tokeletes talalati aranyert.</li>
+                <li><strong>Válasz:</strong> a sűrű koszinuszkeresés gyenge a pontos azonosítókon és rövid neveken, a BM25-ből pedig hiányzik a szemantika.</li>
+                <li>A pontszám 0.5 &times; dense + 0.5 &times; BM25 (a maximumával skálázva) plusz névbónusz: a „where is multiply used?” a <code>calculate_tax</code> hívót is megtalálja.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">2. Hogyan vedekezel a hallucinacio ellen?</span>
-              <span class="card-badge badge-emerald">Biztonsag</span>
+              <span class="card-title">2. Hogyan véd a hallucináció ellen?</span>
+              <span class="card-badge badge-emerald">Biztonság</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Valasz:</strong> Determinisztikus AST szimbolum elofeloldassal.</li>
-                <li>Ha a kerdes egy szimbolum letezestere iranyul, az AST metaadatokbol azonnal tenykent injektaljuk a promptba, igy az LLM nem talalhat ki valaszt.</li>
+                <li><strong>Válasz:</strong> determinisztikus AST szimbólum-előfeloldás.</li>
+                <li>A két értékelt kérdéstípusra modell nélkül az index válaszol; a tágabb válaszok az ellenőrzött ténnyel kezdődnek, és megjelölik a kódban sehol nem szereplő neveket.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">3. Bizonyitsd, hogy offline!</span>
+              <span class="card-title">3. Bizonyítsd, hogy 100%-ban helyi!</span>
               <span class="card-badge badge-amber">Offline</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Valasz:</strong> Allitsd le a wifit vagy mutasd meg a Docker kornyezet beallitasait.</li>
-                <li>Az Ollama a <code>127.0.0.1:11435</code> cimen helyben szamol, nincs kulso kulcs vagy API kapcsolat.</li>
+                <li><strong>Válasz:</strong> húzd ki a hálózati kábelt: az indexelés, a visszakeresés és a válaszok továbbra is működnek.</li>
+                <li>Az Ollama kizárólag a <code>127.0.0.1:11435</code>-ön fut. Nincs egyetlen külső felhőkérés sem.</li>
               </ul>
             </div>
           </div>
@@ -1583,23 +1598,23 @@ data: {"status": "healthy", "timestamp": 1718000000}</div>
     <footer class="deck-footer">
       <div class="footer-left">
         <span class="slide-counter" id="slideCounter">01 / 15</span>
-        <span class="key-hint"><span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> Diak</span>
-        <span class="key-hint"><span class="kbd">Space</span> Tovabb</span>
+        <span class="key-hint"><span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> Diák</span>
+        <span class="key-hint"><span class="kbd">Space</span> Tovább</span>
       </div>
       <div class="footer-center">
-        <span style="color: var(--text-dim); font-size: 11px;">Inception-of-Context - 2. resz: Architect API es RAG</span>
+        <span style="color: var(--text-dim); font-size: 11px;">Inception-of-Context - 2. rész: Architect API és RAG</span>
       </div>
       <div class="footer-right">
-        <button class="nav-btn" id="btnOverview" title="Diaattekintes (O)">
+        <button class="nav-btn" id="btnOverview" title="Diaáttekintés (O)">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
         </button>
-        <button class="nav-btn" id="btnFullscreen" title="Teljes kepernyo (F)">
+        <button class="nav-btn" id="btnFullscreen" title="Teljes képernyő (F)">
           <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
         </button>
-        <button class="nav-btn" id="btnPrev" title="Elozo dia">
+        <button class="nav-btn" id="btnPrev" title="Előző dia">
           <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
-        <button class="nav-btn" id="btnNext" title="Kovetkezo dia">
+        <button class="nav-btn" id="btnNext" title="Következő dia">
           <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </div>
@@ -1608,8 +1623,8 @@ data: {"status": "healthy", "timestamp": 1718000000}</div>
     <!-- Slide Overview Modal -->
     <div id="overview-modal">
       <div class="overview-header">
-        <h3>Diaattekintes (Esc vagy O a bezarashoz)</h3>
-        <button class="nav-btn" id="btnCloseOverview" title="Attekintes bezarasa">
+        <h3>Diaáttekintés (Esc vagy O a bezáráshoz)</h3>
+        <button class="nav-btn" id="btnCloseOverview" title="Áttekintés bezárása">
           <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>

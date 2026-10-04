@@ -641,7 +641,7 @@ def setup_dashboard(
                         body: JSON.stringify({{ query: query, k: k }})
                     }});
                     const data = await res.json();
-                    if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+                    if (!res.ok) throw new Error(iocDetail(data.detail) || ('HTTP ' + res.status));
                     answerBox.style.display = 'none';
                     renderChunks(data.chunks || []);
                     resultBox.style.display = 'block';
@@ -653,7 +653,7 @@ def setup_dashboard(
                         body: JSON.stringify({{ query: query, k: k }})
                     }});
                     const data = await res.json();
-                    if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+                    if (!res.ok) throw new Error(iocDetail(data.detail) || ('HTTP ' + res.status));
                     answerBox.style.display = 'block';
                     answerText.innerText = data.answer || 'No response generated.';
                     const srcBadge = document.getElementById('answer-source');
@@ -711,7 +711,7 @@ Lines ${{c.start_line}}-${{c.end_line}}</span>
         }}
 
         function escapeHtml(text) {{
-            return (text || '')
+            return String(text === undefined || text === null ? '' : text)
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inception-of-Context - 3. resz: Patch generalas, alkalmazas es validacio</title>
+  <title>Inception-of-Context - 3. rész: patch-generálás, alkalmazás és validáció</title>
   <style>
 /* ==========================================================================
    Inception-of-Context (IoC) - Part 3 Presentation Stylesheet
@@ -744,225 +744,211 @@ html, body {
     <div class="slides-wrapper">
 
       <!-- SLIDE 1: Title Hero -->
-      <section class="slide active" data-title="Cim es attekintes">
+      <section class="slide active" data-title="Cím és áttekintés">
         <div class="slide-title-hero">
-          <div class="hero-pill">
-            <span class="pulse-dot"></span>
-            INCEPTION OF CONTEXT - 3. RESZ
-          </div>
-          <h1 class="hero-title">Patch generalas es Onjavito ciklus</h1>
-          <div class="hero-subtitle">Strukturalt JSON, 6 AST Sanity Check, Atomikus kezeles es Rollback</div>
-          <p class="hero-desc">
-            A 3. reszben az IoC egy autonom kodolo agensse valik.
-            A felhasznaloi szandekbol kiindulva kontextust gyujt, strukturalt modositast general,
-            szigoruan ellenorzi azt a lemezre iras elott, kiertekeli a projekt tesztjeit,
-            es hiba eseten 3 kiserleten at onjavitast vegez - vagy 100%-ban visszagorgeti az eredeti allapotot.
-          </p>
+          <div class="hero-pill"><span class="pulse-dot"></span> INCEPTION OF CONTEXT - 3. RÉSZ</div>
+          <h1 class="hero-title">Patch-generálás és önjavító ciklus</h1>
+          <div class="hero-subtitle">Strukturált JSON, 6 kemény elutasítás, atomikus írás és ellenőrzött visszagörgetés</div>
+          <p class="hero-desc">A 3. részben az IoC autonóm kódoló ágenssé válik. A felhasználó szándékából kontextust gyűjt, strukturált fájlmódosításokat készít, a nem biztonságos patcheket minden lemezírás előtt elutasítja, lefuttatja a projekt validációs parancsát, és minden hibát visszaad a modellnek, legfeljebb 3 kísérletig - vagy pontosan a futás előtti bájtokra görget vissza.</p>
           <div class="hero-specs">
             <div class="spec-item">
-              <span class="spec-label">Mukodesi modell</span>
-              <span class="spec-value">Autonom Ciklus (Loop)</span>
+              <span class="spec-label">Végrehajtási modell</span>
+              <span class="spec-value">Autonóm ciklus</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Eloszures</span>
-              <span class="spec-value">6 AST Sanity Check</span>
+              <span class="spec-label">Előzetes ellenőrzés</span>
+              <span class="spec-value">6 kemény elutasítás + őrök</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Onjavitas</span>
-              <span class="spec-value">Max 3 probalkozas</span>
+              <span class="spec-label">Önjavítás</span>
+              <span class="spec-value">Legfeljebb 3 kísérlet</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Biztonsag</span>
-              <span class="spec-value">100% Atomikus Rollback</span>
+              <span class="spec-label">Biztonság</span>
+              <span class="spec-value">Ellenőrzött visszagörgetés</span>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 2: Goal of Part 3 -->
-      <section class="slide" data-title="A 3. resz celja">
+      <section class="slide" data-title="A 3. rész célja">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>A 3. resz specifikacioja: Ez egy CIKLUS</h2>
-              <p>Mit kovetel meg a hivatalos subject a harmadik fazisban?</p>
+              <h2>A 3. rész specifikációja: ez egy CIKLUS</h2>
+              <p>Mit ír elő a hivatalos subject a harmadik szakaszra?</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Subject Audit</span>
+            <span class="header-tag">Subject audit</span>
           </div>
         </div>
         <div class="grid-3" style="margin-top: 14px;">
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">Nem kulonálló vegpontok</span>
-              <span class="card-badge badge-amber">The Loop</span>
+              <span class="card-title">Nem különálló végpontok</span>
+              <span class="card-badge badge-amber">A ciklus</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>A subject kulcsmondata:</strong> <em>"This is a LOOP, not merely separate endpoints."</em></li>
-                <li>Egyetlen felhasznaloi szandek (pl. "add healthcheck route") inditja el a teljes folyamatot.</li>
-                <li>A rendszer onalloan iteral a sikerig vagy a biztonsagos visszagorgetesig.</li>
+                <li><strong>A subject kulcsmondata:</strong> <em>„The deliverable is a loop, not a list of endpoints.”</em></li>
+                <li>Egyetlen szándék (a subject példái: „add a healthcheck route”, „rename foo to bar”) hajtja végig az egész folyamatot.</li>
+                <li>A rendszer önállóan halad az ellenőrzött sikerig vagy a biztonságos visszaállításig.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-rose">
             <div class="card-header">
-              <span class="card-title">Szigoru elozetes szures</span>
-              <span class="card-badge badge-rose">Sanity Checks</span>
+              <span class="card-title">Szigorú előzetes ellenőrzés</span>
+              <span class="card-badge badge-rose">Sanity ellenőrzések</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Zéró lemeziras ellenorzes nelkul:</strong> A generalt patch nem kerulhet kozvetlenul a forrasfajlokba.</li>
-                <li><strong>6 kotelezo elutasitasi ok:</strong> Csonka fuggvenyek (stubs), meretzsugorodas, szivargo prompt markerek stb.</li>
-                <li>Szintaktikai es logikai vizsgalat AST segitsegevel.</li>
+                <li><strong>Nincs vak lemezírás:</strong> a nyers LLM-patch soha nem írhatja felül közvetlenül a forrásfájlokat.</li>
+                <li><strong>6 kötelező elutasítás:</strong> stub függvények, erős zsugorodás, kiszivárgó promptfejlécek stb.</li>
+                <li>Kemény elutasítások, nem figyelmeztetések: minden lemezírás előtt.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Validacio es Visszagorgetes</span>
-              <span class="card-badge badge-emerald">Safety First</span>
+              <span class="card-title">Validáció és visszagörgetési garancia</span>
+              <span class="card-badge badge-emerald">Biztonság elöl</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>ioc.config.yml:</strong> Kulso konfiguracio alapjan futtatott forditasi es teszt parancsok.</li>
-                <li><strong>3 javito kiserlet:</strong> Forditasi hiba eseten a traceback visszakerul az LLM-nek.</li>
-                <li><strong>Garantalt Rollback:</strong> Ha mindharom kiserlet elbukik, a fajlrendszer pontosan visszaall.</li>
+                <li><strong>ioc.config.yml:</strong> külső konfiguráció adja meg a fordítási és tesztelési lépéseket.</li>
+                <li><strong>3 kísérlet:</strong> a hibanapló visszakerül a modellhez egy újabb kísérlethez.</li>
+                <li><strong>Pontos visszagörgetés:</strong> három zöld validáció nélküli kísérlet után vissza a futás előtti pontos állapotba.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 3: The Autonomous Loop Pipeline -->
-      <section class="slide" data-title="Az autonom patch-ciklus">
+      <section class="slide" data-title="Az autonóm patch-ciklus">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>Az Autonom Patch-Ciklus lepesrol lepesre</h2>
-              <p>Hogyan halad a vezerles a felhasznaloi szandektol az atomikus commitig?</p>
+              <h2>Az autonóm patch-ciklus lépésről lépésre</h2>
+              <p>Hogyan jut el a futás a szándéktól az atomikus módosításig</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Control Flow</span>
+            <span class="header-tag">Vezérlési folyamat</span>
           </div>
         </div>
         <div class="pipeline-flow" style="margin-top: 10px;">
           <div class="flow-row">
             <div class="flow-node">
-              <span class="node-num">1. Lepes</span>
-              <span class="node-title">Szandek es Kontextus</span>
-              <span class="node-file">p3/generator.py</span>
-              <span class="node-desc">A felhasznalo kerese alapjan hibrid keresessel osszegyujtjuk az erintett forrasfajlokat.</span>
+              <span class="node-num">1. lépés</span>
+              <span class="node-title">Szándék és visszakeresés</span>
+              <span class="node-file">p3/loop.py</span>
+              <span class="node-desc">Top-k darab a hibrid visszakeresőből; a szándékban megnevezett fájlokat teljes egészében látja (átnevezésnél a hívókat is).</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
-              <span class="node-num">2. Lepes</span>
-              <span class="node-title">Strukturalt JSON Patch</span>
+              <span class="node-num">2. lépés</span>
+              <span class="node-title">Strukturált JSON patch</span>
               <span class="node-file">qwen2.5:3b</span>
-              <span class="node-desc">A modell nem diffet, hanem teljes feluliro tartalmat ad JSON formatumban.</span>
+              <span class="node-desc">Teljes, módosítás utáni fájltartalom strukturált JSON-ban, törékeny diffek helyett.</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
-              <span class="node-num">3. Lepes</span>
-              <span class="node-title">6 Sanity Check</span>
-              <span class="node-file">p3/validator.py</span>
-              <span class="node-desc">AST es heurisztikus ellenorzes. Ha barmelyik serul: azonnali refusal.</span>
+              <span class="node-num">3. lépés</span>
+              <span class="node-title">6 sanity ellenőrzés</span>
+              <span class="node-file">p3/sanity.py</span>
+              <span class="node-desc">Hat kemény elutasítás és őrök; bármely hiba a lemez előtt elutasítja a patchet, és visszamegy a modellhez.</span>
             </div>
           </div>
           <div class="flow-row">
             <div class="flow-node">
-              <span class="node-num">4. Lepes</span>
-              <span class="node-title">Snapshot es *.ioc.tmp</span>
+              <span class="node-num">4. lépés</span>
+              <span class="node-title">Pillanatképek és *.ioc.tmp</span>
               <span class="node-file">p3/applier.py</span>
-              <span class="node-desc">Memoria/fajl mentes az eredeti allapotrol. Ideiglenes fajlok letrehozasa.</span>
+              <span class="node-desc">Kiinduló pillanatképek, majd az írás ideiglenes fájlokba az atomikus csere előtt.</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
-              <span class="node-num">5. Lepes</span>
-              <span class="node-title">Validacio (ioc.config.yml)</span>
-              <span class="node-file">Subprocess</span>
-              <span class="node-desc">Futtatjuk a forditasi es teszt ellenorzeseket. Siker eseten vege!</span>
+              <span class="node-num">5. lépés</span>
+              <span class="node-title">Validáció (ioc.config.yml)</span>
+              <span class="node-file">p3/loop.py</span>
+              <span class="node-desc">Az ioc.config.yml parancsa fut; a 0-s kilépési kód zöld.</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
-              <span class="node-num">6. Lepes</span>
-              <span class="node-title">Hiba & Onjavitas vagy Rollback</span>
-              <span class="node-file">Self-Healing</span>
-              <span class="node-desc">Hiba traceback vissza az LLM-nek (max 3x). Ha elfogy a probalkozas: 100% Rollback.</span>
+              <span class="node-num">6. lépés</span>
+              <span class="node-title">Önjavítás vagy visszagörgetés</span>
+              <span class="node-file">p3/loop.py</span>
+              <span class="node-desc">Piros: a fájlok visszaállnak, a hiba visszamegy, új kísérlet (összesen 3). Még mindig piros: ellenőrzött visszagörgetés.</span>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 4: Structured JSON Format -->
-      <section class="slide" data-title="Strukturalt JSON patch formatum">
+      <section class="slide" data-title="Strukturált JSON patch formátum">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>Miert strukturalt JSON es miert NEM szabad diff?</h2>
-              <p>A kis méretű nyelvi modellek matematikai korlatai es a robusztus kódgenerálás</p>
+              <h2>Miért strukturált JSON, és NEM szabad formájú diff?</h2>
+              <p>A kis nyelvi modellek korlátai ellen: determinisztikus ábrázolás</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">JSON Schema</span>
+            <span class="header-tag">JSON séma</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-rose">
             <div class="card-header">
-              <span class="card-title">A szabad diff (Unified Diff) bukasa</span>
-              <span class="card-badge badge-rose">Problemás</span>
+              <span class="card-title">A szabad formájú diff kudarca</span>
+              <span class="card-badge badge-rose">Problémás</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A 3B-s modellek szinte mindig elrontjak a diff fejlecek sorszamait: <code>@@ -14,6 +14,8 @@</code>.</li>
-                <li>Ha 1 karakterrel elcsuszik a whitespace vagy a tabulator, a <code>patch</code> vagy <code>git apply</code> hibaval elszall.</li>
-                <li>A subject kifejezetten megtiltja: <em>"The patch must NOT be a free-form diff."</em></li>
+                <li>A kis 3B modellek gyakran elszámolják a hunk-fejlécek sorszámait: <code>@@ -14,6 +14,8 @@</code>.</li>
+                <li>Egyetlen rossz helyen álló szóköz vagy tabulátor miatt a <code>patch</code> vagy a <code>git apply</code> elbukik.</li>
+                <li>A subject szabálya: <em>„The patch is structured JSON, not free-form text and never a diff.”</em></li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">A subject altal elirt JSON schema</span>
-              <span class="card-badge badge-emerald">Eloiras</span>
+              <span class="card-title">A referencia alak (subject VI.3)</span>
+              <span class="card-badge badge-emerald">JSON séma</span>
             </div>
             <div class="card-content">
-              <div class="code-box" style="height: 100%; font-size: 11px;">
+              <div class="code-box" style="font-size: 11px;">
 {
-  <span class="token-str">"summary"</span>: <span class="token-str">"Add divide method with zero-check"</span>,
+  <span class="token-str">"summary"</span>: <span class="token-str">"Add a square method to Calculator"</span>,
   <span class="token-str">"files"</span>: [
     {
       <span class="token-str">"path"</span>: <span class="token-str">"calculator.py"</span>,
       <span class="token-str">"op"</span>: <span class="token-str">"modify"</span>,
-      <span class="token-str">"content"</span>: <span class="token-str">"class Calculator:\n    def add..."</span>
+      <span class="token-str">"content"</span>: <span class="token-str">"&lt;every line of calculator.py, plus square()&gt;"</span>
     }
   ]
 }</div>
-              <p style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
-                A <code>modify</code> muvelet eseten a <code>content</code> a fajl <strong>teljes, vegleges tartalmat</strong> jelenti, nem pedig toredeket!
-              </p>
+              <p style="margin-top: 8px; font-size: 11px; color: var(--text-muted);"><code>op</code>: <code>create</code>, <code>modify</code> vagy <code>delete</code>; <code>content</code>: a <strong>teljes, módosítás utáni fájl</strong>, az idézőjelek és a backslashek <code>@@DQ@@</code>, <code>@@BS@@</code> alakban.</p>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 5: The 6 Hard Refusals -->
-      <section class="slide" data-title="A 6 szigoru elozetes szures">
+      <section class="slide" data-title="A 6 kemény elutasítás">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>A 6 kotelezo Sanity Check (Azonnali elutasitas)</h2>
-              <p>A p3/validator.py altal vegzett szigoru AST es heurisztikus audit a lemezreiras elott</p>
+              <h2>A 6 kötelező sanity ellenőrzés (azonnali elutasítás)</h2>
+              <p>Kemény elutasítások a p3/sanity.py-ban, minden lemezírás előtt; az ok visszamegy a modellhez</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Hard Refusals</span>
+            <span class="header-tag">Kemény elutasítások</span>
           </div>
         </div>
         <div style="margin-top: 14px;">
@@ -970,460 +956,470 @@ html, body {
             <thead>
               <tr>
                 <th style="width: 8%;">#</th>
-                <th style="width: 27%;">Ellenorzes neve</th>
-                <th style="width: 40%;">Miert veszelyes? (Subject indoklas)</th>
-                <th style="width: 25%;">Hogyan detektaljuk?</th>
+                <th style="width: 27%;">Ellenőrzés</th>
+                <th style="width: 40%;">Miért bukik (a subject indoka)</th>
+                <th style="width: 25%;">Felismerés módja</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td><strong>1</strong></td>
-                <td>Prompt marker szivargas</td>
-                <td>Az LLM visszamasolja a <code>[SOURCE 1]:</code> vagy <code>--- KODRESZLETEK ---</code> cimkeket a kodba.</td>
-                <td>Regex mintaillesztes a generalt tartalomban.</td>
+                <td>Promptjelölő szivárgása</td>
+                <td>A modell promptfejléceket ír a kódba, például <code>=== RELEVANT CODEBASE CONTEXT ===</code> vagy <code>--- File:</code>.</td>
+                <td>Részszöveg-ellenőrzés a <code>p1/markers.py</code> minden jelölőjére, amelyekből mindkét prompt épül.</td>
               </tr>
               <tr>
                 <td><strong>2</strong></td>
-                <td>Letezo fajl felulirasa 'create'-tel</td>
-                <td>A <code>create</code> opcioval nem szabad letezo fajlt felulirni (adatsérülés veszelye).</td>
-                <td><code>os.path.exists(path)</code> vizsgalata.</td>
+                <td>Létező fájl létrehozása</td>
+                <td>Egy már létező fájlra kiadott <code>create</code> csendes felülírást kockáztat.</td>
+                <td>Fájlrendszer-ellenőrzés: <code>os.path.isfile(path)</code>.</td>
               </tr>
               <tr>
                 <td><strong>3</strong></td>
-                <td>Ures/Null csere</td>
-                <td>Non-empty fajlt tilos <code>""</code>, <code>"None"</code> vagy <code>"null"</code> szovegre cserelni.</td>
-                <td>Hossz es kulcsszo vizsgalat.</td>
+                <td>Üres vagy null csere</td>
+                <td>Nem üres kód cseréje <code>""</code>, <code>"None"</code> vagy <code>"null"</code> tartalomra fájlvesztést okoz.</td>
+                <td>A levágott tartalom összevetése: <code>""</code>, <code>None</code>, <code>null</code>; az üres create-et is elutasítja.</td>
               </tr>
               <tr>
                 <td><strong>4</strong></td>
-                <td>Stub-only fuggvenyek</td>
-                <td>A modell csak csonka fuggvenyeket general: <code>pass</code>, <code>raise NotImplementedError</code>.</td>
-                <td>AST elemzes: a fuggvenytorzs nem lehet pusztan Pass/Raise csomopont.</td>
+                <td>Csak stub függvények</td>
+                <td>Lusta helykitöltő törzsek: <code>pass</code>, <code>...</code>, <code>return None</code>, <code>raise NotImplementedError</code>, vagy helykitöltőként megjelölt konstans visszatérés.</td>
+                <td>AST: új függvény, amelynek törzse (a docstringen kívül) csak ezek egyike; a helykitöltő jelölést a kommentekből olvassa ki.</td>
               </tr>
               <tr>
                 <td><strong>5</strong></td>
-                <td>Meretzsugorodas (&gt; 60%)</td>
-                <td>Ha egy letezo fajl merete tobb mint 60%-kal csokken, az kodvesztest jelez.</td>
-                <td><code>len(uj_kod) &lt; len(regi_kod) * 0.4</code> ellenorzes.</td>
+                <td>Fájlzsugorodás (> 60%)</td>
+                <td>A drasztikus, váratlan méretcsökkenés kódvesztésre vagy csonka kimenetre utal.</td>
+                <td>Ellenőrzés: <code>len(new) &lt; len(old) * 0.4</code>.</td>
               </tr>
               <tr>
                 <td><strong>6</strong></td>
-                <td>Tobb mint 3 fajl modositasa</td>
-                <td>A scope robbanas megelozese: 1 patch maximalisan 3 forrasfajlt erinthet.</td>
-                <td><code>len(patch["files"]) &gt; 3</code> elutasitas.</td>
+                <td>Több mint 3 módosított fájl</td>
+                <td>Az elszabaduló hallucináció ellen: egy patch legfeljebb 3 forrásfájlt érinthet.</td>
+                <td>Ellenőrzés: <code>len(patch["files"]) &gt; 3</code>.</td>
               </tr>
             </tbody>
           </table>
+          <p style="margin-top: 10px; font-size: 11.5px; color: var(--text-muted);">Szintén elutasítva: érvénytelen Python (szintaxiskapu), az <code>ioc.config.yml</code> bármilyen módosítása, semmit sem változtató patch, a célkönyvtáron kívüli vagy rejtett, vendorolt útvonal, a szándékban meg nem nevezett definíció, hibaellenőrzés vagy <code>__main__</code> blokk törlése, soha le nem futó kód (soha nem teljesülő feltétel mögött, <code>return</code> után, vagy olyan <code>raise</code>, amelyet a saját <code>except</code>-je elnyel), és az az átnevezés, amely az új nevet oda is beírja, ahol a régi soha nem állt.</p>
         </div>
       </section>
-
       <!-- SLIDE 6: Atomic Staging & Snapshotting -->
-      <section class="slide" data-title="Atomikus fajlkezeles es mentes">
+      <section class="slide" data-title="Atomikus írás és pillanatképek">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>Atomikus modositas es Pillanatkep (Snapshotting)</h2>
-              <p>Hogyan garantaljuk a fajlrendszer serulesmentesseget barmilyen hiba eseten?</p>
+              <h2>Atomikus írás és pillanatképek</h2>
+              <p>A fájlrendszer épsége összeomlás és részleges írási hiba ellen</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Atomic Safety</span>
+            <span class="header-tag">Atomikus biztonság</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">1. Lepes: Pillanatkep keszitese</span>
-              <span class="card-badge badge-cyan">Snapshot</span>
+              <span class="card-title">1. lépés: kiinduló pillanatkép a memóriában</span>
+              <span class="card-badge badge-cyan">Pillanatkép</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Mielott barmely fajlhoz hozzaernenk a lemezen, a rendszer elmenti az erintett fajlok pontos tartalmat a memoriaba vagy a <code>.ioc_snapshots/</code> tarba.</li>
-                <li>Uj fajl letrehozasa eseten feljegyzi, hogy a rollback soran a fajlt torolni kell.</li>
+                <li>Minden írás előtt megőrzi minden érintett fájl nyers bájtjait és jogosultságait (rootként a tulajdonost is), a kanonikus útvonal szerint: a <code>./calc.py</code> és a <code>calc.py</code> egy bejegyzés.</li>
+                <li>Új fájlt a visszagörgetés töröl, a vele együtt létrehozott könyvtárakkal együtt.</li>
               </ul>
               <div class="code-box" style="margin-top: 10px;">
-snapshots[file_path] = file_path.read_text()</div>
+with open(full_path, "rb") as f:
+    content = f.read()          # bytes: CRLF and odd bytes survive
+st = os.stat(full_path)
+mode = stat.S_IMODE(st.st_mode)  # +x survives too</div>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">2. Lepes: *.ioc.tmp es os.replace</span>
+              <span class="card-title">2. lépés: *.ioc.tmp írás és os.replace</span>
               <span class="card-badge badge-emerald">Atomicitás</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A kod eloszor egy ideiglenes <code>calculator.py.ioc.tmp</code> fajlba irodik ki.</li>
-                <li>Csak miutan <strong>az osszes</strong> fajl hiba nelkul kiirasra kerult, hajtjuk vegre a POSIX atomikus atnevezest: <code>os.replace(tmp_path, target_path)</code>.</li>
-                <li>Nincs olyan koztes allapot, ahol egy fajl felig ki van irva, vagy a folyamat megszakadasakor serult marad!</li>
+                <li>A generált tartalom először ideiglenes testvérfájlokba kerül (<code>calculator.py.ioc.tmp</code>), mindegyik fsync-elve.</li>
+                <li>Csak ha <strong>minden</strong> fájl sikeresen elkészült, akkor jön a POSIX atomikus csere: <code>os.replace(tmp_path, target_path)</code>.</li>
+                <li>Az írás közbeni hiba törli az ideiglenes fájlokat és visszaállítja a pillanatképet: félig írt fájl soha nem kerül a helyére.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 7: Validation Engine & ioc.config.yml -->
-      <section class="slide" data-title="Validacio: ioc.config.yml">
+      <section class="slide" data-title="Validáció: ioc.config.yml">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>Validacios motor es az ioc.config.yml</h2>
-              <p>A projekt-specifikus ellenorzesek levalasztasa az IoC motorjarol</p>
+              <h2>Validáció és az ioc.config.yml</h2>
+              <p>A projektfüggő fordítás és tesztelés leválasztva az IoC magjáról</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Config Driven</span>
+            <span class="header-tag">Konfigurációvezérelt</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">A konfiguracio: demo_app/ioc.config.yml</span>
-              <span class="card-badge badge-cyan">YAML Spec</span>
+              <span class="card-title">Konfiguráció: demo_app/ioc.config.yml</span>
+              <span class="card-badge badge-cyan">YAML</span>
             </div>
             <div class="card-content">
-              <div class="code-box" style="height: 100%;">
-version: 1
-validation:
-  command: "python3 -m py_compile {files} &amp;&amp; python3 main.py"
-  timeout_seconds: 15
-  stop_on_first_failure: true</div>
+              <div class="code-box">
+validation_command: "python3 -m py_compile {files}
+  &amp;&amp; python3 -m flake8 --select=E9,F63,F7,F82 {files}
+  &amp;&amp; python3 main.py"           <span class="token-comm"># one line in the file</span>
+
+validation_file_extensions: [".py"]</div>
               <ul style="margin-top: 10px;">
-                <li>A <code>{files}</code> helyere dinamikusan az erintett fajlok kerulnek.</li>
-                <li>Nem csak forditast (<code>py_compile</code>), hanem fuggosegi tesztet vagy a <code>main.py</code> lefutast is ellenorzi!</li>
+                <li><code>{files}</code>: a felsorolt kiterjesztésű érintett fájlok; ha a patch egyet sem érint (pl. README), helyette minden <code>.py</code> fájlt ellenőriz.</li>
+                <li>Három kapu: lefordul, nincs definiálatlan név (flake8 E9/F63/F7/F82), és lefut.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Hogyan futtatja a p3/validator.py?</span>
-              <span class="card-badge badge-emerald">Subprocess</span>
+              <span class="card-title">Futtatás: p3/loop.py</span>
+              <span class="card-badge badge-emerald">Alfolyamat</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Aszinkron subprocess hivas: <code>asyncio.create_subprocess_shell</code>.</li>
-                <li>Idotullepes vedelem (timeout guard): ha vegtelen ciklus keletkezik a generalt kodban, a rendszer leallitja a folyamatot.</li>
-                <li>Kimenti az <code>exit_code</code>-ot, valamint az egesz <code>stdout</code> es <code>stderr</code> hibacsatornat.</li>
+                <li>Egyszer olvassa be, az első kísérlet előtt: a patch nem írhatja át a saját bíráját (és nem nyúlhat az <code>ioc.config.yml</code>-hez).</li>
+                <li><code>subprocess.Popen</code> saját sessionben, munkaszálon; 30 s után a teljes folyamatcsoportot leállítja.</li>
+                <li>Nem kerül <code>__pycache__</code> a célba (<code>PYTHONDONTWRITEBYTECODE</code>, <code>PYTHONPYCACHEPREFIX</code>); a cél saját moduljai töltődnek be elsőként.</li>
+                <li>A kilépési kód és a kimenet (utolsó 2000 karakter) visszamegy a modellhez.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 8: Self-Healing Retry Loop -->
-      <section class="slide" data-title="Ongyogjito ujraprobalkozasi ciklus">
+      <section class="slide" data-title="Önjavító újrapróbálkozás">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>Onjavito ujraprobalkozasi ciklus (Self-Healing Loop)</h2>
-              <p>A forditasi vagy futasi hiba visszataplalasa az LLM szamara hibajavitasra</p>
+              <h2>Önjavító újrapróbálkozás: automatikus hiba-visszajelzés</h2>
+              <p>Minden elutasítás vagy piros validáció szó szerint visszamegy a modellhez; közben a fájlok visszaállnak</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Retry Engine</span>
+            <span class="header-tag">Újrapróbálkozás</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-rose">
             <div class="card-header">
-              <span class="card-title">1. Kiserlet elbukik (Traceback elkapasa)</span>
-              <span class="card-badge badge-rose">Kudarc</span>
+              <span class="card-title">Az 1. kísérlet elbukik a validáción</span>
+              <span class="card-badge badge-rose">Hiba</span>
             </div>
             <div class="card-content">
-              <p style="margin-bottom: 8px;">
-                Tegyuk fel, hogy az 1. kiserletnel a modell elgepelte a kivetel nevet:
-              </p>
+              <p style="margin-bottom: 8px;">Egy piros kísérlet, a <code>make test</code> szkriptelt modellel játssza le: a patch definiálatlan nevet hagyott a <code>main.py</code>-ban.</p>
               <div class="code-box" style="font-size: 10.5px;">
-Traceback (most recent call last):
-  File "calculator.py", line 18
-    except ZeroDivisionErrorr:
-                           ^
-SyntaxError: invalid syntax</div>
-              <p style="margin-top: 8px; font-size: 11.5px;">
-                Ahelyett, hogy a rendszer feladna, ezt a pontos traceback-et injektalja a kovetkezo promptba!
-              </p>
+$ python3 -m py_compile main.py &amp;&amp; python3 -m flake8 \
+    --select=E9,F63,F7,F82 main.py &amp;&amp; python3 main.py
+main.py:48:29: F821 undefined name 'undefined_name'
+(exit code 1)</div>
+              <p style="margin-top: 8px; font-size: 11.5px;">A 2. kísérlet előtt a fájlok visszaállnak a pillanatképre; a napló visszajelzés lesz.</p>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">2. Kiserlet: Celzott javito prompt</span>
-              <span class="card-badge badge-emerald">Javitas</span>
+              <span class="card-title">2. kísérlet: a visszajelzés a promptjában</span>
+              <span class="card-badge badge-emerald">Javítás</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="font-size: 10.5px; height: 100%;">
-RETRY_PROMPT = f"""
-Az elozo patch alkalmazasa UTAN a validacio elbukott!
-HIBAUZENET:
-{captured_stderr}
+=== PREVIOUS ATTEMPT FAILED (ATTEMPT 1) ===
+Your previous patch produced the following validation or
+sanity errors:
+Validation command 'python3 -m py_compile main.py &amp;&amp; ...'
+failed (exit code 1):
+main.py:48:29: F821 undefined name 'undefined_name'
+Fix the code to resolve this compiler/syntax/test error.
 
-KERES: Javitsa ki a szintaktikai hibat, es adja vissza a
-javitott fajlt teljes egeszeben a megszokott JSON formatumban!
-"""</div>
+CRITICAL: You MUST correct these specific errors in this
+attempt. Do not repeat the same mistake. Output the
+corrected, complete JSON patch.</div>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 9: 100% Rollback Guarantee -->
-      <section class="slide" data-title="100% Visszagorgetesi garancia">
+      <section class="slide" data-title="Visszagörgetési garancia">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>100% Visszagorgetesi Garancia (Rollback)</h2>
-              <p>A 42 ertekeles egyik legfontosabb sarokkove: a kodbazis soha nem maradhat hibas allapotban</p>
+              <h2>Visszagörgetési garancia: nincs sérült kód</h2>
+              <p>Nem alku tárgya: a repozitórium soha nem maradhat hibás állapotban</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Fail-Safe</span>
+            <span class="header-tag">Hibabiztos</span>
           </div>
         </div>
         <div class="grid-3" style="margin-top: 14px;">
           <div class="card glow-rose">
             <div class="card-header">
-              <span class="card-title">Mikor fut le a Rollback?</span>
-              <span class="card-badge badge-rose">Kriteriumok</span>
+              <span class="card-title">Mikor indul a visszagörgetés?</span>
+              <span class="card-badge badge-rose">Kiváltók</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Ha az 1., 2. es a 3. kiserlet is elbukik a validacion.</li>
-                <li>Ha a Sanity Check (a 6 refusal) valamelyike ervenyesul es a modell nem tudja orvosolni.</li>
-                <li>Ha barmi varatlan rendszerkivetel lep fel a folyamat soran.</li>
+                <li>Mindhárom kísérlet piros (elutasítva, értelmezhetetlen vagy elbukott validáció); minden piros kísérlet után előbb visszaállnak a fájlok.</li>
+                <li>Hiba a fájlok írása közben.</li>
+                <li>A futás megszakad (Ctrl+C, a szerver leáll).</li>
               </ul>
             </div>
           </div>
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">Hogyan all vissza a rendszer?</span>
+              <span class="card-title">Hogyan zajlik a visszagörgetés?</span>
               <span class="card-badge badge-amber">Mechanizmus</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A snapshotban tarolt eredeti tartalmat visszaallitjuk atomikus <code>os.replace</code> hivassal.</li>
-                <li>A letrehozott uj fajlokat (<code>op: create</code>) azonnal letoroljuk.</li>
-                <li>Az ideiglenes <code>*.ioc.tmp</code> fajlokat maradektalanul eltakaritjuk.</li>
+                <li>A mentett bájtok és jogosultságok <code>*.ioc.tmp</code>-n és <code>os.replace</code>-en át íródnak vissza.</li>
+                <li>A létrehozott fájlok (<code>op: create</code>) törlődnek, az általuk hozott könyvtárakkal együtt.</li>
+                <li>A maradék <code>*.ioc.tmp</code> fájlok törlődnek, majd minden fájlt bájtra összevet a pillanatképével: <code>rollback_verified</code>.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">A vedes bizonyiteka</span>
+              <span class="card-title">Bizonyíték az értékelőnek</span>
               <span class="card-badge badge-emerald">Audit</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A <code>git status</code> es <code>git diff</code> futtatasaval a vedonel azonnal lathato: a kodbazis <strong>tokeletesen tiszta</strong> maradt.</li>
-                <li>Egyetlen bajtnyi szemét sem marad vissza a sikertelen kiserletbol!</li>
+                <li>A <code>git status</code> és a <code>git diff</code> teljesen tiszta munkakönyvtárat mutat.</li>
+                <li>A CLI kiírja: <code>Rollback verified: every touched file matches its pre-call snapshot byte-for-byte.</code></li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 10: Walkthrough: Successful Patch -->
-      <section class="slide" data-title="Bemutato: Sikeres patch alkalmazas">
+      <section class="slide" data-title="Bemutató: sikeres patch">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>Bemutato: Sikeres patch alkalmazas (1. kiserlet)</h2>
-              <p>Pelda: 'Osszetett hatvanyozas hozzaadasa a Calculatorhoz'</p>
+              <h2>Bemutató: sikeres patch</h2>
+              <p>Valódi futás: make p3-cli, square metódus, qwen2.5:3b, 94 s laptop CPU-n</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Happy Path</span>
+            <span class="header-tag">Sikeres út</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">A folyamat lepesei</span>
-              <span class="card-badge badge-cyan">Status Log</span>
+              <span class="card-title">A make p3-cli kimenete (rövidítve)</span>
+              <span class="card-badge badge-cyan">Valódi futás</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
-[10:00:01] Intent fogadva: "Add power method to Calculator"
-[10:00:02] Kontextus kinyerve: calculator.py (4 chunk)
-[10:00:04] LLM patch generalva (qwen2.5:3b)
-[10:00:04] Sanity check: PASSED (Nem stub, nincs marker)
-[10:00:04] Snapshot keszult calculator.py-rol
-[10:00:05] Kiirva: calculator.py.ioc.tmp
-[10:00:05] Atomikus csere vegrehajtva
-[10:00:06] Validacio futtatasa: python3 -m py_compile...
-[10:00:07] Validacio SIKERES (Exit code: 0)
-[10:00:07] Status: SUCCESS (Attempts: 1/3)</div>
+ Patch Loop Outcome: SUCCESS
+ Attempts taken : 1 / 3
+
+--- Attempt #1 [success] ---
+  [+] Sanity Checks: PASSED
+  [+] Atomic apply: Succeeded
+  [*] Validation: 'python3 -m py_compile calculator.py
+      &amp;&amp; python3 -m flake8 --select=E9,F63,F7,F82
+      calculator.py &amp;&amp; python3 main.py' (Exit code: 0)
+      Output log:
+        [DemoApp] Addition = 200.0
+        Tax rate: 20.00% -&gt; Tax: $40.00
+
+[&#10003;] GREEN: Code modifications validated and committed
+    to codebase!</div>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">A modositott kod elonezet</span>
+              <span class="card-title">A diff: +4 &minus;0</span>
               <span class="card-badge badge-emerald">calculator.py</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
-<span class="token-kw">class</span> <span class="token-cls">Calculator</span>:
-    <span class="token-comm"># ... letezo metodusok megorizve ...</span>
-    
-    <span class="token-kw">def</span> <span class="token-fn">power</span>(self, base: float, exp: float) -> float:
-        <span class="token-str">"""Hatvanyozas megvalositasa."""</span>
-        <span class="token-kw">return</span> base ** exp</div>
+<span class="token-comm">@@ -34,3 +34,7 @@</span>
+     <span class="token-kw">def</span> <span class="token-fn">power</span>(self, base: float, exp: float) -&gt; float:
+         <span class="token-str">"""Return base raised to the power of exp."""</span>
+         <span class="token-kw">return</span> round(base ** exp, self.precision)
+<span class="token-str">+</span>
+<span class="token-str">+    def square(self, a: float) -&gt; float:</span>
+<span class="token-str">+        """Return the square of a number rounded to precision."""</span>
+<span class="token-str">+        return round(a * a, self.precision)</span></div>
             </div>
           </div>
         </div>
       </section>
-
-      <!-- SLIDE 11: Walkthrough: Self-Healing in Action -->
-      <section class="slide" data-title="Bemutato: Ongyogyulas mukodes kozben">
+      <!-- SLIDE 11: Walkthrough: Retry Loop in Action -->
+      <section class="slide" data-title="Bemutató: az újrapróbálkozás élőben">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>Bemutato: Ongyogyulas mukodes kozben (Retry Loop)</h2>
-              <p>Hogyan javitja ki magat az autonóm agens mennesi beavatkozas nelkul?</p>
+              <h2>Bemutató: az újrapróbálkozás működés közben</h2>
+              <p>Egy valódi futás, amely nem gyógyult meg, és egy visszajátszás, amely igen: mindkettő ellenőrzött állapotban ér véget</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Self-Healing Trace</span>
+            <span class="header-tag">Önjavítás nyomon</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-rose">
             <div class="card-header">
-              <span class="card-title">1. Kiserlet: Elbukik</span>
-              <span class="card-badge badge-rose">Attempt 1 (Fail)</span>
+              <span class="card-title">Élőben: három elutasítás, ellenőrzött visszagörgetés</span>
+              <span class="card-badge badge-rose">Valódi futás, 217 s</span>
             </div>
             <div class="card-content">
-              <ul>
-                <li>A modell generalja a <code>divide</code> metodust, de elfelejti lezarni az idezojeles docstringet.</li>
-                <li>A <code>python3 -m py_compile</code> elszall: <code>SyntaxError: unterminated string literal</code>.</li>
-                <li>A rendszer NEM dobja el a folyamatot: a hiba bekerul a retry promptba.</li>
-              </ul>
+              <div class="code-box" style="font-size: 10.5px;">
+$ make p3-cli INTENT="add a function percent_change(old,
+    new) to formatter.py ... uses math.isclose ..."
+--- Attempt #1 [sanity_failed] ---
+  Rule 5 Violation: Modification would shrink
+  'formatter.py' by 74.2% (from 1431 to 369 characters).
+--- Attempt #2 [sanity_failed] ---
+  Rule 0 Violation: ... unterminated string literal
+--- Attempt #3 [sanity_failed] ---
+  Rule 0 Violation: ... unterminated string literal
+[&#10007;] RED: ... Project restored to exact pre-call
+    state (verified byte-for-byte).</div>
+              <p style="margin-top: 8px; font-size: 11.5px;">Minden elutasítás bekerült a következő promptba: a 2. kísérlet megtartott minden definíciót, de a 3B modell elrontott egy sztringet. Semmi nem íródott a lemezre.</p>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">2. Kiserlet: Sikeres javitas</span>
-              <span class="card-badge badge-emerald">Attempt 2 (Success)</span>
+              <span class="card-title">Visszajátszva: piros, majd zöld</span>
+              <span class="card-badge badge-emerald">make test</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A modell latja a SyntaxError hibauzenetet es a sorszamot.</li>
-                <li>Javitja a string lezarasat, majd ujra bekuldi a teljes fajlt.</li>
-                <li>A validacio lefut: <strong>EXIT CODE 0</strong>. A patch sikeresen elfogadva!</li>
+                <li>Az 1. kísérlet definiálatlan nevet hagy a <code>main.py</code>-ban: piros validáció (F821), a fájlok visszaállnak.</li>
+                <li>A 2. kísérlet megkapja ezt a naplót (előző dia), és hozzáadja a kért metódust: zöld.</li>
+                <li>Eredmény: <code>success</code>, kísérletek: <code>[validation_failed, success]</code>, a <code>main.py</code> bájtra azonos az eredetivel.</li>
+                <li>Teszt: <code>test_red_attempt_feeds_back_and_second_attempt_goes_green</code> (<code>p3/tests/test_loop.py</code>), szkriptelt modellel.</li>
+                <li>Élőben a square és a rename szándék az 1. kísérletre zöld lett.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 12: Part 3 Dashboard & UI -->
-      <section class="slide" data-title="Part 3 felulet es funkciok">
+      <section class="slide" data-title="A 3. rész felülete">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>Part 3 Iranyitopult: Patch &amp; Self-Healing felulet</h2>
-              <p>A webes felulet komponensei a ciklus kovetesehez es auditjahoz</p>
+              <h2>A 3. rész dashboardja: patch és önjavítás</h2>
+              <p>Webes felület a patch-ciklus indításához, követéséhez és auditjához</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Web UI</span>
+            <span class="header-tag">Webes UI</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">Felhasznaloi vezerlok</span>
-              <span class="card-badge badge-cyan">Interakció</span>
+              <span class="card-title">Vezérlők</span>
+              <span class="card-badge badge-cyan">Vezérlés</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Szandek mezo (Intent Input):</strong> Szoveges mezo a programozasi feladat megadasara.</li>
-                <li><strong>Dry-Run kapcsolo:</strong> Szimulacios mod, amellyel a lemezreiras nelkul tesztelheto a kod generalasa.</li>
-                <li><strong>Kiserlet szamlalo (Attempt Stepper):</strong> Vizuális indikátor a probalkozasok szamahoz (1/3, 2/3, 3/3).</li>
+                <li><strong>Szándék és top-k:</strong> egy <code>POST /patch/run</code>; futás közben egy második indítás 409-et kap.</li>
+                <li><strong>Élő szakaszok SSE-n:</strong> n/3. kísérlet, sanity, alkalmazás, validáció, zöld vagy piros.</li>
+                <li><strong>Manual Rollback és History:</strong> az utolsó futás visszavonása (a zöldé is), vagy a legutóbbi eredmény újranyitása.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-indigo">
             <div class="card-header">
-              <span class="card-title">Elo terminal naplo es Diff nezet</span>
+              <span class="card-title">Kísérletek és a végső patch</span>
               <span class="card-badge badge-indigo">Audit</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Beepitett terminal:</strong> Megjeleniti a validacios folyamat kimenetet es a tesztek eredmenyet valos idoben (SSE).</li>
-                <li><strong>Szines diff nezet:</strong> Zold (+), piros (-) szinekkel illusztralja a valtozasokat a regi es uj kod kozott.</li>
-                <li><strong>Allapotjelzo badge:</strong> <code>APPLIED</code> (zold) vagy <code>ROLLED_BACK</code> (piros).</li>
+                <li><strong>Kísérletkártyák:</strong> a hét szabályjelölő, az elutasítás okai, minden fájl módosított tartalma, a validációs parancs, a kilépési kódja és a kimenete.</li>
+                <li><strong>Végső patch JSON-ban:</strong> az alkalmazott patch, visszagörgetés után az utolsó kísérelt (VI.4. ábra).</li>
+                <li><strong>Állapotjelvény:</strong> <code>GREEN (PASSED)</code> vagy <code>FAILED (ROLLED BACK, VERIFIED)</code>.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 13: Bonus Features Overview -->
-      <section class="slide" data-title="Bonusz kepessegek">
+      <section class="slide" data-title="Bónuszok áttekintése">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>Bonusz kepessegek attekintese</h2>
-              <p>Tovabbi erteket ado professzionalis modulok a gyoker bonus/ mappaban</p>
+              <h2>A bónuszok áttekintése</h2>
+              <p>A gyökér bonus/ modulban megvalósított kiegészítések</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Bonus XP</span>
+            <span class="header-tag">Bónusz</span>
           </div>
         </div>
-        <div class="grid-4" style="margin-top: 14px;">
+        <div class="grid-3" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">POST /reindex</span>
+              <span class="card-title">B1: POST /reindex</span>
               <span class="card-badge badge-cyan">API</span>
             </div>
-            <div class="card-content">
-              Kifejezett vegpont a teljes adatbazis ujrageneralasa celjabol a futasi ido alatt.
-            </div>
-          </div>
-          <div class="card glow-emerald">
-            <div class="card-header">
-              <span class="card-title">Visual Diff</span>
-              <span class="card-badge badge-emerald">Engine</span>
-            </div>
-            <div class="card-content">
-              Unified diff kalkulator szines soronkenti jelolessel a dashboard reszere.
-            </div>
+            <div class="card-content">Teljes újradarabolás és újraembedding igény szerint; a figyelő nélkül törölt fájlokat is kitisztítja.</div>
           </div>
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">Git Committer</span>
+              <span class="card-title">B2: automatikus Git commit</span>
               <span class="card-badge badge-amber">Git</span>
             </div>
-            <div class="card-content">
-              Sikeres validacio utan automatikus commit LLM altal generalt konvencionalis commit uzenettel.
+            <div class="card-content">Bekapcsolható: a zöld patch commitolódik, az üzenetet a helyi modell írja a patch összefoglalójából.</div>
+          </div>
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">B3: összeomlás-figyelő</span>
+              <span class="card-badge badge-rose">Docker SDK</span>
             </div>
+            <div class="card-content">Követi egy szolgáltatáskonténer naplóját; összeomláskor fut a patch-ciklus, zöld patch után újraindítja a szolgáltatást.</div>
           </div>
           <div class="card glow-indigo">
             <div class="card-header">
-              <span class="card-title">Dry-Run Mod</span>
-              <span class="card-badge badge-indigo">Safety</span>
+              <span class="card-title">B4: dry-run mód</span>
+              <span class="card-badge badge-indigo">Biztonság</span>
             </div>
-            <div class="card-content">
-              Szimulacios mod, amely lemezmodositas nelkul vizsgalja meg a generalt patchet es diffet.
+            <div class="card-content">Legenerálja és ellenőrzi a patchet, megmutatja a diffjét, a lemez érintése nélkül.</div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">B5: bővített dashboard</span>
+              <span class="card-badge badge-emerald">UI</span>
             </div>
+            <div class="card-content">Darabonkénti relevancia-pontszám, minden kísérlet vizuális diffje, élő validációs állapot SSE-n.</div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 14: Subject Compliance -->
-      <section class="slide" data-title="Subject megfeleles">
+      <section class="slide" data-title="Subject megfelelés">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>Subject megfeleles es ellenorzesi lista</h2>
-              <p>Minden eloirt Part 3 kovetelmeny teljesulesenek ellenorzese</p>
+              <h2>Subject megfelelés és ellenőrzőlista</h2>
+              <p>A 3. rész minden kötelező követelménye, ellenőrizve</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1434,102 +1430,107 @@ javitott fajlt teljes egeszeben a megszokott JSON formatumban!
           <table class="db-mock-table">
             <thead>
               <tr>
-                <th style="width: 35%;">Subject kovetelmeny</th>
-                <th style="width: 25%;">Megvalositas a kodban</th>
-                <th style="width: 15%;">Allapot</th>
-                <th style="width: 25%;">Hogyan ellenorizheto?</th>
+                <th style="width: 35%;">Subject követelmény</th>
+                <th style="width: 25%;">Megvalósítás</th>
+                <th style="width: 15%;">Állapot</th>
+                <th style="width: 25%;">Ellenőrző parancs</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Autonom patch ciklus (Loop)</td>
-                <td><code>p3/loop.py</code> engine</td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td><code>make p3-cli</code> futtatasa szandekkal</td>
+                <td>Teljes iteráció a Patch Loop fülről</td>
+                <td><code>p3/dashboard.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>make p3</code>, majd a Patch Loop fül</td>
               </tr>
               <tr>
-                <td>Strukturalt JSON patch (nem diff)</td>
-                <td>Pydantic models (<code>op, path, content</code>)</td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td>LLM kimenet auditálása</td>
+                <td>Autonóm patch-ciklus</td>
+                <td><code>p3/loop.py</code> motor</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>make p3-cli</code> egy szándékkal</td>
               </tr>
               <tr>
-                <td>6 kotelezo Sanity Refusal ellenorzes</td>
-                <td><code>p3/validator.py</code> AST vizsgalat</td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td>Stub es meretcsokkenes tesztek</td>
+                <td>Strukturált JSON patch (nem diff)</td>
+                <td><code>extract_json_patch()</code> + sémaellenőrzés a <code>p3/sanity.py</code>-ban</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>A Patch Loop fül „Final patch” JSON panelje</td>
               </tr>
               <tr>
-                <td>ioc.config.yml validacios parancs</td>
+                <td>6 kötelező sanity elutasítás</td>
+                <td><code>p3/sanity.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>make test-p3</code> (szabályonként egy teszt)</td>
+              </tr>
+              <tr>
+                <td>ioc.config.yml validációs parancs</td>
                 <td><code>demo_app/ioc.config.yml</code></td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td>Subprocess futtatas es ellenorzes</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>A tesztparancs alfolyamatban fut</td>
               </tr>
               <tr>
-                <td>Max 3 ujraprobalkozasi ciklus (Self-Healing)</td>
-                <td><code>p3/loop.py</code> retry mechanizmus</td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td>Hibas kod eseten a 2. es 3. kiserlet kovetese</td>
+                <td>Legfeljebb 3 kísérlet, minden hiba visszajelezve</td>
+                <td><code>p3/loop.py</code> újrapróbálkozás</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>Kísérletkártyák: az elutasítás vagy a napló bekerül a következő promptba</td>
               </tr>
               <tr>
-                <td>100% Rollback sikertelenseg eseten</td>
-                <td>Pillanatkep es <code>os.replace</code> visszaallitas</td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td>Hibas szandek utan <code>git status</code> ellenorzes</td>
+                <td>Teljes visszagörgetés hibánál</td>
+                <td>Pillanatképek és atomikus <code>os.replace</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>Tiszta <code>git status</code> hiba után</td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
-
       <!-- SLIDE 15: Summary & Defense Guide -->
-      <section class="slide" data-title="Osszefoglalo es vedesi forgatokonyv">
+      <section class="slide" data-title="Összefoglaló és védési bemutató">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Part 3</span>
+            <span class="ioc-badge">3. rész</span>
             <div class="slide-title-group">
-              <h2>Osszefoglalo es vedesi forgatokonyv</h2>
-              <p>Lepesrol lepesre utmutato a Part 3 bemutatasahoz az ertekelonek</p>
+              <h2>Összefoglaló és védési bemutató</h2>
+              <p>Lépésről lépésre az értékelőknek</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Defense Demo</span>
+            <span class="header-tag">Védési bemutató</span>
           </div>
         </div>
         <div class="grid-3" style="margin-top: 14px;">
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">1. Sikeres kodgeneralas</span>
-              <span class="card-badge badge-emerald">Demo 1</span>
+              <span class="card-title">1. Sikeres patch</span>
+              <span class="card-badge badge-emerald">1. bemutató</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Feladat:</strong> "Add a multiply method to Calculator".</li>
-                <li><strong>Mit mutass:</strong> Mutasd a dashboardon a zold sikert, a diff nezetet, es inditsd el a <code>python3 main.py</code>-t, ami lefut!</li>
+                <li><strong>Szándék:</strong> „add a method square(self, a) to the Calculator class in calculator.py that returns a squared, rounded to the calculator precision” (zöld az 1. kísérletre, +4 &minus;0).</li>
+                <li><strong>Mutasd meg:</strong> a GREEN jelvényt, a végső patch JSON-t és a <code>git diff demo_app</code> kimenetét; utána a Manual Rollback bájtra visszaállítja a fájlt.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">2. Sanity check kivedes</span>
-              <span class="card-badge badge-amber">Demo 2</span>
+              <span class="card-title">2. A subject átnevezése</span>
+              <span class="card-badge badge-amber">2. bemutató</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Feladat:</strong> Kerj egy csonka fuggvenyt (stub): "add dummy stub function with pass".</li>
-                <li><strong>Mit mutass:</strong> A validator azonnal elutasitja (Hard Refusal #4), a lemezhez hozza sem er a rendszer!</li>
+                <li><strong>Szándék:</strong> „rename the method add to plus in the Calculator class and update every caller”.</li>
+                <li><strong>Mutasd meg:</strong> zöld az 1. kísérletre (kb. 3 perc); a <code>git diff demo_app</code> pontosan a két átnevezett sort mutatja.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-rose">
             <div class="card-header">
-              <span class="card-title">3. Rollback bemutatasa</span>
-              <span class="card-badge badge-rose">Demo 3</span>
+              <span class="card-title">3. Visszagörgetés</span>
+              <span class="card-badge badge-rose">3. bemutató</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Feladat:</strong> Kerj egy lehetetlen vagy szintaktikailag helytelen feladatot.</li>
-                <li><strong>Mit mutass:</strong> 3 kiserlet lefut, mind elbukik, majd a rendszer visszaallitja a fajlokat. A <code>git status</code> tokeletesen tiszta marad!</li>
+                <li><strong>Szándék:</strong> olyan, ami nem mehet át a validáción, pl. „make main() in main.py always return 1 instead of the result of run_demo()”.</li>
+                <li><strong>Mutasd meg:</strong> 3 kísérlet, minden elutasítás vagy napló visszajelezve, majd „Rollback verified”; a <code>git status</code> tiszta.</li>
               </ul>
             </div>
           </div>
@@ -1542,23 +1543,23 @@ javitott fajlt teljes egeszeben a megszokott JSON formatumban!
     <footer class="deck-footer">
       <div class="footer-left">
         <span class="slide-counter" id="slideCounter">01 / 15</span>
-        <span class="key-hint"><span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> Diak</span>
-        <span class="key-hint"><span class="kbd">Space</span> Tovabb</span>
+        <span class="key-hint"><span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> Diák</span>
+        <span class="key-hint"><span class="kbd">Space</span> Tovább</span>
       </div>
       <div class="footer-center">
-        <span style="color: var(--text-dim); font-size: 11px;">Inception-of-Context - 3. resz: Patch generalas es Onjavitas</span>
+        <span style="color: var(--text-dim); font-size: 11px;">Inception-of-Context - 3. rész: patch-generálás és önjavítás</span>
       </div>
       <div class="footer-right">
-        <button class="nav-btn" id="btnOverview" title="Diaattekintes (O)">
+        <button class="nav-btn" id="btnOverview" title="Diaáttekintés (O)">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
         </button>
-        <button class="nav-btn" id="btnFullscreen" title="Teljes kepernyo (F)">
+        <button class="nav-btn" id="btnFullscreen" title="Teljes képernyő (F)">
           <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
         </button>
-        <button class="nav-btn" id="btnPrev" title="Elozo dia">
+        <button class="nav-btn" id="btnPrev" title="Előző dia">
           <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
-        <button class="nav-btn" id="btnNext" title="Kovetkezo dia">
+        <button class="nav-btn" id="btnNext" title="Következő dia">
           <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </div>
@@ -1567,8 +1568,8 @@ javitott fajlt teljes egeszeben a megszokott JSON formatumban!
     <!-- Slide Overview Modal -->
     <div id="overview-modal">
       <div class="overview-header">
-        <h3>Diaattekintes (Esc vagy O a bezarashoz)</h3>
-        <button class="nav-btn" id="btnCloseOverview" title="Attekintes bezarasa">
+        <h3>Diaáttekintés (Esc vagy O a bezáráshoz)</h3>
+        <button class="nav-btn" id="btnCloseOverview" title="Áttekintés bezárása">
           <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>

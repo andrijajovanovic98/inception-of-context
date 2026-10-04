@@ -5,7 +5,14 @@ import tempfile
 import unittest
 from typing import Any, Dict, List, Optional, Tuple
 
-from p1.tests.support import copy_demo_app, read, write
+from p1.tests.support import (
+    DROPPED_CHECK_ATTEMPT,
+    PLACEHOLDER_ATTEMPT,
+    PLACEHOLDER_INTENT,
+    copy_demo_app,
+    read,
+    write,
+)
 from p3.sanity import SanityChecker
 
 SQUARE = (
@@ -60,6 +67,71 @@ class SanityTest(unittest.TestCase):
         write(os.path.join(self.target, "legacy.py"), legacy)
         patched = "def hook():\n    pass\n\n\ndef real():\n    return 2\n"
         self.assertTrue(self.checker.check({"files": [self.modify(patched, "legacy.py")]}).passed)
+
+    def test_rule4_a_placeholder_that_returns_a_constant(self) -> None:
+        # The attempt that turned a red run green, verbatim.
+        refused, errors = self.refusal([self.modify(PLACEHOLDER_ATTEMPT)], "4")
+        self.assertTrue(refused)
+        self.assertIn("Function '_precision_enabled' in 'calculator.py' (line 37) only returns a constant "
+                      "and is marked as a placeholder (# Placeholder for actual logic)", errors[0])
+        # Returning a constant is not a stub by itself.
+        flag = "\n    def supports_negative(self) -> bool:\n        return True\n"
+        self.assertTrue(self.checker.check({"files": [self.modify(self.good + flag)]}).passed)
+
+    def test_code_that_never_runs_is_refused(self) -> None:
+        # Without the comment, the dead branches still give it away.
+        uncommented = PLACEHOLDER_ATTEMPT.replace("  # Placeholder for actual logic", "")
+        result = self.checker.check({"files": [self.modify(uncommented)]}, PLACEHOLDER_INTENT)
+        self.assertFalse(result.passed)
+        self.assertTrue(all(result.rule_status.values()))
+        self.assertIn("line 15: the if body never runs, its condition on line 14 is always false, "
+                      "because _precision_enabled() always returns True; line 28:", result.errors[0])
+
+        body = "        return round(a + b, self.precision)\n"
+        raise_it = "        raise ValueError('addition is disabled')\n"
+        dead = {
+            "after a return": body + raise_it,
+            "caught by its own try": "        try:\n    " + raise_it
+                                     + "        except ValueError:\n    " + body,
+            "if False": "        if False:\n    " + raise_it + body,
+            "a property": "        if not self.enabled:\n    " + raise_it + body,
+        }
+        prop = "\n    @property\n    def enabled(self) -> bool:\n        return True\n"
+        for name, code in dead.items():
+            patched = self.calc.replace(body, code) + (prop if name == "a property" else "")
+            refused, errors = self.refusal([self.modify(patched)])
+            self.assertTrue(refused and "never" in errors[0], (name, errors))
+        live = {
+            "re-raised": "        try:\n    " + raise_it
+                         + "        except ValueError:\n            print('no')\n            raise\n",
+            "while True": "        while True:\n    " + body,
+            "a DEBUG flag": "        if DEBUG:\n            print(a, b)\n" + body,
+        }
+        for name, code in live.items():
+            patched = "DEBUG = False\n" + self.calc.replace(body, code)
+            result = self.checker.check({"files": [self.modify(patched)]})
+            self.assertTrue(result.passed, (name, result.errors))
+
+        # Dead code the file already had is not this patch's.
+        legacy = "def f():\n    if False:\n        print(1)\n    return 1\n\n\ndef g():\n    return 2\n"
+        write(os.path.join(self.target, "legacy.py"), legacy)
+        changed = self.modify(legacy.replace("return 2", "return 3"), "legacy.py")
+        self.assertTrue(self.checker.check({"files": [changed]}).passed)
+
+    def test_error_checks_of_functions_the_intent_does_not_name_stay(self) -> None:
+        result = self.checker.check({"files": [self.modify(DROPPED_CHECK_ATTEMPT)]}, PLACEHOLDER_INTENT)
+        self.assertFalse(result.passed)
+        self.assertIn("Calculator.divide() line 31: raise ValueError('Division by zero is not allowed.')",
+                      result.errors[0])
+        # A weaker condition is a changed check too.
+        weaker = self.modify(self.good.replace("if b == 0:", "if b == 0 and a > 0:"))
+        self.assertFalse(self.checker.check({"files": [weaker]}, "add a square method").passed)
+        # Named, or asked to remove: the intent's business.
+        check = '        if b == 0:\n            raise ValueError("Division by zero is not allowed.")\n'
+        unchecked = self.good.replace(check, "")
+        for intent in ["make divide return inf for zero", "remove the zero check"]:
+            result = self.checker.check({"files": [self.modify(unchecked)]}, intent)
+            self.assertTrue(result.passed, (intent, result.errors))
 
     def test_rule5_shrink_over_60_percent(self) -> None:
         refused, errors = self.refusal([self.modify("class Calculator:\n    x = 1\n")], "5")

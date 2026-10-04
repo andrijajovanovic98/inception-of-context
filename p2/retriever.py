@@ -34,11 +34,39 @@ except ImportError:
     BM25_AVAILABLE = False
 
 
+def stem_word(word: str) -> str:
+    """
+    Light inflectional stem of one lowercase token, used for the corpus and
+    the query alike: "divides", "divided", "dividing" and "divide" all become
+    "divid", "formatted" and "formats" become "format", "percentages" meets
+    "percentage". Without it "is there a function that divides two numbers?"
+    ranked add, subtract and multiply (their docstrings say "two numbers")
+    and never divide. A token with an underscore or a digit is an identifier
+    and is kept as it is: an exact name still matches only itself.
+    """
+    if len(word) <= 3 or not word.isalpha():
+        return word
+    if word.endswith(("ies", "ied")) and len(word) > 4:
+        word = word[:-3] + "y"  # entries, multiplied
+    elif word.endswith(("ing", "ed")) and not word.endswith("eed"):
+        cut = word[:-3] if word.endswith("ing") else word[:-2]
+        if len(cut) >= 3 and re.search(r"[aeiouy]", cut):  # not "thing", "string", "red"
+            word = cut
+            if len(word) >= 4 and word[-1] == word[-2] and word[-1] not in "aeiouylsz":
+                word = word[:-1]  # formatted -> format; "added" stays "add"
+    elif word.endswith("s") and not word.endswith(("ss", "us", "is")):
+        word = word[:-1]  # numbers; not "class", "status", "this"
+    if len(word) > 3 and word.endswith("e"):
+        word = word[:-1]  # divide, divides -> divid
+    return word
+
+
 def tokenize_code(text: str) -> List[str]:
     """
     Code-aware tokenizer for BM25 retrieval.
     Splits identifiers on underscores and camelCase to match both exact symbols
-    and sub-components (e.g., 'format_number' -> ['format', 'number', 'format_number']).
+    and sub-components (e.g., 'format_number' -> ['format_number', 'format', 'number']),
+    then reduces every word to its stem_word().
     """
     raw_tokens = re.findall(r"[A-Za-z0-9_]+", text)
     tokens: List[str] = []
@@ -57,7 +85,7 @@ def tokenize_code(text: str) -> List[str]:
                 part_lower = part.lower()
                 if part_lower and part_lower != tok_lower:
                     tokens.append(part_lower)
-    return tokens
+    return [stem_word(tok) for tok in tokens]
 
 
 # Chunk types that are real, nameable symbols. "block" chunks (module code,
@@ -600,13 +628,15 @@ class Retriever:
 
             boost = 0.0
             short_sym = symbol_name.split(".")[-1] if "." in symbol_name else symbol_name
-            if symbol_name and (symbol_name in query_words or short_sym in query_words):
+            # The query tokens are word stems ("divide" is "divid"), so names
+            # are compared by their stem too.
+            if symbol_name and (stem_word(symbol_name) in query_words or stem_word(short_sym) in query_words):
                 boost += 0.25
             # Match the stem: tokenize_code() splits on '.', so the query for
             # "calculator.py" yields {'calculator', 'py'} and the full filename
             # would never be present as a token.
             file_stem = os.path.splitext(file_name)[0]
-            if file_stem and file_stem in query_words:
+            if file_stem and stem_word(file_stem) in query_words:
                 boost += 0.15
 
             final_score = min(1.0, combined_score + boost)

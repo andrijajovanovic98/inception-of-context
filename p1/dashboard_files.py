@@ -195,7 +195,7 @@ FILEVIEW_JS = """
             try {
                 const res = await fetch('/file?path=' + encodeURIComponent(path));
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+                if (!res.ok) throw new Error(iocDetail(data.detail) || ('HTTP ' + res.status));
                 const starts = {};
                 data.chunks.forEach((c, i) => { starts[c.start_line] = { chunk: c, index: i + 1 }; });
                 const lines = data.content.split('\\n');

@@ -807,7 +807,7 @@ def setup_p3_dashboard(
                 }}
                 if (!res.ok) {{
                     const err = await res.json();
-                    throw new Error(err.detail || 'Patch loop failed');
+                    throw new Error(iocDetail(err.detail) || 'Patch loop failed');
                 }}
 
                 const result = await res.json();
@@ -937,11 +937,11 @@ def setup_p3_dashboard(
                     ? '<div class="feedback-note" style="margin-top:6px;">Kept to the rename: '
                       + patchObj.kept_to_rename.map(n => escapeHtml(n)).join('; ') + '</div>'
                     : '';
-                // A module docstring the model dropped was put back - listed, not hidden.
+                // Docstrings the model dropped or rewrote were put back - listed, not hidden.
                 const keptHtml = keptHtml0 + ((patchObj.restored_docstrings || []).length
-                    ? '<div class="feedback-note" style="margin-top:6px;">Restored the module docstring '
-                      + 'the model dropped: ' + patchObj.restored_docstrings.map(
-                          p => '<code>' + escapeHtml(p) + '</code>').join(', ') + '</div>'
+                    ? '<div class="feedback-note" style="margin-top:6px;">Restored docstrings the model '
+                      + 'dropped or rewrote: ' + patchObj.restored_docstrings.map(
+                          n => escapeHtml(n)).join('; ') + '</div>'
                     : '');
                 let filesHtml = '';
                 if (patchFiles.length > 0) {{
@@ -952,7 +952,7 @@ def setup_p3_dashboard(
                                     <span class="badge ${{
                                         f.op === 'create' ? 'badge-purple'
                                         : f.op === 'delete' ? 'badge-red' : ''
-                                    }}">${{f.op.toUpperCase()}}</span>
+                                    }}">${{escapeHtml(String(f.op || '?').toUpperCase())}}</span>
                                     <span style="font-family:monospace; font-weight:700;">
                                         ${{escapeHtml(f.path)}}
                                     </span>
@@ -1051,7 +1051,7 @@ def setup_p3_dashboard(
             try {{
                 const res = await fetch('/patch/rollback', {{ method: 'POST' }});
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+                if (!res.ok) throw new Error(iocDetail(data.detail) || ('HTTP ' + res.status));
                 const changed = (data.restored || []).concat(data.removed || []);
                 const clean = !(data.mismatches || []).length;
                 await showAlert(
@@ -1129,6 +1129,7 @@ def setup_p3_dashboard(
                         body: JSON.stringify({{ query: query, k: k }})
                     }});
                     const data = await res.json();
+                    if (!res.ok) throw new Error(iocDetail(data.detail) || ('HTTP ' + res.status));
                     answerBox.style.display = 'none';
                     renderChunks(data.chunks || []);
                     resultBox.style.display = 'block';
@@ -1139,7 +1140,7 @@ def setup_p3_dashboard(
                         body: JSON.stringify({{ query: query, k: k }})
                     }});
                     const data = await res.json();
-                    if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+                    if (!res.ok) throw new Error(iocDetail(data.detail) || ('HTTP ' + res.status));
                     answerBox.style.display = 'block';
                     answerText.innerText = data.answer || 'No response generated.';
                     const srcBadge = document.getElementById('answer-source');
@@ -1196,8 +1197,10 @@ def setup_p3_dashboard(
             container.innerHTML = html;
         }}
 
+        // String() first: model output reaches this (a dict "content", a list
+        // "summary"), and .replace on a non-string threw and blanked the tab.
         function escapeHtml(text) {{
-            return (text || '')
+            return String(text === undefined || text === null ? '' : text)
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")

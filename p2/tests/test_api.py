@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 from p1.db import VectorDB
 from p1.indexer import CodebaseIndexer
-from p1.tests.support import FakeLLM, copy_demo_app, inline_script_error, write
+from p1.tests.support import FakeLLM, copy_demo_app, inline_script_error, run_page_script, write
 from p1.watcher import CodebaseWatcher
 from p2.api import create_architect_api
 from p2.dashboard import setup_dashboard
@@ -47,6 +47,19 @@ class AskPolicyTest(unittest.TestCase):
         prompt = build_rag_prompt("what runs first?", [chunk])
         self.assertNotIn("Symbol: <entrypoint>", prompt)
         self.assertIn("not a function", prompt)
+
+    def test_symbol_list_gives_every_symbol_its_line_range(self) -> None:
+        # Without them the model invented "divide ... lines 14-16" (it is 28-32)
+        # for "is there a function that divides two numbers?", whose top-3
+        # retrieval held add/subtract/multiply but not divide.
+        with tempfile.TemporaryDirectory() as tmp:
+            target = copy_demo_app(tmp)
+            db = VectorDB(persist_dir=os.path.join(tmp, "db"))
+            CodebaseIndexer(target, db=db).index_all()
+            inventory = Retriever(db).symbol_inventory
+        prompt = build_rag_prompt("is there a function that divides two numbers?", [], inventory=inventory)
+        self.assertIn("method Calculator.divide (lines 28-32)", prompt)
+        self.assertIn("function calculate_tax (lines 20-23)", prompt)
 
 
 class ArchitectApiTest(unittest.TestCase):
@@ -115,6 +128,18 @@ class ArchitectApiTest(unittest.TestCase):
         self.assertIsNotNone(textarea)
         assert textarea is not None
         self.assertEqual(textarea.group(1), "")
+
+    def test_a_refused_request_is_reported_in_words(self) -> None:
+        # A top-k typed above the API's limit: the 422 detail is a list, and the
+        # page used to say "Error processing request: [object Object]".
+        refused = self.client.post("/context", json={"query": "x", "k": 50})
+        self.assertEqual(refused.status_code, 422)
+        run = run_page_script(self.client.get("/").text, f"iocDetail({json.dumps(refused.json()['detail'])})")
+        if run is None:
+            self.skipTest("node is not installed")
+        self.assertIsNone(run["error"])
+        self.assertTrue(run["value"].startswith("k: "), run["value"])
+        self.assertNotIn("[object Object]", run["value"])
 
 
 class EventStreamTest(unittest.TestCase):

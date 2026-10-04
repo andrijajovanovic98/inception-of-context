@@ -95,7 +95,7 @@ flowchart TD
 - **Offline embeddings:** `all-MiniLM-L6-v2` is downloaded once by `make setup` (or baked into the image) and loaded with `HF_HUB_OFFLINE=1`.
 
 ### 2. Part 2 - Architect API & Truthful RAG
-- **Hybrid retrieval:** dense cosine similarity blended with BM25Okapi over the Chroma documents, plus an exact-symbol boost. ChromaDB stays the canonical store.
+- **Hybrid retrieval:** dense cosine similarity blended with BM25Okapi over the Chroma documents, plus an exact-symbol boost. BM25 tokens are code-aware (snake_case and camelCase parts) and lightly stemmed, so *"divides"* meets `divide` and *"percentages"* meets `format_percentage`. ChromaDB stays the canonical store.
 - **The two question shapes the subject grades never reach the model.** *"Is there a function called X?"* (in its natural variants: backticks, `Class.method`, "any … named", "does X exist", "is X defined", "where is X defined", Hungarian) and *"what functions exist in this file / in `main.py` / in class `Calculator`?"* are answered from the index itself: yes/no with file and line range, the full inventory, near-miss names when X does not exist.
 - **Everything else** goes to the model with the verified facts first and a complete list of the indexed symbols; the answer is then checked against the index and any name that exists nowhere in the code is flagged. The dashboard badge says which of the two answered.
 - **Local LLM:** async Ollama client on `127.0.0.1:11435`, one fixed 8k context for every call.
@@ -106,12 +106,12 @@ flowchart TD
   1. leaked prompt markers (derived from `p1/markers.py`, the single source both prompt builders use),
   2. `create` on an existing file,
   3. a non-empty file replaced by `""`, `"None"` or `"null"`,
-  4. a function whose body is only a stub (`pass`, `...`, `return None`, `raise NotImplementedError`) that the patch introduces,
+  4. a function whose body is only a stub (`pass`, `...`, `return None`, `raise NotImplementedError`, or a constant return marked as a placeholder, such as `return True  # Placeholder for actual logic`) that the patch introduces,
   5. an existing file shrinking by more than 60 %,
   6. more than 3 files at once.
 
-  Plus: invalid Python (the syntax gate), duplicate entries for one file, paths outside the target or into hidden/vendored/binary locations, any edit of `ioc.config.yml` (the patch may not rewrite its own judge), more than one deletion, a patch that changes nothing, a function, class, method or `if __name__ == "__main__":` block removed although the intent does not name it (without its entry point `python3 main.py` runs nothing and passes), and, for a "rename X to Y" intent, `Y` appearing where `X` never was.
-- **Prompt scope:** the model sees in full only the files the intent names (for a rename also the files using the name; when it names none, the files retrieval ranks highest); it is told which existing files it may edit, which named files are new, and, for a rename, every line using the old name. An edit of a file it was not shown in full is dropped from the patch and listed as `dropped_unrequested`, never applied silently. For an intent that asks only for a rename, each modified file is kept to the rename: the model decides which uses of the old name it renames, and every other change it made is reverted and listed under `kept_to_rename`.
+  Plus: invalid Python (the syntax gate), duplicate entries for one file, paths outside the target or into hidden/vendored/binary locations, any edit of `ioc.config.yml` (the patch may not rewrite its own judge), more than one deletion, a patch that changes nothing, a function, class, method or `if __name__ == "__main__":` block removed although the intent does not name it (without its entry point `python3 main.py` runs nothing and passes), an error check (a `raise` and the conditions that lead to it) removed or changed in a function the intent does not name, code the patch adds that can never run (a branch behind a condition the code itself fixes, such as a helper that always returns `True`; a statement after `return` or `raise`; a `raise` that its own `except` swallows: validation cannot see it, and the model once hid the requested behaviour there and went green), and, for a "rename X to Y" intent, `Y` appearing where `X` never was.
+- **Prompt scope:** the model sees in full only the files the intent names (for a rename also the files using the name; when it names none, the files retrieval ranks highest); it is told which existing files it may edit, which named files are new, and, for a rename, every line using the old name. An edit of a file it was not shown in full is dropped from the patch and listed as `dropped_unrequested`, never applied silently. For an intent that asks only for a rename, each modified file is kept to the rename: the model decides which uses of the old name it renames, and every other change it made is reverted and listed under `kept_to_rename`. Unless the intent is about documentation, docstrings the model dropped or rewrote go back: the module's, a class's, and a function's whose code the patch leaves unchanged (listed under `restored_docstrings`).
 - **Self-healing loop:** sanity errors or the validation log (tail-capped) go back to the model; up to 3 attempts.
 - **Atomic apply:** every file is staged as `*.ioc.tmp`, fsync'ed, then `os.replace`d only when all are ready.
 - **Verified rollback:** snapshots are raw bytes plus file mode, keyed by canonical path. After a failed run every touched file is compared byte-for-byte with its snapshot and the result reports `rollback_verified`. A run cancelled mid-flight (Ctrl+C, server shutdown) is rolled back too.
@@ -209,13 +209,14 @@ make re       # fclean + setup
 
 ```bash
 # Run headless patch with validation and auto-rollback
-python3 p3/index.py demo_app --intent "add a multiply method to Calculator in calculator.py"
-
-# Or using Makefile:
 make p3-cli INTENT="add a square method to Calculator in calculator.py"
 
+# The same entry points directly. After `make setup` the dependencies live in
+# /tmp/ioc/venv: a bare `python3` fails with "No module named 'fastapi'".
+/tmp/ioc/venv/bin/python p3/index.py demo_app --intent "add a square method to Calculator in calculator.py"
+
 # Run bonus dry-run simulation (no disk writes)
-python3 bonus/index.py demo_app --intent "add divide method" --dry-run
+/tmp/ioc/venv/bin/python bonus/index.py demo_app --intent "add a cube method to Calculator in calculator.py" --dry-run
 ```
 
 ---

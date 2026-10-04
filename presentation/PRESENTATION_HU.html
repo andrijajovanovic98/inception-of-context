@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inception-of-Context - 1. rész: Indexelés és szinkronizáció</title>
+  <title>Inception-of-Context - Egységes deck: 1-3. rész és B1-B5 bónuszok</title>
   <style>
 /* ==========================================================================
    Inception-of-Context (IoC) - Part 1 Presentation Stylesheet
@@ -11,6 +11,8 @@
    ========================================================================== */
 
 :root {
+  --purple: #c084fc;
+  --purple-glow: rgba(192, 132, 252, 0.15);
   --bg-canvas: #070a11;
   --bg-slide: #0d1322;
   --bg-card: #131c31;
@@ -487,6 +489,7 @@ html, body {
   line-height: 1.1;
   background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -1030,6 +1033,7 @@ html, body {
 
 /* Compact full-file listing: must come after .code-line so it wins */
 .code-box-fit {
+  white-space: normal; /* rows are divs; HTML newlines must not add lines */
   font-size: 8.8px;
   line-height: 1.1;
   max-height: none;
@@ -1074,7 +1078,32 @@ html, body {
   font-size: 105% !important;
 }
 
-  </style>
+  
+/* Classes used by the P2, P3 and BONUS slides */
+.badge-indigo { background: var(--indigo-glow); color: var(--indigo); border: 1px solid rgba(129, 140, 248, 0.3); }
+
+.card.glow-indigo {
+  border-color: rgba(129, 140, 248, 0.4);
+  background: linear-gradient(180deg, rgba(129, 140, 248, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.callout-box {
+  background: rgba(56, 189, 248, 0.05);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.badge-purple { background: var(--purple-glow); color: var(--purple); border: 1px solid rgba(192, 132, 252, 0.3); }
+
+.card.glow-purple {
+  border-color: rgba(192, 132, 252, 0.4);
+  background: linear-gradient(180deg, rgba(192, 132, 252, 0.06) 0%, var(--bg-card) 60%);
+}
+</style>
   <script>
     window.MathJax = {
       tex: {
@@ -1110,17 +1139,18 @@ html, body {
           </div>
 
           <h1 class="hero-title">Inception-of-Context</h1>
-          <h3 class="hero-subtitle">1. rész: Indexelés és szinkronizáció</h3>
+          <h3 class="hero-subtitle">Egységes deck: 1-3. rész és B1-B5 bónuszok</h3>
           
           <p class="hero-desc">
-            Helyi kódbázisból szinkronizált, kereshető vektorindex szemantikus AST-darabolással,
-            helyi sűrű beágyazásokkal és valós idejű fájlrendszer-összehangolással.
+            Egy végigvezetés a teljes projekten: 1. rész indexelés és szinkronizáció, 2. rész Architect API és RAG,
+            3. rész autonóm patch loop, és mind az öt bónusz (B1-B5), beleértve a Docker SDK összeomlás-figyelőt.
+            A részletes részenkénti deckek a Deck térkép diáról érhetők el.
           </p>
 
           <div class="hero-specs">
             <div class="spec-item">
-              <span class="spec-label">Jelenlegi fázis</span>
-              <span class="spec-value" style="color:var(--emerald);">1. rész kész</span>
+              <span class="spec-label">Lefedettség</span>
+              <span class="spec-value" style="color:var(--emerald);">1-3. rész + B1-B5</span>
             </div>
             <div class="spec-item">
               <span class="spec-label">Vektoros tároló</span>
@@ -1137,11 +1167,78 @@ html, body {
           </div>
         </div>
       </section>
+<section class="slide" data-title="Deck térkép és navigáció">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Egységes deck</span>
+            <div class="slide-title-group">
+              <h2>Deck térkép: 1-3. rész és B1-B5 bónuszok</h2>
+              <p>A teljes projekt végigvezetése; a részenkénti deckek minden diája benne van</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Navigáció</span>
+          </div>
+        </div>
 
+        <div class="grid-4" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">1. rész: Indexelés és szinkron</span>
+              <span class="card-badge badge-cyan">Részletesen lent</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Szemantikus AST-darabolás, helyi beágyazások, ChromaDB tárolás.</li>
+                <li>Valós idejű figyelő SHA-256 inkrementális szinkronnal.</li>
+                <li>Ebben a deckben teljes részletességgel (3-15. dia).</li>
+              </ul>
+            </div>
+          </div>
 
-      <!-- ===================================================================
-           SLIDE 2: Goal of Part 1
-           =================================================================== -->
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">2. rész: Architect API és RAG</span>
+              <span class="card-badge badge-emerald">Részletesen lent</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Hibrid visszakeresés (dense + BM25 pontszám-fúzió), igaz szimbólumválaszok, helyi LLM-megalapozás.</li>
+                <li>REST API: <code>POST /context</code>, <code>POST /ask</code>, SSE-események.</li>
+                <li>Ebben a deckben teljes részletességgel (16-28. dia).</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">3. rész: Patch Loop</span>
+              <span class="card-badge badge-amber">Részletesen lent</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Autonóm ciklus: strukturált JSON patch-ek, 6 szanitás-ellenőrzés, atomi előkészítés.</li>
+                <li>Öngyógyító újrapróbálkozás 100%-os visszaállítási garanciával.</li>
+                <li>Ebben a deckben teljes részletességgel (29-40. dia).</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Bónuszok B1-B5</span>
+              <span class="card-badge badge-rose">Részletesen lent</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>B1 POST /reindex, B2 automatikus Git commit, B3 Docker SDK összeomlás-figyelő, B4 Dry-Run, B5 bővített dashboard (relevancia-pontszám, vizuális diff, élő SSE státusz).</li>
+                <li>A B3 saját diát kap ebben a deckben.</li>
+                <li>Ebben a deckben teljes részletességgel (41-54. dia).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
       <section class="slide" data-title="Az 1. rész célja">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1226,18 +1323,13 @@ html, body {
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 3: Jelenlegi repozitórium-struktúra
-           =================================================================== -->
       <section class="slide" data-title="Repozitórium-elrendezés">
         <div class="slide-header">
           <div class="slide-header-left">
             <span class="ioc-badge">Repozitórium-ellenőrzés</span>
             <div class="slide-title-group">
               <h2>Jelenlegi repozitórium-struktúra</h2>
-              <p>Lemezen ellenőrizve: csak az 1. rész és a demoalkalmazás létezik</p>
+              <p>Az 1. rész részletesen; a repozitórium többi része dióhéjban</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1248,24 +1340,28 @@ html, body {
         <div class="grid-2" style="margin-top: 14px;">
           <div class="file-tree">
             <div><span class="tree-folder">inception-of-context/</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">p1/</span> <span class="tree-note">&larr; 1. rész implementáció</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">p1/</span> <span class="tree-note">&larr; Az 1. rész megvalósítása</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">index.py</span> <span class="tree-note">(CLI belépési pont, args, futtató)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">indexer.py</span> <span class="tree-note">(CodebaseIndexer, hash-szinkron, szűrők)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">chunker.py</span> <span class="tree-note">(ASTChunker, FallbackChunker, CodeChunk)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">db.py</span> <span class="tree-note">(VektorDB, ChromaDB PersistentClient)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">chunker.py</span> <span class="tree-note">(ASTChunker + regex/bekezdés tartalékok)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">db.py</span> <span class="tree-note">(VectorDB, ChromaDB PersistentClient)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">watcher.py</span> <span class="tree-note">(CodebaseWatcher, debounce, polling)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard.py</span> <span class="tree-note">(FastAPI szerver, SSE élő folyam)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard.py</span> <span class="tree-note">(Overview fül, élő SSE folyam)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard_files.py</span> <span class="tree-note">(Files fül + GET /file, közös)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">markers.py, dashboard_modal.py</span> <span class="tree-note">(közös a P2/P3-mal)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-folder">tests/</span> <span class="tree-note">(offline tesztek, rögzített demómásolat)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">requirements.txt</span> <span class="tree-note">(chromadb, watchdog, fastapi...)</span></div>
             <div>&boxvr;&boxh;&boxh; <span class="tree-folder">demo_app/</span> <span class="tree-note">&larr; Indexelendő célkódbázis</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">calculator.py</span> <span class="tree-note">(Calculator osztály aritmetikai metódusokkal)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">formatter.py</span> <span class="tree-note">(ResultFormatter, pénznem/százalék)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">main.py</span> <span class="tree-note">(calculate_tax, main / run_demo)</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">presentation/</span> <span class="tree-note">&larr; Prezentáció</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">PRESENTATION.html</span> <span class="tree-note">(angol)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">PRESENTATION_HU.html</span> <span class="tree-note">(magyar)</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Makefile</span> <span class="tree-note">(setup, p1, clean, fclean &rarr; /tmp/ioc)</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-file">README.md</span> <span class="tree-note">(Description, Instructions, Resources)</span></div>
-            <div>&boxur;&boxh;&boxh; <span class="tree-file">.gitignore</span> <span class="tree-note">(Kihagyja: .chroma_db, súlyok, cache-ek)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">main.py</span> <span class="tree-note">(calculate_tax, run_demo, main)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">ioc.config.yml</span> <span class="tree-note">(validációs parancs, 3. rész)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">p2/ p3/ bonus/</span> <span class="tree-note">&larr; 2., 3. rész és bónusz (saját prezentáció)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">presentation/</span> <span class="tree-note">&larr; P1, P2, P3, BONUS, egységes (EN/HU)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Dockerfile, docker-compose.yml</span> <span class="tree-note">(make up / make down)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Makefile</span> <span class="tree-note">(setup, p1-p3, bonus, gates &rarr; /tmp/ioc)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">README.md</span> <span class="tree-note">(indítás, API, minőségkapuk)</span></div>
+            <div>&boxur;&boxh;&boxh; <span class="tree-file">.gitignore</span> <span class="tree-note">(ChromaDB, súlyok, cache-ek)</span></div>
           </div>
 
           <div class="card glow-cyan">
@@ -1279,27 +1375,22 @@ html, body {
             <div class="card-content">
               <ul style="gap: 12px;">
                 <li>
-                  <strong>Megvalósított modulok:</strong> Az 1. rész összes magkomponense (<code>chunker.py</code>, <code>db.py</code>, <code>indexer.py</code>, <code>watcher.py</code>, <code>dashboard.py</code>, <code>index.py</code>) megvan és működik.
+                  <strong>Megvalósított modulok:</strong> Az 1. rész összes magkomponense (<code>chunker.py</code>, <code>db.py</code>, <code>indexer.py</code>, <code>watcher.py</code>, <code>dashboard.py</code>, <code>dashboard_files.py</code>, <code>index.py</code>) megvan és működik.
                 </li>
                 <li>
                   <strong>Cél demo app:</strong> Moduláris, 3 fájlos Python célalkalmazás (<code>demo_app/</code>) az AST-darabolás és a vektortárolás gyakorlásához.
                 </li>
                 <li>
-                  <strong>Még nincs implementálva:</strong> A <code>p2/</code> (Architect API / RAG) és a <code>p3/</code> (Patch Loop / javítási ciklus) még NEM létezik.
+                  <strong>Következő részek:</strong> a <code>p2/</code> (Architect API / RAG), a <code>p3/</code> (Patch Loop / javítási ciklus) és a <code>bonus/</code> a prezentáció további részeiben szerepel.
                 </li>
                 <li>
-                  <strong>Csomagolási megjegyzés:</strong> A gyökér <code>Makefile</code> és a <code>README.md</code> megvan (<code>make setup</code> / <code>make p1</code>). A <code>Dockerfile</code> még nincs bevezetve.
+                  <strong>Csomagolási megjegyzés:</strong> A gyökér <code>Makefile</code> és a <code>README.md</code> megvan (<code>make setup</code> / <code>make p1</code>); a <code>Dockerfile</code> és a <code>docker-compose.yml</code> a teljes rendszert futtatja (<code>make up</code> / <code>make down</code>).
                 </li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 4: Architecture Flow
-           =================================================================== -->
       <section class="slide" data-title="Architektúra-folyamat">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1351,7 +1442,7 @@ html, body {
             <div class="flow-node">
               <span class="node-num">Lépés 05</span>
               <span class="node-title">Perzisztens vektor-DB</span>
-              <span class="node-file">.chroma_db/</span>
+              <span class="node-file">/tmp/ioc/chroma_db</span>
               <span class="node-desc">A ChromaDB dokumentumokat, beágyazásokat és metaadatot tárol</span>
             </div>
             <span class="flow-arrow">&rarr;</span>
@@ -1364,11 +1455,6 @@ html, body {
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 5: Logical Chunking - Concept & Architecture
-           =================================================================== -->
       <section class="slide" data-title="Logikai darabolás fogalma">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1416,17 +1502,12 @@ html, body {
                 <li><strong>Dekorátor-biztonság:</strong> A <code>_get_start_line_with_decorators()</code> a <code>@staticmethod</code>-ot / dekorátorokat a függvénnyel csoportosítja.</li>
                 <li><strong>Szimbólum-hierarchia:</strong> Felismeri az osztályokat, és minden metódust külön, önálló darabként kezel (pl. <code>Calculator.add</code>).</li>
                 <li><strong>Pontos sortartományok:</strong> 1-indexelt <code>start_line</code> és <code>end_line</code> a pontos helyhez.</li>
-                <li><strong>Tartalék:</strong> Regex dupla-újsor <code>FallbackChunker</code> nem-Python vagy szintaktikailag törött fájlokhoz.</li>
+                <li><strong>Tartalékok:</strong> <code>RegexPythonChunker</code> (def/class fejlécek bármilyen behúzással) a nem elemezhető Pythonhoz; <code>FallbackChunker</code> (üres sorral tagolt blokkok) más fájlokhoz.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 6: Chunking in Action - Concrete Walkthrough
-           =================================================================== -->
       <section class="slide" data-title="Darabolás bemutató">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1512,7 +1593,7 @@ html, body {
 
               <div class="chunk-item-card">
                 <div class="chunk-item-title">
-                  <span>2. Calculator (9&ndash;10. sor)</span>
+                  <span>2. Calculator (9&ndash;11. sor)</span>
                   <span class="badge-dim card-badge">class</span>
                 </div>
                 <div class="chunk-item-desc">Osztálydeklaráció és a precision docstring.</div>
@@ -1537,11 +1618,6 @@ html, body {
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 7: Visual Vektorization - From Code to 384d Vektor
-           =================================================================== -->
       <section class="slide" data-title="Vizuális vektorizálás">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1568,7 +1644,7 @@ html, body {
             <div class="card-content" style="display:flex; flex-direction:column; gap:10px;">
               <div>
                 <div style="font-size:11px; color:var(--text-dim); margin-bottom:3px; font-family:var(--font-mono);">1. BEMENET: nyers darab szöveg</div>
-                <div class="code-box" style="padding:6px 10px; font-size:11px;">"def add(self, a, b): return round(a + b, self.precision)"</div>
+                <div class="code-box" style="padding:6px 10px; font-size:11px;">"def add(self, a: float, b: float) -&gt; float: ..." (az egész 3 soros darab)</div>
               </div>
 
               <div style="text-align:center; color:var(--cyan); font-size:14px; margin:-4px 0;">&darr; <em>Tokenizálás és 6 rétegű transformer</em></div>
@@ -1576,12 +1652,12 @@ html, body {
               <div>
                 <div style="font-size:11px; color:var(--text-dim); margin-bottom:3px; font-family:var(--font-mono);">2. KIMENET: 384 dimenziós sűrű vektor</div>
                 <div class="vector-stream">
-                  <span class="vec-dim">d0: +0.0412</span>
-                  <span class="vec-dim">d1: -0.0189</span>
-                  <span class="vec-dim">d2: +0.0831</span>
+                  <span class="vec-dim">d0: -0.0049</span>
+                  <span class="vec-dim">d1: +0.0152</span>
+                  <span class="vec-dim">d2: -0.0812</span>
                   <span class="vec-dim">d3: -0.0054</span>
                   <span class="vec-dots">&bull;&bull;&bull;</span>
-                  <span class="vec-dim">d383: +0.0719</span>
+                  <span class="vec-dim">d383: +0.0109</span>
                 </div>
               </div>
 
@@ -1603,7 +1679,7 @@ html, body {
               <div class="cluster-group" style="border-color: rgba(56, 189, 248, 0.4);">
                 <div class="cluster-title">
                   <span style="color:var(--cyan);">1. klaszter: aritmetikai műveletek</span>
-                  <span style="color:var(--text-dim);">Koszinusz-távolság &lt; 0.20</span>
+                  <span style="color:var(--text-dim);">Koszinusz-távolság 0.19&ndash;0.30</span>
                 </div>
                 <div class="cluster-pills">
                   <span class="point-pill math">Calculator.add</span>
@@ -1616,7 +1692,7 @@ html, body {
               <div class="cluster-group" style="border-color: rgba(168, 85, 247, 0.4);">
                 <div class="cluster-title">
                   <span style="color:#c084fc;">2. klaszter: formázás és kimenet</span>
-                  <span style="color:var(--text-dim);">Koszinusz-távolság &lt; 0.22</span>
+                  <span style="color:var(--text-dim);">Koszinusz-távolság 0.27&ndash;0.57</span>
                 </div>
                 <div class="cluster-pills">
                   <span class="point-pill format">format_currency</span>
@@ -1639,18 +1715,13 @@ html, body {
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 8: Inside ChromaDB - Tables & HNSW Graph
-           =================================================================== -->
       <section class="slide" data-title="A ChromaDB belseje">
         <div class="slide-header">
           <div class="slide-header-left">
             <span class="ioc-badge">Adatbázis-tárolás</span>
             <div class="slide-title-group">
               <h2>A ChromaDB belseje: perzisztens táblák és HNSW index</h2>
-              <p>Hogyan tárolódnak tartósan a vektorok, forrásszöveg és metaadat a .chroma_db/ mappában</p>
+              <p>Hogyan tárolódnak tartósan a vektorok, a forrásszöveg és a metaadat (make: /tmp/ioc/chroma_db)</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1679,34 +1750,34 @@ html, body {
                 </thead>
                 <tbody>
                   <tr>
-                    <td style="color:var(--cyan);"><code>calc.py:add:16</code></td>
-                    <td><code>def add(self, a, b):...</code></td>
-                    <td><code>{"symbol":"add", "lines":"16-18"}</code></td>
+                    <td style="color:var(--cyan);"><code>calculator.py:Calculator.add:16</code></td>
+                    <td><code>def add(self, a: float, b: float)...</code></td>
+                    <td><code>{"symbol_type":"method", "start_line":16, "end_line":18}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                   <tr>
-                    <td style="color:var(--cyan);"><code>calc.py:div:28</code></td>
-                    <td><code>def divide(self, a, b):...</code></td>
-                    <td><code>{"symbol":"divide", "lines":"28-32"}</code></td>
+                    <td style="color:var(--cyan);"><code>calculator.py:Calculator.divide:28</code></td>
+                    <td><code>def divide(self, a: float, b: float)...</code></td>
+                    <td><code>{"symbol_type":"method", "start_line":28, "end_line":32}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                   <tr>
-                    <td style="#c084fc;"><code>form.py:curr:10</code></td>
-                    <td><code>def format_currency:...</code></td>
-                    <td><code>{"symbol":"currency", "lines":"10-13"}</code></td>
+                    <td style="color:#c084fc;"><code>formatter.py:format_currency:10</code></td>
+                    <td><code>def format_currency(value: float, ...</code></td>
+                    <td><code>{"symbol_type":"function", "start_line":10, "end_line":12}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                   <tr>
-                    <td style="color:var(--emerald);"><code>main.py:tax:17</code></td>
-                    <td><code>def calculate_tax:...</code></td>
-                    <td><code>{"symbol":"calculate_tax", "lines":"17-21"}</code></td>
+                    <td style="color:var(--emerald);"><code>main.py:calculate_tax:20</code></td>
+                    <td><code>def calculate_tax(amount: float, ...</code></td>
+                    <td><code>{"symbol_type":"function", "start_line":20, "end_line":23}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
-              Minden rekord összeköti az egyedi chunk ID-t a nyers forrásszöveggel, a gazdag JSON sor-metaadattal és a nagydimenziós vektorral.
+              Minden rekord összeköti a chunk ID-t (fájl:szimbólum:első sor) a forrásszöveggel, a metaadattal (file_path, symbol_name, symbol_type, start_line, end_line, content_hash) és a 384 dimenziós vektorral.
             </div>
           </div>
 
@@ -1728,17 +1799,12 @@ html, body {
                   </div>
                 </li>
                 <li><strong>Logaritmikus bejárás:</strong> A HNSW a felső rétegű „autópályákon” ugrik \(O(\log N)\) időben, nem végigpásztázza az összes rekordot.</li>
-                <li><strong>Helyi fájlrendszer:</strong> A <code>.chroma_db/</code> mappában tartósan tárolódik. 100% offline.</li>
+                <li><strong>Helyi fájlrendszer:</strong> a <code>--db-dir</code> mappában (alapértelmezés <code>.chroma_db/</code>; a <code>make</code> a <code>/tmp/ioc/chroma_db</code>-t használja). 100% offline.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 8: How Indexing Works - Step-by-Step Pipeline
-           =================================================================== -->
       <section class="slide" data-title="Indexelés bemutató">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1766,7 +1832,7 @@ html, body {
               <ul>
                 <li>Az indexer találkozik a <code>calculator.py</code> fájllal.</li>
                 <li>A <code>should_ignore_path()</code> ellenőrzi a kizárási szabályokat (kihagyja: <code>.git</code>, <code>venv</code>, <code>.chroma_db</code>).</li>
-                <li>Az <code>is_binary_file()</code> az első 1024 bájtban <code>\x00</code> null bájtokat keres.</li>
+                <li>Az <code>is_binary_file()</code> az első 1024 bájtot nézi; ha bárhol <code>\x00</code> van a szövegben, az is binárisnak számít.</li>
               </ul>
             </div>
           </div>
@@ -1816,7 +1882,7 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li>Régi fájlvektorok törölve: <code>delete_file_chunks()</code>.</li>
+                <li>Darabonként: az eltűnt ID-k törlődnek, az új vagy változott darabok újra beágyazódnak, a változatlanok maradnak.</li>
                 <li>Beszúrja a dokumentumszöveget, beágyazásokat és sor-metaadatot.</li>
                 <li>Elmenti az új SHA-256 hasht az <code>index_state.json</code>-ba.</li>
               </ul>
@@ -1824,11 +1890,6 @@ html, body {
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 9: Inkrementális Indexing  3 Scenarios
-           =================================================================== -->
       <section class="slide" data-title="Inkrementális forgatókönyvek">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1873,8 +1934,8 @@ html, body {
             <div class="card-content">
               <ul>
                 <li>Lemezhash &ne; <code>index_state.json</code> hash.</li>
-                <li><strong>1. lépés:</strong> A <code>delete_file_chunks(path)</code> csak ehhez a fájlhoz tartozó régi vektorokat törli.</li>
-                <li><strong>2. lépés:</strong> Újradarabolás és <code>upsert_chunks()</code> friss vektorokkal.</li>
+                <li><strong>1. lépés:</strong> újradarabolja a fájlt, és minden darab hashét, sorait és nevét összeveti azzal, ami a ChromaDB-ben van.</li>
+                <li><strong>2. lépés:</strong> <code>upsert_chunks()</code> csak a változott darabokra: élőben „1 chunk(s) re-embedded, 7 unchanged”.</li>
                 <li><strong>3. lépés:</strong> Frissíti az új hasht az állapotfájlban.</li>
               </ul>
             </div>
@@ -1891,7 +1952,7 @@ html, body {
             <div class="card-content">
               <ul>
                 <li>A fájl követve volt, de már nincs a lemezen.</li>
-                <li><strong>Művelet:</strong> A <code>delete_file_chunks(path)</code> minden chunk ID-t töröl a ChromaDB-ből.</li>
+                <li><strong>Művelet:</strong> a <code>delete_file_chunks(path)</code> minden chunk ID-ját törli; minden bejárás egyeztet is azzal, ami a ChromaDB-ben van.</li>
                 <li>Törli a kulcsot az <code>index_state.json</code>-ból.</li>
                 <li><strong>Eredmény:</strong> Nincs holt vektor vagy fantom szimbólum.</li>
               </ul>
@@ -1909,11 +1970,6 @@ html, body {
           <span style="color:var(--emerald);">&check; Atomikus ChromaDB frissítés</span>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 8: Watch Mode & Synchronization
-           =================================================================== -->
       <section class="slide" data-title="Figyelő mód">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1965,11 +2021,6 @@ html, body {
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 9: Exclusions & Biztonsági szabályok
-           =================================================================== -->
       <section class="slide" data-title="Kizárások és biztonság">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -2016,7 +2067,7 @@ html, body {
             <div class="card-content">
               <ul>
                 <li><strong>A veszély:</strong> Ha a vektoradatbázis mappa is figyelve van, a ChromaDB írások újraindítják a figyelőt - végtelen indexelési ciklus!</li>
-                <li><strong>A védelem:</strong> A <code>should_ignore_path()</code> explicit kizárja a <code>.chroma</code>, <code>.chroma_db</code> és a beállított DB útvonalat.</li>
+                <li><strong>A védelem:</strong> a <code>should_ignore_path()</code> név szerint kizárja a <code>.chroma</code> és <code>.chroma_db</code> mappát; a <code>CodebaseIndexer.is_ignored()</code> a beállított tárat a valódi helye szerint is kizárja.</li>
               </ul>
             </div>
           </div>
@@ -2032,17 +2083,12 @@ html, body {
             <div class="card-content">
               <ul>
                 <li><strong>Kiterjesztés-szűrő:</strong> <code>.pyc</code>, <code>.so</code>, <code>.dll</code>, <code>.exe</code>, <code>.png</code>, <code>.jpg</code>, <code>.pdf</code>, <code>.zip</code>, <code>.safetensors</code>, <code>.gguf</code>.</li>
-                <li><strong>Null-bájt detekció:</strong> Az <code>is_binary_file()</code> az első 1024 bájtban <code>\x00</code>-t keres, hogy ne parse-oljon nem szöveges binárist.</li>
+                <li><strong>Null-bájt detekció:</strong> az <code>is_binary_file()</code> az első 1024 bájtot nézi, és ha a szövegben bárhol <code>\x00</code> van, a fájl szintén binárisnak számít.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 10: Overview Dashboard
-           =================================================================== -->
       <section class="slide" data-title="Áttekintő dashboard">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -2068,9 +2114,9 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li><code>GET /api/status</code>: Visszaadja az összes darabot, fájlszámot, beágyazási modellt és a figyelő állapotát.</li>
-                <li><code>GET /api/files</code>: Visszaadja az indexelt fájlok rendezett listáját és a darabszámokat.</li>
-                <li><code>GET /api/file?path=...</code>: Visszaadja a részletes darabhatárokat és szimbólumadatokat.</li>
+                <li><code>GET /status</code>: darabszám, fájlszám, célútvonal, modellek, a figyelő állapota (<code>/api/</code> alatt is).</li>
+                <li><code>GET /files</code>: az indexelt fájlok rendezett listája a darabszámokkal.</li>
+                <li><code>GET /file?path=...</code>: a fájl és indexelt darabjai; kizárt vagy kívül eső útvonalra 403.</li>
                 <li><code>GET /api/activity</code>: Visszaadja a figyelő legutóbbi aktivitásának pillanatképét.</li>
                 <li><code>GET /events</code>: <strong>SSE (Server-Sent Events)</strong> - valós idejű eseményfolyam.</li>
                 <li><code>GET /</code>: Beágyazott offline dark-mode UI (Subject VI.1. ábra).</li>
@@ -2088,20 +2134,15 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Élő metrikakártyák:</strong> Indexelt darabszám, forrásfájlok száma, beágyazási modell (<code>all-MiniLM-L6-v2</code>), LLM modell (<code>qwen2.5:3b</code>).</li>
+                <li><strong>Élő metrikakártyák:</strong> indexelt darabok (és fájlok), célútvonal, vektortár, beágyazási modell (<code>all-MiniLM-L6-v2</code>), LLM modell (<code>qwen2.5:3b</code>).</li>
                 <li><strong>Fájlbontás tábla:</strong> Útvonal, darabszám és szinkron státusz.</li>
                 <li><strong>Élő figyelő folyam:</strong> Valós idejű eseménylog színes státuszjelölőkkel: <code>MODIFIED</code>, <code>DELETED</code>, <code>POLL_SYNC</code>, <code>WATCHER_START</code>.</li>
-                <li><strong>Fázishatárok:</strong> P1 Áttekintés aktív; a P2 (Kérdezés és visszakeresés) és P3 (Patch Loop) fülek láthatóan letiltva.</li>
+                <li><strong>Fázishatárok:</strong> az Overview és a Files fül aktív (VI.1. és VI.2. ábra); az Ask &amp; Retrieve és a Patch Loop láthatóan letiltva.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 11: Subject Compliance Checklist
-           =================================================================== -->
       <section class="slide" data-title="Subject megfelelés">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -2143,7 +2184,7 @@ html, body {
                 <td>ChromaDB PersistentClient tárolás</td>
                 <td><code>p1/db.py</code></td>
                 <td><span class="status-tag done">&check; Implementálva</span></td>
-                <td>Koszinusz-távolság, perzisztens a <code>.chroma_db</code>-ben</td>
+                <td>Koszinusz-távolság, tartós tárolás (<code>/tmp/ioc/chroma_db</code> a make-kel)</td>
               </tr>
               <tr>
                 <td>Inkrementális újraindexelés (SHA-256)</td>
@@ -2155,7 +2196,7 @@ html, body {
                 <td>Törléskezelés (vektor eltávolítás)</td>
                 <td><code>p1/indexer.py</code></td>
                 <td><span class="status-tag done">&check; Implementálva</span></td>
-                <td>A <code>delete_file_chunks</code> eltávolítja az árva vektorokat</td>
+                <td>A törölt fájlok kitisztulnak; minden bejárás egyeztet a ChromaDB-vel</td>
               </tr>
               <tr>
                 <td>Kizárási szabályok és DB önkizárás</td>
@@ -2190,25 +2231,2190 @@ html, body {
               <tr>
                 <td>Docker környezet</td>
                 <td>Repozitórium gyökér</td>
-                <td><span class="status-tag not-done">&cross; Még nincs kész</span></td>
-                <td>Az integrációs fázisra tervezve</td>
+                <td><span class="status-tag done">&check; Implementálva</span></td>
+                <td><code>Dockerfile</code> + <code>docker-compose.yml</code>: <code>make up</code> / <code>make down</code></td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
+      <!-- SLIDE 2: Goal of Part 2 -->
+      <section class="slide" data-title="A 2. rész célja">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>A 2. rész specifikációja és követelményei</h2>
+              <p>Mit ír elő a hivatalos subject a második szakaszra?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Subject audit</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">HTTP API az index fölött</span>
+              <span class="card-badge badge-cyan">FastAPI</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>REST végpontok:</strong> API, amelyen a kliensek lekérdezhetik az index állapotát.</li>
+                <li><strong>Alap végpontok:</strong> <code>/status</code>, <code>/files</code>, <code>/file</code>, <code>/chunks</code>, <code>/context</code>, <code>/ask</code>, <code>/events</code> (a subject által javasolt felület).</li>
+                <li><strong>Ask &amp; Retrieve fül:</strong> szándék és top-k az űrlapon; csak visszakeresés, vagy visszakeresés és megalapozott válasz.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">RAG és hibrid keresés</span>
+              <span class="card-badge badge-emerald">Visszakeresés</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Kontextus-visszakeresés:</strong> a <code>POST /context</code> bármely szándékhoz a legrelevánsabb kódrészleteket adja vissza.</li>
+                <li><strong>Igaz válaszok:</strong> az „is there a function called X?” és a „what functions exist in this file?” kérdésre a <code>/ask</code> nem találhat ki olyan szimbólumot, amely nincs az indexben.</li>
+                <li><strong>Hibrid stratégia:</strong> a ChromaDB marad a kanonikus tár; egy memóriabeli BM25 index pontos azonosítókra újrarangsorol.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">100%-ban helyi LLM (Ollama)</span>
+              <span class="card-badge badge-amber">Helyi AI</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Szigorú szabály:</strong> bármilyen távoli LLM-szolgáltatás hívása tilos, és nulla pontot eredményez.</li>
+                <li><strong>Modellosztály:</strong> ~3B paraméteres helyi modell (pl. <code>qwen2.5:3b</code> vagy <code>qwen2.5-coder:3b</code>).</li>
+                <li><strong>Megalapozott válasz:</strong> a helyi modell szigorúan a visszakeresett kódkontextusból fogalmaz.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 3: Architecture Pipeline -->
+      <section class="slide" data-title="Architektúra-folyamat">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>Architektúra-folyamat: a kérdéstől a megalapozott válaszig</h2>
+              <p>Hogyan jut el egy beérkező szándék a helyi modellig, és hogyan lesz belőle ellenőrzött válasz</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Adatfolyam</span>
+          </div>
+        </div>
+        <div class="pipeline-flow" style="margin-top: 10px;">
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">1. lépés</span>
+              <span class="node-title">Kérés és szimbólumfelismerés</span>
+              <span class="node-file">p2/api.py</span>
+              <span class="node-desc">POST /ask: a két értékelt kérdéstípust a memóriabeli szimbólumleltárral veti össze; a tisztán ténykérdésre az index válaszol.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">2. lépés</span>
+              <span class="node-title">Hibrid visszakeresés</span>
+              <span class="node-file">p2/retriever.py</span>
+              <span class="node-desc">ChromaDB koszinuszkeresés (sűrű) + BM25Okapi lexikális egyezés (ritka).</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">3. lépés</span>
+              <span class="node-title">Pontszám-fúzió</span>
+              <span class="node-file">p2/retriever.py</span>
+              <span class="node-desc">0.5 &times; dense + 0.5 &times; BM25 (a maximumával skálázva), plusz bónusz, ha a kérdés megnevez egy szimbólumot vagy fájlt; a top-k marad meg.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">4. lépés</span>
+              <span class="node-title">Prompt összeállítása</span>
+              <span class="node-file">p2/llm.py</span>
+              <span class="node-desc">Előbb az ellenőrzött tény, aztán minden indexelt szimbólum a sortartományával, a rangsorolt darabok és a kérdés.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">5. lépés</span>
+              <span class="node-title">Helyi Ollama-kiértékelés</span>
+              <span class="node-file">127.0.0.1:11435</span>
+              <span class="node-desc">Következtetés a helyi qwen2.5:3b-vel, külső hálózati forgalom nélkül.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">6. lépés</span>
+              <span class="node-title">Válasz és indexellenőrzés</span>
+              <span class="node-file">p2/llm.py</span>
+              <span class="node-desc">Visszaadja a választ, a forrását (index, model+index vagy model) és a darabokat; a kódban sehol nem szereplő neveket megjelöli.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 4: Hybrid Retrieval: Dense + Sparse -->
+      <section class="slide" data-title="Hibrid keresés: dense és BM25">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>Hibrid visszakeresés: sűrű vektorok és ritka BM25Okapi</h2>
+              <p>Miért nem elég a vektoros hasonlóság forráskódra, és hogyan segít a hibrid keresés</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Keresőmotor</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Sűrű keresés (ChromaDB + all-MiniLM)</span>
+              <span class="card-badge badge-cyan">Szemantika</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Működés:</strong> a szöveget 384 dimenziós vektortérbe képezi, és koszinusztávolságot számol.</li>
+                <li><strong>Erősség:</strong> körülírt szándék: a „how is a value formatted as currency?” kérdésre a <code>format_currency</code> az első (0.88).</li>
+                <li><strong>Gyengeség kódon:</strong> pontos azonosítókra gyengébb: a „where is X used?” teljesen elvétheti a hívót (subject VI.2).</li>
+              </ul>
+              <div class="code-box" style="margin-top: 10px;">
+candidate_count = max(target_k * 3, min(total_count, 15))
+chroma_res = self.db.query(query_text=query,
+                           n_results=candidate_count)
+dense = max(0.0, min(1.0, 1.0 - float(dist)))</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Ritka keresés (BM25Okapi)</span>
+              <span class="card-badge badge-emerald">Pontos kulcsszavak</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Működés:</strong> TF-IDF-változat, amely a pontos szógyakoriságot és az inverz dokumentumgyakoriságot méri.</li>
+                <li><strong>Erősség:</strong> pontos azonosítók: a „where is multiply used?” a <code>main.py</code> <code>calculate_tax</code> hívóját is rangsorolja.</li>
+                <li><strong>Gyengeség:</strong> nincs szemantika: egy könnyű szótövező összevonja a ragozott alakokat (a „divides” illeszkedik a <code>divide</code>-ra), de szinonimát sosem talál meg.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 10px;">
+query_tokens = tokenize_code(query)  # format_currency -&gt;
+                                    # format_currency, format, currency
+                                    # divides -&gt; divid, like divide
+raw_bm25 = bm25.get_scores(query_tokens)
+bm25 = score / max(raw_bm25)        # scaled to [0, 1]</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 5: Symbol Pre-Resolution -->
+      <section class="slide" data-title="Szimbólum-előfeloldás">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>Szimbólum-előfeloldás: igaz válaszok</h2>
+              <p>A subject által értékelt két kérdéstípusra az index válaszol, nem a modell</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Hallucináció ellen</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">A kihívás: kitalált szimbólumok</span>
+              <span class="card-badge badge-rose">Kockázat</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Subject (VI.2):</strong> az „is there a function called X?” és a „what functions exist in this file?” kérdést egy kis modell könnyen elrontja; ezekre a <code>/ask</code> nem találhat ki az indexben nem szereplő szimbólumot.</li>
+                <li>Mérés a javítás előtt: a <code>main.py</code> függvényeire a 3B modell azt felelte: <code>&lt;entrypoint&gt;</code>, ami az indexelő neve a <code>__main__</code> blokkra.</li>
+                <li>A tisztán generatív tokenjóslók a valószínűséget részesítik előnyben a tényszerű tagadással szemben.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Az IoC megoldása: determinisztikus előfeloldás</span>
+              <span class="card-badge badge-emerald">Megoldás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>1. Kérdéstípusok:</strong> a <code>resolve_symbol_query()</code> mindkét típust felismeri a természetes változataikban: backtick, <code>Class.method</code>, „does X exist”, „which functions are in &lt;file&gt;”, és magyarul is.</li>
+                <li><strong>2. Szimbólumleltár:</strong> az indexelt AST-darabok függvényei, metódusai és osztályai a sortartományukkal; a modulblokkok nem szimbólumok.</li>
+                <li><strong>3. Az index válaszol:</strong> a csak erre a tényre irányuló kérdés el sem jut a modellig (<code>answer_source: "index"</code>); tágabb kérdésnél az ellenőrzött tény áll elöl, a kódban sehol nem szereplő neveket pedig megjelöli.</li>
+              </ul>
+              <div class="callout-box" style="margin-top: 8px;"><strong>Védési tipp:</strong> kérdezd meg: „is there a function called sqrt?”; a jelvényen ez áll: „Answered from the index (model not consulted)”.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 6: Hybrid Score Fusion -->
+      <section class="slide" data-title="Hibrid pontszám-fúzió">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>Hibrid pontszám-fúzió: dense + BM25</h2>
+              <p>Hogyan lesz a p2/retriever.py-ban két pontszámskálából darabonként egyetlen hasonlósági pontszám</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Algoritmus</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">A fúziós képlet</span>
+              <span class="card-badge badge-cyan">Matematika</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 10px;">A koszinusz-hasonlóság már [0, 1]-ben van; a BM25 nem korlátos, ezért előbb elosztjuk a kérdés legjobb BM25 pontszámával. Ezután súlyozott összeg:</p>
+              <div class="code-box" style="font-size: 13px; text-align: center; padding: 14px;">
+score = 0.5 &times; dense + 0.5 &times; bm25 / max(bm25)
+      + 0.25 if the query names the symbol
+      + 0.15 if the query names the file
+score = min(score, 1.0)</div>
+              <ul style="margin-top: 10px;">
+                <li>Jelöltek: a dense találatok és a legjobb BM25 találatok, a demó indexen mindkettőből max(3 &times; k, 15).</li>
+                <li>Egyenlő pontszámnál a fájl és a sor dönt, így egy kérdés mindig ugyanúgy rangsorol.</li>
+                <li>A ChromaDB marad a kanonikus tár: a BM25 korpusz minden indexváltozás után az ő dokumentumaiból épül újra.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">Megvalósítás: p2/retriever.py</span>
+              <span class="card-badge badge-indigo">Kód</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+<span class="token-comm"># Retriever.retrieve(query, k=3, alpha=0.5), abridged</span>
+combined_score = (alpha * d_score) + ((<span class="token-num">1.0</span> - alpha) * b_score)
 
+boost = <span class="token-num">0.0</span>
+<span class="token-kw">if</span> symbol_name <span class="token-kw">and</span> (symbol_name <span class="token-kw">in</span> query_words
+                    <span class="token-kw">or</span> short_sym <span class="token-kw">in</span> query_words):
+    boost += <span class="token-num">0.25</span>
+<span class="token-kw">if</span> file_stem <span class="token-kw">and</span> file_stem <span class="token-kw">in</span> query_words:
+    boost += <span class="token-num">0.15</span>
 
-      <!-- ===================================================================
-           SLIDE 12: Final Summary & Next Steps
-           =================================================================== -->
-      <section class="slide" data-title="Összefoglaló és következő lépések">
+final_score = min(<span class="token-num">1.0</span>, combined_score + boost)
+
+<span class="token-comm"># ties break on location: a stable ranking</span>
+scored_candidates.sort(key=<span class="token-kw">lambda</span> x: (-x[<span class="token-num">0</span>],
+    str(x[<span class="token-num">1</span>][<span class="token-str">"file_path"</span>]),
+    int(x[<span class="token-num">1</span>][<span class="token-str">"start_line"</span>] <span class="token-kw">or</span> <span class="token-num">0</span>)))</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 7: Local LLM Integration (Ollama) -->
+      <section class="slide" data-title="Helyi LLM integráció">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>Helyi LLM integráció: Ollama és qwen2.5:3b</h2>
+              <p>Teljesen offline kódkövetkeztetés, külső függőségek nélkül</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Helyi motor</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Miért qwen2.5:3b?</span>
+              <span class="card-badge badge-cyan">Modellválasztás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>3B paraméter:</strong> modern CPU-n is elfut, erős GPU nélkül.</li>
+                <li><strong>Instruct modell:</strong> a subject a <code>qwen2.5:3b</code>-t javasolja a <code>/ask</code>-hoz; egy modell is elég, így a patch-ciklust is ez hajtja.</li>
+                <li><strong>Subject:</strong> kifejezetten a ~3B paraméteres modellosztályt említi.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Ollama REST API</span>
+              <span class="card-badge badge-emerald">Integráció</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Közvetlen HTTP POST: <code>http://127.0.0.1:11435/api/generate</code>.</li>
+                <li>Nincs nehéz külső SDK: aszinkron <code>httpx</code> kérések.</li>
+                <li>Nem streamelt hívások (<code>"stream": false</code>), 0.1-es temperature, minden kérésnél ugyanaz a 8192-es <code>num_ctx</code>.</li>
+                <li>A szabványos <code>:11434</code>-re csak akkor vált, ha a <code>:11435</code> elutasítja a kapcsolatot, és ezt a stderr-en jelzi.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Biztonság és izoláció</span>
+              <span class="card-badge badge-amber">Offline szabály</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Az Ollama a hoszton fut; az alkalmazás (a <code>make up</code> konténerből is) csak loopbacken éri el.</li>
+                <li>Nincs API-token, nincs előfizetés, nincs külső internetfüggőség.</li>
+                <li>A védésen ellenőrizhető a hálózat lekapcsolásával vagy a forgalom vizsgálatával.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 8: Prompt Engineering & Grounding -->
+      <section class="slide" data-title="Prompt felépítés és megalapozás">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>Prompt felépítés és szigorú kontextus-megalapozás</h2>
+              <p>A p2/llm.py valódi promptja: az ellenőrzött tények és a teljes szimbólumlista minden visszakeresett darab előtt állnak</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Prompt felépítés</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">A rendszerprompt</span>
+              <span class="card-badge badge-cyan">Rendszerprompt</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 11px; height: 100%;">
+GROUNDED_SYSTEM_PROMPT = """You are an expert AI software
+architect and codebase assistant for this project. [...]
+
+CRITICAL NON-NEGOTIABLE RULES:
+1. Be truthful, concise, and grounded in the provided code
+   context.
+2. Under NO circumstances should you hallucinate, invent, or
+   assume functions, methods, classes, or files that do not
+   appear in the context or verified facts.
+3. If a symbol or function does not exist in the codebase,
+   you MUST explicitly and clearly state that it does not exist.
+4. Reference file paths and line numbers when citing code.
+5. Do not include unnecessary conversational filler; focus on
+   technical precision."""</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">build_rag_prompt(): a szakaszok sorrendben</span>
+              <span class="card-badge badge-emerald">Felhasználói prompt</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 11px; height: 100%;">
+=== VERIFIED CODEBASE GROUND TRUTH (AST ANALYSIS) ===
+{fact, when the question matched a graded shape}
+Treat the above verified facts as absolute truth.
+
+=== EVERY INDEXED SYMBOL (COMPLETE LIST) ===
+- calculator.py: class Calculator (lines 9-36),
+  method Calculator.divide (lines 28-32), ...
+No other function, method or class exists in this codebase.
+
+=== RETRIEVED CODEBASE CONTEXT CHUNKS ===
+--- [Chunk 1] File: calculator.py | method Calculator.divide
+    (Lines 28-32) | Relevance: 0.6825 ---
+{chunk source}
+
+=== USER QUESTION ===
+{question}
+
+=== INSTRUCTIONS FOR YOUR ANSWER ===
+Only mention functions, methods and classes that appear in
+the complete symbol list. [...]</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 9: FastAPI REST Endpoints -->
+      <section class="slide" data-title="REST API végpontok">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>FastAPI REST végpontok áttekintése</h2>
+              <p>A p2/api.py felületei; mindegyik /api/... alatt is elérhető</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">API referencia</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 15%;">Végpont</th>
+                <th style="width: 10%;">Metódus</th>
+                <th style="width: 35%;">Leírás és felelősség</th>
+                <th style="width: 40%;">Minta válasz</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>/status</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Indexállapot, darabszám, aktív modellek és a figyelő állapota.</td>
+                <td><code>{"status":"ready", "total_chunks":23, "total_files":4, "ollama_available":true, ...}</code></td>
+              </tr>
+              <tr>
+                <td><code>/files</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Az indexelt fájlok a darabszámukkal.</td>
+                <td><code>{"total_files":4, "files":[{"path":"calculator.py", "chunk_count":8}, ...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/file</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>A fájl szövege és indexelt darabjai; 403 a célkönyvtáron kívül vagy kizárt útvonalra.</td>
+                <td><code>{"file_path":"main.py", "content":"...", "chunks":[...], "in_sync":true}</code></td>
+              </tr>
+              <tr>
+                <td><code>/chunks</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Indexelt darabok fájl/sor sorrendben, lapozva: <code>?limit</code> (max. 100) és <code>?offset</code>.</td>
+                <td><code>{"total_chunks":23, "limit":50, "offset":0, "chunks":[...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/context</code></td>
+                <td><span class="card-badge badge-amber">POST</span></td>
+                <td>Hibrid visszakeresés: a kérdéshez legrelevánsabb kódrészletek.</td>
+                <td><code>{"query":"...", "k":3, "total_retrieved":3, "chunks":[{..., "similarity_score":0.8791}]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/ask</code></td>
+                <td><span class="card-badge badge-emerald">POST</span></td>
+                <td>Visszakeresés, majd generálás; a két értékelt kérdéstípusra az index válaszol.</td>
+                <td><code>{"answer":"...", "answer_source":"index", "retrieved_chunks":[...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/events</code></td>
+                <td><span class="card-badge badge-indigo">GET</span></td>
+                <td>Server-Sent Events (SSE) folyam a dashboard élő frissítéséhez.</td>
+                <td><code>data: {"action":"MODIFIED", "path":"calculator.py", ...}</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- SLIDE 10: Walkthrough: POST /context -->
+      <section class="slide" data-title="Bemutató: POST /context">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>Bemutató: POST /context</h2>
+              <p>Valódi hívás a demo_app ellen: a top-k darab a hasonlósági pontszámával</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">JSON szerződés</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Kérés (JSON)</span>
+              <span class="card-badge badge-cyan">Bemenet</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box">
+{
+  <span class="token-str">"query"</span>: <span class="token-str">"how is a value formatted as currency?"</span>,
+  <span class="token-str">"k"</span>: <span class="token-num">2</span>
+}</div>
+              <p style="margin-top: 12px; font-size: 11.5px; color: var(--text-muted);">A <code>k</code> opcionális: alapértelmezés 3, legfeljebb 20 (fölötte 422); üres kérdésre 400.</p>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Válasz (JSON)</span>
+              <span class="card-badge badge-emerald">Kimenet</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+{
+  <span class="token-str">"query"</span>: <span class="token-str">"how is a value formatted as currency?"</span>,
+  <span class="token-str">"k"</span>: <span class="token-num">2</span>,
+  <span class="token-str">"total_retrieved"</span>: <span class="token-num">2</span>,
+  <span class="token-str">"chunks"</span>: [
+    {
+      <span class="token-str">"chunk_id"</span>: <span class="token-str">"formatter.py:format_currency:10"</span>,
+      <span class="token-str">"file_path"</span>: <span class="token-str">"formatter.py"</span>,
+      <span class="token-str">"symbol_name"</span>: <span class="token-str">"format_currency"</span>,
+      <span class="token-str">"symbol_type"</span>: <span class="token-str">"function"</span>,
+      <span class="token-str">"start_line"</span>: <span class="token-num">10</span>,
+      <span class="token-str">"end_line"</span>: <span class="token-num">12</span>,
+      <span class="token-str">"content"</span>: <span class="token-str">"def format_currency(value: float, ..."</span>,
+      <span class="token-str">"similarity_score"</span>: <span class="token-num">0.8791</span>
+    },
+    { <span class="token-str">"chunk_id"</span>: <span class="token-str">"formatter.py:format_percentage:15"</span>, ...,
+      <span class="token-str">"similarity_score"</span>: <span class="token-num">0.5348</span> }
+  ]
+}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 11: Walkthrough: POST /ask -->
+      <section class="slide" data-title="Bemutató: POST /ask">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>Bemutató: POST /ask</h2>
+              <p>Valódi hívás: értékelt kérdéstípus, az index válaszol</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Teljes RAG</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Kérés (JSON)</span>
+              <span class="card-badge badge-cyan">Kérés</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box">
+{
+  <span class="token-str">"query"</span>: <span class="token-str">"what methods does the Calculator class have?"</span>,
+  <span class="token-str">"k"</span>: <span class="token-num">3</span>
+}</div>
+              <ul style="margin-top: 12px;">
+                <li>A kérdés értékelt típus (egy osztály tagjai), ezért a <code>resolve_symbol_query()</code> az indexből válaszol.</li>
+                <li>A modell nem fut: az <code>answer_source</code> értéke <code>"index"</code>, és a dashboard jelvénye is ezt mutatja.</li>
+                <li>A tágabb kérdések a <code>qwen2.5:3b</code>-hez mennek, elöl az ellenőrzött ténnyel; a választ utána az indexszel veti össze.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Válasz (JSON)</span>
+              <span class="card-badge badge-emerald">Válasz</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+{
+  <span class="token-str">"query"</span>: <span class="token-str">"what methods does the Calculator class have?"</span>,
+  <span class="token-str">"answer"</span>: <span class="token-str">"Class `Calculator` (calculator.py, lines 9-36)
+     defines 6 method(s): __init__ (lines 12-14),
+     add (lines 16-18), subtract (lines 20-22),
+     multiply (lines 24-26), divide (lines 28-32),
+     power (lines 34-36)."</span>,
+  <span class="token-str">"answer_source"</span>: <span class="token-str">"index"</span>,
+  <span class="token-str">"model"</span>: <span class="token-str">"qwen2.5:3b"</span>,
+  <span class="token-str">"retrieved_chunks"</span>: [ <span class="token-comm">/* 3 ranked chunks */</span> ],
+  <span class="token-str">"pre_resolved"</span>: { <span class="token-str">"query_type"</span>: <span class="token-str">"class_members"</span>, <span class="token-str">"pure"</span>: <span class="token-kw">true</span>, ... },
+  <span class="token-str">"index_check"</span>: { <span class="token-str">"unknown_identifiers"</span>: [] }
+}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 12: Server-Sent Events & Realtime -->
+      <section class="slide" data-title="Valós idejű események (SSE)">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>Valós idejű eseményfolyam (Server-Sent Events)</h2>
+              <p>GET /events: élő frissítés a böngészőnek, periodikus lekérdezés nélkül</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Reaktivitás</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Miért SSE, és nem WebSocket vagy polling?</span>
+              <span class="card-badge badge-cyan">Architektúra</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Egyszerűség:</strong> tiszta HTTP folyam, kétirányú kézfogás és extra protokollréteg nélkül.</li>
+                <li><strong>Beépített újrakapcsolódás:</strong> a böngésző <code>EventSource</code>-a kezeli a kapcsolatszakadást.</li>
+                <li><strong>Nincs fölösleges forgalom:</strong> nincs folyamatos kérésáradat, mint a naiv kliensoldali pollingnál.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">A valódi folyam (rögzítve)</span>
+              <span class="card-badge badge-indigo">Eseményfolyam</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+<span class="token-comm"># GET /events: one JSON object per "data:" line</span>
+data: {"action": "CONNECTED", "details": "SSE stream connected"}
+: keep-alive
+data: {"timestamp": "2026-10-04 00:15:35",
+       "action": "MODIFIED", "path": "calculator.py",
+       "details": "1 chunk(s) re-embedded, 7 unchanged, 0 removed"}
+
+<span class="token-comm"># actions: WATCHER_START, CREATED, MODIFIED, DELETED,</span>
+<span class="token-comm">#   POLL_SYNC, ERROR; Part 3 adds PATCH_ATTEMPT,</span>
+<span class="token-comm">#   PATCH_SANITY, PATCH_APPLY, PATCH_VALIDATION, ...</span>
+<span class="token-comm"># an idle stream sends ": keep-alive" every 0.5 s</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 13: Files Browser & Chunk Gutter -->
+      <section class="slide" data-title="Fájlböngésző és darabjelölők">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>Fájlböngésző és darabjelölők a margón</h2>
+              <p>Subject VI.2. ábra: minden darabhatár egy definícióra esik</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">UI komponens</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Darabjelölők a margón</span>
+              <span class="card-badge badge-cyan">Vizuális terv</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 10px;">Egy fájlt kiválasztva az egész fájl látszik, minden indexelt darab első során &#9654; jellel a margón:</p>
+              <ul>
+                <li><strong>Darabcímke:</strong> minden darab fölött: sorszám, típus és név, sortartomány és az SHA-256 első 10 hexa jegye.</li>
+                <li><strong>Az indexből:</strong> a <code>GET /file</code> adja, amely azt mutatja, ami a ChromaDB-ben van, nem friss elemzést; amíg a figyelő utoléri, „re-indexing&hellip;” látszik.</li>
+                <li><strong>Közös:</strong> ugyanez a fül (<code>p1/dashboard_files.py</code>) minden dashboardban ott van, az 1. résztől a bónuszig.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">calculator.py a Files fülön</span>
+              <span class="card-badge badge-emerald">Valódi nézet</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+<span style="color: var(--cyan);">chunk #3 &middot; method Calculator.__init__ &middot; lines 12-14 &middot; 166eb04999</span>
+&#9654; <span class="token-num">12</span>     <span class="token-kw">def</span> <span class="token-fn">__init__</span>(self, precision: int = 2) -&gt; None:
+  <span class="token-num">13</span>         <span class="token-str">"""Initialize the calculator with a rounding precision."""</span>
+  <span class="token-num">14</span>         self.precision = precision
+  <span class="token-num">15</span>
+<span style="color: var(--cyan);">chunk #4 &middot; method Calculator.add &middot; lines 16-18 &middot; 754be3851e</span>
+&#9654; <span class="token-num">16</span>     <span class="token-kw">def</span> <span class="token-fn">add</span>(self, a: float, b: float) -&gt; float:
+  <span class="token-num">17</span>         <span class="token-str">"""Return the sum of two numbers rounded to precision."""</span>
+  <span class="token-num">18</span>         <span class="token-kw">return</span> round(a + b, self.precision)
+  <span class="token-num">19</span>
+<span style="color: var(--cyan);">chunk #5 &middot; method Calculator.subtract &middot; lines 20-22 &middot; 2f0dc8637e</span>
+&#9654; <span class="token-num">20</span>     <span class="token-kw">def</span> <span class="token-fn">subtract</span>(self, a: float, b: float) -&gt; float:</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 14: Subject Compliance -->
+      <section class="slide" data-title="Subject megfelelés">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">2. rész</span>
+            <div class="slide-title-group">
+              <h2>Subject megfelelés és ellenőrzőlista</h2>
+              <p>A hivatalos subject 2. részének minden követelménye, ellenőrizve</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Audit 100%</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 35%;">Subject követelmény</th>
+                <th style="width: 25%;">Megvalósítás</th>
+                <th style="width: 15%;">Állapot</th>
+                <th style="width: 25%;">Ellenőrző parancs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>FastAPI HTTP API az index fölött</td>
+                <td><code>p2/api.py</code> (FastAPI alkalmazás)</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>curl http://localhost:8000/status</code></td>
+              </tr>
+              <tr>
+                <td>POST /context a releváns kódrészletekhez</td>
+                <td><code>p2/retriever.py</code> (hibrid keresés)</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>curl -X POST http://127.0.0.1:8000/context -H 'Content-Type: application/json' -d '{"query":"where is multiply used?","k":3}'</code></td>
+              </tr>
+              <tr>
+                <td>POST /ask: Retrieval-Augmented Generation</td>
+                <td><code>p2/llm.py</code> + <code>p2/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>A dashboard „Ask &amp; Retrieve” füle</td>
+              </tr>
+              <tr>
+                <td>100%-ban helyi modellfuttatás (Ollama ~3B)</td>
+                <td><code>qwen2.5:3b</code> helyi szerveren</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>Offline futás internetkapcsolat nélkül</td>
+              </tr>
+              <tr>
+                <td>Nincsenek kitalált kódszimbólumok</td>
+                <td>Az értékelt kérdéstípusokra az index válaszol (<code>p2/retriever.py</code>)</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>Kérdezd: „is there a function called sqrt?” és „what functions exist in this file?”</td>
+              </tr>
+              <tr>
+                <td>BM25 újrarangsoroló a Chroma dokumentumain</td>
+                <td><code>rank_bm25</code> (<code>p2/retriever.py</code>)</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>a „where is multiply used?” a <code>calculate_tax</code> hívót is rangsorolja</td>
+              </tr>
+              <tr>
+                <td>Fájlesemények SSE-n (<code>GET /events</code>)</td>
+                <td><code>p2/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>curl -N http://127.0.0.1:8000/events</code>, majd szerkessz egy fájlt</td>
+              </tr>
+              <tr>
+                <td>Ask &amp; Retrieve felület</td>
+                <td>FastAPI HTML/JS dashboard</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>Böngésző: <code>http://localhost:8000</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- SLIDE 2: Goal of Part 3 -->
+      <section class="slide" data-title="A 3. rész célja">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">3. rész</span>
+            <div class="slide-title-group">
+              <h2>A 3. rész specifikációja: ez egy CIKLUS</h2>
+              <p>Mit ír elő a hivatalos subject a harmadik szakaszra?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Subject audit</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Nem különálló végpontok</span>
+              <span class="card-badge badge-amber">A ciklus</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>A subject kulcsmondata:</strong> <em>„The deliverable is a loop, not a list of endpoints.”</em></li>
+                <li>Egyetlen szándék (a subject példái: „add a healthcheck route”, „rename foo to bar”) hajtja végig az egész folyamatot.</li>
+                <li>A rendszer önállóan halad az ellenőrzött sikerig vagy a biztonságos visszaállításig.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Szigorú előzetes ellenőrzés</span>
+              <span class="card-badge badge-rose">Sanity ellenőrzések</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Nincs vak lemezírás:</strong> a nyers LLM-patch soha nem írhatja felül közvetlenül a forrásfájlokat.</li>
+                <li><strong>6 kötelező elutasítás:</strong> stub függvények, erős zsugorodás, kiszivárgó promptfejlécek stb.</li>
+                <li>Kemény elutasítások, nem figyelmeztetések: minden lemezírás előtt.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Validáció és visszagörgetési garancia</span>
+              <span class="card-badge badge-emerald">Biztonság elöl</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>ioc.config.yml:</strong> külső konfiguráció adja meg a fordítási és tesztelési lépéseket.</li>
+                <li><strong>3 kísérlet:</strong> a hibanapló visszakerül a modellhez egy újabb kísérlethez.</li>
+                <li><strong>Pontos visszagörgetés:</strong> három zöld validáció nélküli kísérlet után vissza a futás előtti pontos állapotba.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 3: The Autonomous Loop Pipeline -->
+      <section class="slide" data-title="Az autonóm patch-ciklus">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">3. rész</span>
+            <div class="slide-title-group">
+              <h2>Az autonóm patch-ciklus lépésről lépésre</h2>
+              <p>Hogyan jut el a futás a szándéktól az atomikus módosításig</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Vezérlési folyamat</span>
+          </div>
+        </div>
+        <div class="pipeline-flow" style="margin-top: 10px;">
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">1. lépés</span>
+              <span class="node-title">Szándék és visszakeresés</span>
+              <span class="node-file">p3/loop.py</span>
+              <span class="node-desc">Top-k darab a hibrid visszakeresőből; a szándékban megnevezett fájlokat teljes egészében látja (átnevezésnél a hívókat is).</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">2. lépés</span>
+              <span class="node-title">Strukturált JSON patch</span>
+              <span class="node-file">qwen2.5:3b</span>
+              <span class="node-desc">Teljes, módosítás utáni fájltartalom strukturált JSON-ban, törékeny diffek helyett.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">3. lépés</span>
+              <span class="node-title">6 sanity ellenőrzés</span>
+              <span class="node-file">p3/sanity.py</span>
+              <span class="node-desc">Hat kemény elutasítás és őrök; bármely hiba a lemez előtt elutasítja a patchet, és visszamegy a modellhez.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">4. lépés</span>
+              <span class="node-title">Pillanatképek és *.ioc.tmp</span>
+              <span class="node-file">p3/applier.py</span>
+              <span class="node-desc">Kiinduló pillanatképek, majd az írás ideiglenes fájlokba az atomikus csere előtt.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">5. lépés</span>
+              <span class="node-title">Validáció (ioc.config.yml)</span>
+              <span class="node-file">p3/loop.py</span>
+              <span class="node-desc">Az ioc.config.yml parancsa fut; a 0-s kilépési kód zöld.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">6. lépés</span>
+              <span class="node-title">Önjavítás vagy visszagörgetés</span>
+              <span class="node-file">p3/loop.py</span>
+              <span class="node-desc">Piros: a fájlok visszaállnak, a hiba visszamegy, új kísérlet (összesen 3). Még mindig piros: ellenőrzött visszagörgetés.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 4: Structured JSON Format -->
+      <section class="slide" data-title="Strukturált JSON patch formátum">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">3. rész</span>
+            <div class="slide-title-group">
+              <h2>Miért strukturált JSON, és NEM szabad formájú diff?</h2>
+              <p>A kis nyelvi modellek korlátai ellen: determinisztikus ábrázolás</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">JSON séma</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">A szabad formájú diff kudarca</span>
+              <span class="card-badge badge-rose">Problémás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A kis 3B modellek gyakran elszámolják a hunk-fejlécek sorszámait: <code>@@ -14,6 +14,8 @@</code>.</li>
+                <li>Egyetlen rossz helyen álló szóköz vagy tabulátor miatt a <code>patch</code> vagy a <code>git apply</code> elbukik.</li>
+                <li>A subject szabálya: <em>„The patch is structured JSON, not free-form text and never a diff.”</em></li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">A referencia alak (subject VI.3)</span>
+              <span class="card-badge badge-emerald">JSON séma</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 11px;">
+{
+  <span class="token-str">"summary"</span>: <span class="token-str">"Add a square method to Calculator"</span>,
+  <span class="token-str">"files"</span>: [
+    {
+      <span class="token-str">"path"</span>: <span class="token-str">"calculator.py"</span>,
+      <span class="token-str">"op"</span>: <span class="token-str">"modify"</span>,
+      <span class="token-str">"content"</span>: <span class="token-str">"&lt;every line of calculator.py, plus square()&gt;"</span>
+    }
+  ]
+}</div>
+              <p style="margin-top: 8px; font-size: 11px; color: var(--text-muted);"><code>op</code>: <code>create</code>, <code>modify</code> vagy <code>delete</code>; <code>content</code>: a <strong>teljes, módosítás utáni fájl</strong>, az idézőjelek és a backslashek <code>@@DQ@@</code>, <code>@@BS@@</code> alakban.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 5: The 6 Hard Refusals -->
+      <section class="slide" data-title="A 6 kemény elutasítás">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">3. rész</span>
+            <div class="slide-title-group">
+              <h2>A 6 kötelező sanity ellenőrzés (azonnali elutasítás)</h2>
+              <p>Kemény elutasítások a p3/sanity.py-ban, minden lemezírás előtt; az ok visszamegy a modellhez</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Kemény elutasítások</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 8%;">#</th>
+                <th style="width: 27%;">Ellenőrzés</th>
+                <th style="width: 40%;">Miért bukik (a subject indoka)</th>
+                <th style="width: 25%;">Felismerés módja</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1</strong></td>
+                <td>Promptjelölő szivárgása</td>
+                <td>A modell promptfejléceket ír a kódba, például <code>=== RELEVANT CODEBASE CONTEXT ===</code> vagy <code>--- File:</code>.</td>
+                <td>Részszöveg-ellenőrzés a <code>p1/markers.py</code> minden jelölőjére, amelyekből mindkét prompt épül.</td>
+              </tr>
+              <tr>
+                <td><strong>2</strong></td>
+                <td>Létező fájl létrehozása</td>
+                <td>Egy már létező fájlra kiadott <code>create</code> csendes felülírást kockáztat.</td>
+                <td>Fájlrendszer-ellenőrzés: <code>os.path.isfile(path)</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>3</strong></td>
+                <td>Üres vagy null csere</td>
+                <td>Nem üres kód cseréje <code>""</code>, <code>"None"</code> vagy <code>"null"</code> tartalomra fájlvesztést okoz.</td>
+                <td>A levágott tartalom összevetése: <code>""</code>, <code>None</code>, <code>null</code>; az üres create-et is elutasítja.</td>
+              </tr>
+              <tr>
+                <td><strong>4</strong></td>
+                <td>Csak stub függvények</td>
+                <td>Lusta helykitöltő törzsek: <code>pass</code>, <code>...</code>, <code>return None</code>, <code>raise NotImplementedError</code>, vagy helykitöltőként megjelölt konstans visszatérés.</td>
+                <td>AST: új függvény, amelynek törzse (a docstringen kívül) csak ezek egyike; a helykitöltő jelölést a kommentekből olvassa ki.</td>
+              </tr>
+              <tr>
+                <td><strong>5</strong></td>
+                <td>Fájlzsugorodás (> 60%)</td>
+                <td>A drasztikus, váratlan méretcsökkenés kódvesztésre vagy csonka kimenetre utal.</td>
+                <td>Ellenőrzés: <code>len(new) &lt; len(old) * 0.4</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>6</strong></td>
+                <td>Több mint 3 módosított fájl</td>
+                <td>Az elszabaduló hallucináció ellen: egy patch legfeljebb 3 forrásfájlt érinthet.</td>
+                <td>Ellenőrzés: <code>len(patch["files"]) &gt; 3</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="margin-top: 10px; font-size: 11.5px; color: var(--text-muted);">Szintén elutasítva: érvénytelen Python (szintaxiskapu), az <code>ioc.config.yml</code> bármilyen módosítása, semmit sem változtató patch, a célkönyvtáron kívüli vagy rejtett, vendorolt útvonal, a szándékban meg nem nevezett definíció, hibaellenőrzés vagy <code>__main__</code> blokk törlése, soha le nem futó kód (soha nem teljesülő feltétel mögött, <code>return</code> után, vagy olyan <code>raise</code>, amelyet a saját <code>except</code>-je elnyel), és az az átnevezés, amely az új nevet oda is beírja, ahol a régi soha nem állt.</p>
+        </div>
+      </section>
+      <!-- SLIDE 6: Atomic Staging & Snapshotting -->
+      <section class="slide" data-title="Atomikus írás és pillanatképek">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">3. rész</span>
+            <div class="slide-title-group">
+              <h2>Atomikus írás és pillanatképek</h2>
+              <p>A fájlrendszer épsége összeomlás és részleges írási hiba ellen</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Atomikus biztonság</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">1. lépés: kiinduló pillanatkép a memóriában</span>
+              <span class="card-badge badge-cyan">Pillanatkép</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Minden írás előtt megőrzi minden érintett fájl nyers bájtjait és jogosultságait (rootként a tulajdonost is), a kanonikus útvonal szerint: a <code>./calc.py</code> és a <code>calc.py</code> egy bejegyzés.</li>
+                <li>Új fájlt a visszagörgetés töröl, a vele együtt létrehozott könyvtárakkal együtt.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 10px;">
+with open(full_path, "rb") as f:
+    content = f.read()          # bytes: CRLF and odd bytes survive
+st = os.stat(full_path)
+mode = stat.S_IMODE(st.st_mode)  # +x survives too</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">2. lépés: *.ioc.tmp írás és os.replace</span>
+              <span class="card-badge badge-emerald">Atomicitás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A generált tartalom először ideiglenes testvérfájlokba kerül (<code>calculator.py.ioc.tmp</code>), mindegyik fsync-elve.</li>
+                <li>Csak ha <strong>minden</strong> fájl sikeresen elkészült, akkor jön a POSIX atomikus csere: <code>os.replace(tmp_path, target_path)</code>.</li>
+                <li>Az írás közbeni hiba törli az ideiglenes fájlokat és visszaállítja a pillanatképet: félig írt fájl soha nem kerül a helyére.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 7: Validation Engine & ioc.config.yml -->
+      <section class="slide" data-title="Validáció: ioc.config.yml">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">3. rész</span>
+            <div class="slide-title-group">
+              <h2>Validáció és az ioc.config.yml</h2>
+              <p>A projektfüggő fordítás és tesztelés leválasztva az IoC magjáról</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Konfigurációvezérelt</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Konfiguráció: demo_app/ioc.config.yml</span>
+              <span class="card-badge badge-cyan">YAML</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box">
+validation_command: "python3 -m py_compile {files}
+  &amp;&amp; python3 -m flake8 --select=E9,F63,F7,F82 {files}
+  &amp;&amp; python3 main.py"           <span class="token-comm"># one line in the file</span>
+
+validation_file_extensions: [".py"]</div>
+              <ul style="margin-top: 10px;">
+                <li><code>{files}</code>: a felsorolt kiterjesztésű érintett fájlok; ha a patch egyet sem érint (pl. README), helyette minden <code>.py</code> fájlt ellenőriz.</li>
+                <li>Három kapu: lefordul, nincs definiálatlan név (flake8 E9/F63/F7/F82), és lefut.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Futtatás: p3/loop.py</span>
+              <span class="card-badge badge-emerald">Alfolyamat</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Egyszer olvassa be, az első kísérlet előtt: a patch nem írhatja át a saját bíráját (és nem nyúlhat az <code>ioc.config.yml</code>-hez).</li>
+                <li><code>subprocess.Popen</code> saját sessionben, munkaszálon; 30 s után a teljes folyamatcsoportot leállítja.</li>
+                <li>Nem kerül <code>__pycache__</code> a célba (<code>PYTHONDONTWRITEBYTECODE</code>, <code>PYTHONPYCACHEPREFIX</code>); a cél saját moduljai töltődnek be elsőként.</li>
+                <li>A kilépési kód és a kimenet (utolsó 2000 karakter) visszamegy a modellhez.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 8: Self-Healing Retry Loop -->
+      <section class="slide" data-title="Önjavító újrapróbálkozás">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">3. rész</span>
+            <div class="slide-title-group">
+              <h2>Önjavító újrapróbálkozás: automatikus hiba-visszajelzés</h2>
+              <p>Minden elutasítás vagy piros validáció szó szerint visszamegy a modellhez; közben a fájlok visszaállnak</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Újrapróbálkozás</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Az 1. kísérlet elbukik a validáción</span>
+              <span class="card-badge badge-rose">Hiba</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 8px;">Egy piros kísérlet, a <code>make test</code> szkriptelt modellel játssza le: a patch definiálatlan nevet hagyott a <code>main.py</code>-ban.</p>
+              <div class="code-box" style="font-size: 10.5px;">
+$ python3 -m py_compile main.py &amp;&amp; python3 -m flake8 \
+    --select=E9,F63,F7,F82 main.py &amp;&amp; python3 main.py
+main.py:48:29: F821 undefined name 'undefined_name'
+(exit code 1)</div>
+              <p style="margin-top: 8px; font-size: 11.5px;">A 2. kísérlet előtt a fájlok visszaállnak a pillanatképre; a napló visszajelzés lesz.</p>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">2. kísérlet: a visszajelzés a promptjában</span>
+              <span class="card-badge badge-emerald">Javítás</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 10.5px; height: 100%;">
+=== PREVIOUS ATTEMPT FAILED (ATTEMPT 1) ===
+Your previous patch produced the following validation or
+sanity errors:
+Validation command 'python3 -m py_compile main.py &amp;&amp; ...'
+failed (exit code 1):
+main.py:48:29: F821 undefined name 'undefined_name'
+Fix the code to resolve this compiler/syntax/test error.
+
+CRITICAL: You MUST correct these specific errors in this
+attempt. Do not repeat the same mistake. Output the
+corrected, complete JSON patch.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 9: 100% Rollback Guarantee -->
+      <section class="slide" data-title="Visszagörgetési garancia">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">3. rész</span>
+            <div class="slide-title-group">
+              <h2>Visszagörgetési garancia: nincs sérült kód</h2>
+              <p>Nem alku tárgya: a repozitórium soha nem maradhat hibás állapotban</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Hibabiztos</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Mikor indul a visszagörgetés?</span>
+              <span class="card-badge badge-rose">Kiváltók</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Mindhárom kísérlet piros (elutasítva, értelmezhetetlen vagy elbukott validáció); minden piros kísérlet után előbb visszaállnak a fájlok.</li>
+                <li>Hiba a fájlok írása közben.</li>
+                <li>A futás megszakad (Ctrl+C, a szerver leáll).</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Hogyan zajlik a visszagörgetés?</span>
+              <span class="card-badge badge-amber">Mechanizmus</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A mentett bájtok és jogosultságok <code>*.ioc.tmp</code>-n és <code>os.replace</code>-en át íródnak vissza.</li>
+                <li>A létrehozott fájlok (<code>op: create</code>) törlődnek, az általuk hozott könyvtárakkal együtt.</li>
+                <li>A maradék <code>*.ioc.tmp</code> fájlok törlődnek, majd minden fájlt bájtra összevet a pillanatképével: <code>rollback_verified</code>.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Bizonyíték az értékelőnek</span>
+              <span class="card-badge badge-emerald">Audit</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A <code>git status</code> és a <code>git diff</code> teljesen tiszta munkakönyvtárat mutat.</li>
+                <li>A CLI kiírja: <code>Rollback verified: every touched file matches its pre-call snapshot byte-for-byte.</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 10: Walkthrough: Successful Patch -->
+      <section class="slide" data-title="Bemutató: sikeres patch">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">3. rész</span>
+            <div class="slide-title-group">
+              <h2>Bemutató: sikeres patch</h2>
+              <p>Valódi futás: make p3-cli, square metódus, qwen2.5:3b, 94 s laptop CPU-n</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Sikeres út</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">A make p3-cli kimenete (rövidítve)</span>
+              <span class="card-badge badge-cyan">Valódi futás</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+ Patch Loop Outcome: SUCCESS
+ Attempts taken : 1 / 3
+
+--- Attempt #1 [success] ---
+  [+] Sanity Checks: PASSED
+  [+] Atomic apply: Succeeded
+  [*] Validation: 'python3 -m py_compile calculator.py
+      &amp;&amp; python3 -m flake8 --select=E9,F63,F7,F82
+      calculator.py &amp;&amp; python3 main.py' (Exit code: 0)
+      Output log:
+        [DemoApp] Addition = 200.0
+        Tax rate: 20.00% -&gt; Tax: $40.00
+
+[&#10003;] GREEN: Code modifications validated and committed
+    to codebase!</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">A diff: +4 &minus;0</span>
+              <span class="card-badge badge-emerald">calculator.py</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+<span class="token-comm">@@ -34,3 +34,7 @@</span>
+     <span class="token-kw">def</span> <span class="token-fn">power</span>(self, base: float, exp: float) -&gt; float:
+         <span class="token-str">"""Return base raised to the power of exp."""</span>
+         <span class="token-kw">return</span> round(base ** exp, self.precision)
+<span class="token-str">+</span>
+<span class="token-str">+    def square(self, a: float) -&gt; float:</span>
+<span class="token-str">+        """Return the square of a number rounded to precision."""</span>
+<span class="token-str">+        return round(a * a, self.precision)</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 11: Walkthrough: Retry Loop in Action -->
+      <section class="slide" data-title="Bemutató: az újrapróbálkozás élőben">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">3. rész</span>
+            <div class="slide-title-group">
+              <h2>Bemutató: az újrapróbálkozás működés közben</h2>
+              <p>Egy valódi futás, amely nem gyógyult meg, és egy visszajátszás, amely igen: mindkettő ellenőrzött állapotban ér véget</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Önjavítás nyomon</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Élőben: három elutasítás, ellenőrzött visszagörgetés</span>
+              <span class="card-badge badge-rose">Valódi futás, 217 s</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 10.5px;">
+$ make p3-cli INTENT="add a function percent_change(old,
+    new) to formatter.py ... uses math.isclose ..."
+--- Attempt #1 [sanity_failed] ---
+  Rule 5 Violation: Modification would shrink
+  'formatter.py' by 74.2% (from 1431 to 369 characters).
+--- Attempt #2 [sanity_failed] ---
+  Rule 0 Violation: ... unterminated string literal
+--- Attempt #3 [sanity_failed] ---
+  Rule 0 Violation: ... unterminated string literal
+[&#10007;] RED: ... Project restored to exact pre-call
+    state (verified byte-for-byte).</div>
+              <p style="margin-top: 8px; font-size: 11.5px;">Minden elutasítás bekerült a következő promptba: a 2. kísérlet megtartott minden definíciót, de a 3B modell elrontott egy sztringet. Semmi nem íródott a lemezre.</p>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Visszajátszva: piros, majd zöld</span>
+              <span class="card-badge badge-emerald">make test</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Az 1. kísérlet definiálatlan nevet hagy a <code>main.py</code>-ban: piros validáció (F821), a fájlok visszaállnak.</li>
+                <li>A 2. kísérlet megkapja ezt a naplót (előző dia), és hozzáadja a kért metódust: zöld.</li>
+                <li>Eredmény: <code>success</code>, kísérletek: <code>[validation_failed, success]</code>, a <code>main.py</code> bájtra azonos az eredetivel.</li>
+                <li>Teszt: <code>test_red_attempt_feeds_back_and_second_attempt_goes_green</code> (<code>p3/tests/test_loop.py</code>), szkriptelt modellel.</li>
+                <li>Élőben a square és a rename szándék az 1. kísérletre zöld lett.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 12: Part 3 Dashboard & UI -->
+      <section class="slide" data-title="A 3. rész felülete">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">3. rész</span>
+            <div class="slide-title-group">
+              <h2>A 3. rész dashboardja: patch és önjavítás</h2>
+              <p>Webes felület a patch-ciklus indításához, követéséhez és auditjához</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Webes UI</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Vezérlők</span>
+              <span class="card-badge badge-cyan">Vezérlés</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Szándék és top-k:</strong> egy <code>POST /patch/run</code>; futás közben egy második indítás 409-et kap.</li>
+                <li><strong>Élő szakaszok SSE-n:</strong> n/3. kísérlet, sanity, alkalmazás, validáció, zöld vagy piros.</li>
+                <li><strong>Manual Rollback és History:</strong> az utolsó futás visszavonása (a zöldé is), vagy a legutóbbi eredmény újranyitása.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">Kísérletek és a végső patch</span>
+              <span class="card-badge badge-indigo">Audit</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Kísérletkártyák:</strong> a hét szabályjelölő, az elutasítás okai, minden fájl módosított tartalma, a validációs parancs, a kilépési kódja és a kimenete.</li>
+                <li><strong>Végső patch JSON-ban:</strong> az alkalmazott patch, visszagörgetés után az utolsó kísérelt (VI.4. ábra).</li>
+                <li><strong>Állapotjelvény:</strong> <code>GREEN (PASSED)</code> vagy <code>FAILED (ROLLED BACK, VERIFIED)</code>.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 14: Subject Compliance -->
+      <section class="slide" data-title="Subject megfelelés">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">3. rész</span>
+            <div class="slide-title-group">
+              <h2>Subject megfelelés és ellenőrzőlista</h2>
+              <p>A 3. rész minden kötelező követelménye, ellenőrizve</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Audit 100%</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 35%;">Subject követelmény</th>
+                <th style="width: 25%;">Megvalósítás</th>
+                <th style="width: 15%;">Állapot</th>
+                <th style="width: 25%;">Ellenőrző parancs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Teljes iteráció a Patch Loop fülről</td>
+                <td><code>p3/dashboard.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>make p3</code>, majd a Patch Loop fül</td>
+              </tr>
+              <tr>
+                <td>Autonóm patch-ciklus</td>
+                <td><code>p3/loop.py</code> motor</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>make p3-cli</code> egy szándékkal</td>
+              </tr>
+              <tr>
+                <td>Strukturált JSON patch (nem diff)</td>
+                <td><code>extract_json_patch()</code> + sémaellenőrzés a <code>p3/sanity.py</code>-ban</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>A Patch Loop fül „Final patch” JSON panelje</td>
+              </tr>
+              <tr>
+                <td>6 kötelező sanity elutasítás</td>
+                <td><code>p3/sanity.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>make test-p3</code> (szabályonként egy teszt)</td>
+              </tr>
+              <tr>
+                <td>ioc.config.yml validációs parancs</td>
+                <td><code>demo_app/ioc.config.yml</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>A tesztparancs alfolyamatban fut</td>
+              </tr>
+              <tr>
+                <td>Legfeljebb 3 kísérlet, minden hiba visszajelezve</td>
+                <td><code>p3/loop.py</code> újrapróbálkozás</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>Kísérletkártyák: az elutasítás vagy a napló bekerül a következő promptba</td>
+              </tr>
+              <tr>
+                <td>Teljes visszagörgetés hibánál</td>
+                <td>Pillanatképek és atomikus <code>os.replace</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>Tiszta <code>git status</code> hiba után</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- SLIDE 2: Goal of Bonus -->
+      <section class="slide" data-title="A bónusz célja">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>A bónuszmodul célja és szerepe</h2>
+              <p>Mit adnak a bónuszötletek a működő 1-3. részhez</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Fejlesztői élmény</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">1. Dinamikus életciklus</span>
+              <span class="card-badge badge-purple">Újraindexelés</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Az 1. részben a ChromaDB induláskor indexel, a figyelő pedig követi az eseményeket.</li>
+                <li>Mi történik egy külső git ágváltáskor, vagy ha az indexnek tiszta lap kell?</li>
+                <li>A <code>POST /reindex</code> futás közben minden fájlt újradarabol és újra beágyaz, és kitisztítja a figyelő nélkül törölt fájlok darabjait.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">2. Vizuális audit</span>
+              <span class="card-badge badge-cyan">Vizuális diff</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A 3. rész egész fájlokat ír, a fejlesztőnek viszont a <em>pontos kódkülönbséget</em> kell átnéznie.</li>
+                <li>A vizuális diff motor színezett, soronkénti unified diffet készít a webes felületnek.</li>
+                <li>Zöld (+) a hozzáadás, piros (-) a törlés.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">3. Git commit (bekapcsolható)</span>
+              <span class="card-badge badge-emerald">Git commit</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Bekapcsolt Auto Git Commit mellett a zöld patch commitolódik: csak a patch fájljai, más stage-elt munka soha.</li>
+                <li>A helyi modell Conventional Commit üzenetet ír a szándékból és a patch összefoglalójából (élőben: <code>feat(calculator.py): add square method with rounding</code>).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 3: Bonus Architecture -->
+      <section class="slide" data-title="Bónusz architektúra">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>A bónuszkönyvtár moduljai és architektúrája</h2>
+              <p>Hogyan épülnek a bónuszok a P1, P2 és P3 fölé</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Könyvtárszerkezet</span>
+          </div>
+        </div>
+        <div class="pipeline-flow" style="margin-top: 10px;">
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">1. modul</span>
+              <span class="node-title">bonus/api.py</span>
+              <span class="node-file">FastAPI router</span>
+              <span class="node-desc">POST /reindex, POST /bonus/patch/run (dry_run, auto_commit) és /bonus/crash-watch, az 1-3. rész minden útvonala mellett.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">2. modul</span>
+              <span class="node-title">bonus/diff_engine.py</span>
+              <span class="node-file">Diff motor</span>
+              <span class="node-desc">Unified diff (difflib) +/- számlálással és HTML megjelenítéssel, a futás előtti eredetikhez képest.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">3. modul</span>
+              <span class="node-title">bonus/git_committer.py</span>
+              <span class="node-file">Git automatizálás</span>
+              <span class="node-desc">Ollama prompt a commitüzenethez, és alfolyamatban futó git add/commit.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">4. modul</span>
+              <span class="node-title">bonus/dashboard.py</span>
+              <span class="node-file">4 fülös UI</span>
+              <span class="node-desc">4 fül: Overview, Files, Ask &amp; Retrieve, Patch Loop &amp; Bonus (dry-run, auto-commit, diffek, Crash Watcher kártya).</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">5. modul</span>
+              <span class="node-title">bonus/crash_watcher.py</span>
+              <span class="node-file">Docker SDK</span>
+              <span class="node-desc">Követi egy konténer naplóját; az összeomlásból patch-ciklus szándék lesz, a zöld patch után újraindul a szolgáltatás.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 4: POST /reindex Deep Dive -->
+      <section class="slide" data-title="Újraindexelés igény szerint (POST /reindex)">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>Újraindexelés igény szerint: POST /reindex</h2>
+              <p>A vektoradatbázis teljes újraépítése futás közben, folyamat- vagy konténer-újraindítás nélkül</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Dinamikus életciklus</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">A lépések</span>
+              <span class="card-badge badge-purple">Végrehajtás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>1. A hashek elfelejtése:</strong> <code>reset_state()</code>, így egy fájl sem marad ki változatlanként.</li>
+                <li><strong>2. Újradarabolás és beágyazás:</strong> az <code>index_all(force=True)</code> bejárja a célt, és minden darabot beágyaz az <code>all-MiniLM-L6-v2</code>-vel.</li>
+                <li><strong>3. Egyeztetés:</strong> a lemezről eltűnt fájlok darabjai törlődnek, akkor is, ha a törlést egy figyelő sem látta.</li>
+                <li><strong>4. Frissítés és jelzés:</strong> a BM25 korpusz és a szimbólumleltár újraépül; egy <code>REINDEX</code> esemény megjelenik az élő hírfolyamban. A <code>?full=false</code> helyette inkrementális szinkront futtat.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">API példa</span>
+              <span class="card-badge badge-cyan">Kérés / válasz</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+<span class="token-comm"># a real call against demo_app (0.49 s)</span>
+$ curl -X POST http://127.0.0.1:8000/reindex
+{
+  <span class="token-str">"status"</span>: <span class="token-str">"success"</span>,
+  <span class="token-str">"message"</span>: <span class="token-str">"On-demand full reindex completed successfully"</span>,
+  <span class="token-str">"full"</span>: <span class="token-kw">true</span>,
+  <span class="token-str">"indexed_files"</span>: <span class="token-num">5</span>,
+  <span class="token-str">"total_files"</span>: <span class="token-num">4</span>,
+  <span class="token-str">"total_chunks"</span>: <span class="token-num">23</span>,
+  <span class="token-str">"file_breakdown"</span>: {<span class="token-str">"calculator.py"</span>: <span class="token-num">8</span>, <span class="token-str">"formatter.py"</span>: <span class="token-num">7</span>,
+                     <span class="token-str">"main.py"</span>: <span class="token-num">5</span>, <span class="token-str">"ioc.config.yml"</span>: <span class="token-num">3</span>}
+}
+<span class="token-comm"># indexed_files counts the empty __init__.py too</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 5: Visual Diff Engine -->
+      <section class="slide" data-title="Vizuális diff motor">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>Vizuális diff motor: bonus/diff_engine.py</h2>
+              <p>Strukturált, ember által ellenőrizhető kódkülönbség a böngészőben</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Diff motor</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Hogyan készül a diff</span>
+              <span class="card-badge badge-cyan">Architektúra</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A Python beépített <code>difflib.unified_diff</code> algoritmusára épül.</li>
+                <li>A sorokat hozzáadásra (<code>+</code>), törlésre (<code>-</code>) és változatlan környezetre bontja.</li>
+                <li>Megszámolja a változott sorokat: a square metódus patchje <code>+4 / -0</code>.</li>
+                <li>A diff a futás előtti eredetikhez képest készül, így egy már alkalmazott (zöld) patch diffje is látszik.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">A diff megjelenítése</span>
+              <span class="card-badge badge-emerald">UI nézet</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+--- a/calculator.py
++++ b/calculator.py
+@@ -34,3 +34,7 @@
+     def power(self, base: float, exp: float) -&gt; float:
+         """Return base raised to the power of exp."""
+         return round(base ** exp, self.precision)
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+</span>
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+    def square(self, a: float) -&gt; float:</span>
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+        """Return the square of a number rounded to precision."""</span>
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+        return round(a * a, self.precision)</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 6: Automated Git Committer -->
+      <section class="slide" data-title="Automatikus Git commit">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>Automatikus Git commit: bonus/git_committer.py</h2>
+              <p>Ellenőrzött módosítások commitolása a helyi LLM által írt Conventional Commit üzenettel</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Git automatizálás</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">A commitüzenet promptja</span>
+              <span class="card-badge badge-amber">LLM generálás</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 8px;">A helyi modell megkapja a szándékot, a patch összefoglalóját és az érintett fájlok nevét (diffet nem), és egy sort ad vissza:</p>
+              <div class="code-box" style="font-size: 11px;">
+Generate a single concise Conventional Commit message
+following the format: &lt;type&gt;(&lt;scope&gt;): &lt;short description&gt;
+Allowed types: feat, fix, refactor, test, docs, chore.
+Rules:
+- Exactly ONE line only.
+- Do not use quotes or markdown formatting.
+- Be brief and descriptive (max 72 characters).
+
+Coding Intent: {intent}
+Patch Explanation: {patch summary}
+Touched Files: {file names}
+
+Commit message:</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Biztonságos git műveletek</span>
+              <span class="card-badge badge-emerald">Alfolyamat</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Csak siker után, bekapcsolva:</strong> kizárólag zöld validáció után, és csak bekapcsolt Auto Git Commit mellett.</li>
+                <li><strong>Pontos stage-elés:</strong> <code>git add -A -- &lt;paths&gt;</code>, majd <code>git commit -- &lt;paths&gt;</code>: más stage-elt munka kimarad a commitból.</li>
+                <li>A hash és az üzenet visszakerül a dashboardra; a sikertelen commit látszik, soha nem csendes. Ha az Ollama nem fut, sablonüzenet készül.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 7: Dry-Run Simulation Mode -->
+      <section class="slide" data-title="Dry-run mód">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>Dry-run mód: kockázatmentes előnézet</h2>
+              <p>Teljes patch-generálás, diffszámítás és sanity ellenőrzés a lemez módosítása nélkül</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Biztonsági mód</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Miért hasznos a dry-run</span>
+              <span class="card-badge badge-cyan">Haszon</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A fejlesztő és az értékelő megnézheti, mit csinálna a modell, mielőtt bármi a lemezre kerülne.</li>
+                <li>Egy generálás, validáció nélkül: gyors pillantás arra, mit változtatna a modell.</li>
+                <li>A Patch Loop &amp; Bonus fül <em>Dry-Run Mode</em> jelölőnégyzetével, vagy a CLI <code>--dry-run</code> kapcsolójával.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">Hogyan kezeli a motor</span>
+              <span class="card-badge badge-purple">Végrehajtás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A modell elkészíti a strukturált JSON patchet.</li>
+                <li>A <strong>6 sanity ellenőrzés</strong> és az őrök átvizsgálják a memóriában lévő kódot.</li>
+                <li>A diff motor kiszámolja a unified diffet a jelenlegi fájlokhoz képest.</li>
+                <li>A futás <strong>biztonságosan megáll</strong>: nincs lemezírás, nincs ideiglenes fájl, nincs tesztfolyamat.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 8: Bonus REST API -->
+      <section class="slide" data-title="Bónusz REST végpontok">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>Bónusz REST végpontok áttekintése</h2>
+              <p>A bonus/api.py által hozzáadott útvonalak; az 1-3. rész útvonalai (/patch/rollback, /patch/history, ...) megmaradnak</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">API referencia</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 18%;">Végpont</th>
+                <th style="width: 10%;">Metódus</th>
+                <th style="width: 40%;">Leírás és felelősség</th>
+                <th style="width: 32%;">Minta válasz</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>/reindex</code></td>
+                <td><span class="card-badge badge-purple">POST</span></td>
+                <td>Teljes újradarabolás és beágyazás; kitisztítja a figyelő nélkül törölt fájlokat; <code>?full=false</code>: inkrementális szinkron.</td>
+                <td><code>{"status":"success", "full":true, "total_chunks":23, ...}</code></td>
+              </tr>
+              <tr>
+                <td><code>/bonus/patch/run</code></td>
+                <td><span class="card-badge badge-amber">POST</span></td>
+                <td>A patch-ciklus <code>dry_run</code> és <code>auto_commit</code> opcióval; minden kísérlethez vizuális diff.</td>
+                <td><code>{"status":"dry_run_success", "dry_run":true, "diffs":[...], ...}</code></td>
+              </tr>
+              <tr>
+                <td><code>/bonus/crash-watch</code></td>
+                <td><span class="card-badge badge-cyan">POST</span></td>
+                <td>Konténer figyelése: <code>{"container":"ioc-demo-service", "auto_restart":true}</code>; Docker nélkül 503.</td>
+                <td><code>{"watching":true, "state":"running", "crashes":[...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/bonus/crash-watch</code></td>
+                <td><span class="card-badge badge-emerald">GET</span> <span class="card-badge badge-rose">DELETE</span></td>
+                <td>A figyelő állapota, a kezelt összeomlások és a szolgáltatás utolsó naplósorai; a figyelés leállítása.</td>
+                <td><code>{"watching":false, "state":"not watching"}</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- SLIDE 9: Bonus 4-Tab Dashboard -->
+      <section class="slide" data-title="Bónusz dashboard (4 fül)">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>Egységes, 4 fülös dashboard: bonus/dashboard.py</h2>
+              <p>Minden képesség egy élő webes dashboardon</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Minden egyben</span>
+          </div>
+        </div>
+        <div class="grid-4" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">1. Overview</span>
+              <span class="card-badge badge-cyan">P1</span>
+            </div>
+            <div class="card-content">Darab- és fájlszám, célútvonal, modellek és az élő hírfolyam; az On-Demand Reindex gomb a fejlécben van.</div>
+          </div>
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">2. Files</span>
+              <span class="card-badge badge-purple">P1 / P2</span>
+            </div>
+            <div class="card-content">Az egész fájl, minden indexelt darab első során &#9654; jellel és címkével (VI.2. ábra).</div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">3. Ask &amp; Retrieve</span>
+              <span class="card-badge badge-emerald">P2</span>
+            </div>
+            <div class="card-content">Kérdés és top-k; a válasz a forrásjelvényével, és a rangsorolt darabok a relevancia-pontszámukkal.</div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">4. Patch Loop &amp; Bonus</span>
+              <span class="card-badge badge-amber">P3 + bónusz</span>
+            </div>
+            <div class="card-content">Dry-Run és Auto Git Commit jelölőnégyzet, élő validációs napló (SSE), kísérletenként vizuális diff, a végső patch JSON és a Crash Watcher kártya.</div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 10: Walkthrough: POST /reindex in Action -->
+      <section class="slide" data-title="Bemutató: POST /reindex">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>Bemutató: POST /reindex működés közben</h2>
+              <p>Valódi hívás a demo_app ellen: 0.49 s 4 fájlra és 23 darabra, laptop CPU-n</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Élő újraépítés</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">A valódi hívás</span>
+              <span class="card-badge badge-purple">curl + SSE</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+$ curl -s -X POST http://127.0.0.1:8000/reindex
+{"status": "success",
+ "message": "On-demand full reindex completed successfully",
+ "full": true, "indexed_files": 5, "total_files": 4,
+ "total_chunks": 23,
+ "file_breakdown": {"main.py": 5, "formatter.py": 7,
+                    "calculator.py": 8, "ioc.config.yml": 3}}
+
+<span class="token-comm"># the live feed receives:</span>
+data: {"action": "REINDEX", "path": ".../demo_app",
+       "details": "On-demand reindex: 23 chunks", ...}</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">A dashboard reakciója</span>
+              <span class="card-badge badge-emerald">Dashboard</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Az <em>Indexed Chunks</em> számláló az Overview fülön azonnal frissül.</li>
+                <li>Nincs szükség konténer-újraindításra vagy kézi beavatkozásra.</li>
+                <li>Bemutató: nyomd meg a &#10227; On-Demand Reindex gombot; a felugró ablak mutatja a fájl- és darabszámot.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 11: Walkthrough: Automated Git Commit -->
+      <section class="slide" data-title="Bemutató: automatikus Git commit">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>Bemutató: automatikus Git commit validáció után</h2>
+              <p>Valódi futás egy próba git repozitóriumban: csak a patch fájlja kerül a commitba</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Git nyomon</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">bonus/index.py --auto-commit</span>
+              <span class="card-badge badge-cyan">Valódi futás, 75 s</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+$ /tmp/ioc/venv/bin/python bonus/index.py demo_app \
+    --intent "add a method square(self, a) ..." --auto-commit
+[*] Mode: ACTIVE (Atomic Application)
+[*] Auto-commit: True
+Outcome: SUCCESS in 1 attempt(s)
+[&#10003;] GREEN: Code modifications validated and committed
+    to disk!
+[&#10003;] Git commit created: 734839f -
+    'feat(calculator.py): add square method with rounding'</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Git napló</span>
+              <span class="card-badge badge-emerald">git log -1 --stat</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+commit 734839f
+Author: (your git identity; IoC Patch Loop
+        &lt;ioc@localhost&gt; when none is configured)
+Date:   Sun Oct 4 00:19:20 2026 +0200
+
+    feat(calculator.py): add square method with rounding
+
+ calculator.py | 4 ++++
+ 1 file changed, 4 insertions(+)</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 12: Walkthrough: Dry-Run Simulation -->
+      <section class="slide" data-title="Bemutató: dry-run">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>Bemutató: dry-run a gyakorlatban</h2>
+              <p>Valódi hívás élő modellel: 91 s, utána a lemez bájtra ellenőrizve</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Szimuláció nyomon</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">A dry-run kérés</span>
+              <span class="card-badge badge-amber">Kérés</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box">
+POST /bonus/patch/run
+{
+  <span class="token-str">"intent"</span>: <span class="token-str">"add a method square(self, a) to the
+             Calculator class in calculator.py ..."</span>,
+  <span class="token-str">"dry_run"</span>: <span class="token-kw">true</span>
+}</div>
+              <ul style="margin-top: 12px;">
+                <li>A Patch Loop &amp; Bonus fül Dry-Run Mode jelölőnégyzete pontosan ezt küldi.</li>
+                <li>Egy generálás, sanity ellenőrzés és diff: nincs alkalmazás, nincs validáció, nincs írás.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">A szimuláció válasza</span>
+              <span class="card-badge badge-emerald">Válasz</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+{
+  <span class="token-str">"status"</span>: <span class="token-str">"dry_run_success"</span>,
+  <span class="token-str">"dry_run"</span>: <span class="token-kw">true</span>,
+  <span class="token-str">"sanity_passed"</span>: <span class="token-kw">true</span>,
+  <span class="token-str">"sanity_errors"</span>: [],
+  <span class="token-str">"sanity_rules"</span>: {<span class="token-str">"0"</span>: <span class="token-kw">true</span>, <span class="token-str">"1"</span>: <span class="token-kw">true</span>, ..., <span class="token-str">"6"</span>: <span class="token-kw">true</span>},
+  <span class="token-str">"patch"</span>: {<span class="token-str">"summary"</span>: <span class="token-str">"Add a method to calculate square
+             of a number and round it to the precision"</span>, ...},
+  <span class="token-str">"diffs"</span>: [{<span class="token-str">"path"</span>: <span class="token-str">"calculator.py"</span>, <span class="token-str">"op"</span>: <span class="token-str">"modify"</span>,
+             <span class="token-str">"additions"</span>: <span class="token-num">4</span>, <span class="token-str">"deletions"</span>: <span class="token-num">0</span>, ...}],
+  <span class="token-str">"message"</span>: <span class="token-str">"Dry-run complete: no files were
+              written to the disk."</span>
+}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 13: Docker & Execution Modes -->
+      <section class="slide" data-title="Docker és futtatási módok">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>Docker és futtatási módok (Makefile)</h2>
+              <p>Egyparancsos indítás minden értékelési helyzetre</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Telepítés</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">make bonus</span>
+              <span class="card-badge badge-cyan">Cél</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Elindítja az egységes <code>bonus/dashboard.py</code> szolgáltatást a <code>8000</code>-es porton.</li>
+                <li>Azonnal elérhető mind a 4 fül; a <code>WATCH_CONTAINER=name</code> az összeomlás-figyelőt is elindítja.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 8px;">make bonus</div>
+            </div>
+          </div>
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">make up / down</span>
+              <span class="card-badge badge-purple">Compose</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A <code>docker-compose.yml</code> alapján felépíti és elindítja a konténert; az embedding súlyok és a flake8 bele vannak sütve az image-be.</li>
+                <li>Elérés: <code>http://127.0.0.1:8000</code> (host hálózat).</li>
+              </ul>
+              <div class="code-box" style="margin-top: 8px;">make up</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Offline felépítés</span>
+              <span class="card-badge badge-emerald">Offline</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><code>HF_HUB_OFFLINE=1</code> és beépített súlyok: futás közben semmi nem töltődik le.</li>
+                <li>A <code>network_mode: host</code> révén a konténer eléri a hoszt Ollamáját a <code>127.0.0.1:11435</code>-ön; ez nem hálózati homokozó.</li>
+                <li>Az összeomlás-figyelő a hoszton fut, <code>make bonus</code>-szal: a konténerben nincs Docker socket (503).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 14: B3: Docker SDK Crash Watcher -->
+      <section class="slide" data-title="B3: Docker SDK összeomlás-figyelő">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">B3 bónusz</span>
+            <div class="slide-title-group">
+              <h2>B3: Docker SDK összeomlás-figyelő</h2>
+              <p>Egy célszolgáltatás naplójának figyelése, összeomláskor patch-ciklus</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">bonus/crash_watcher.py</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Docker SDK integráció</span>
+              <span class="card-badge badge-rose">bonus/crash_watcher.py</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A <code>CrashWatcher</code> egy konténer naplófolyamát követi a Docker SDK-n át (<code>docker.from_env()</code>).</li>
+                <li>A napló vége 200 soros gyűrűs pufferben, élőben látszik a dashboardon.</li>
+                <li>Nem nulla kilépési kód = összeomlás; mindegyiket egyszer kezeli (kulcs: <code>FinishedAt</code>).</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Összeomlás &rarr; patch-ciklus</span>
+              <span class="card-badge badge-cyan">Önjavítás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A napló vége lesz a patch szándéka; a stack frame-ek a célhoz relatív <code>file:line in function</code> alakra íródnak át.</li>
+                <li>Ugyanazt a patch-ciklust, zárat és előzményt használja, mint a Patch Loop fül.</li>
+                <li>Zöld patch &rarr; a szolgáltatás újraindul; piros patch &rarr; leállítva marad egy embernek.</li>
+                <li>Az egymást követő összeomlás-futások száma korlátos (3), így egy hibás szolgáltatás nem foglalhatja le a modellt.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Végpontok és Makefile</span>
+              <span class="card-badge badge-emerald">Futtatás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>API: <code>POST /bonus/crash-watch</code> (indítás), <code>GET</code> (állapot), <code>DELETE</code> (leállítás).</li>
+                <li>A <code>make demo-service</code> a célt összeomolható szolgáltatáskonténerként futtatja.</li>
+                <li>A <code>make bonus WATCH_CONTAINER=ioc-demo-service</code> elindítja a figyelőt.</li>
+                <li>Crash Watcher kártya a <code>bonus/dashboard.py</code>-ban, élő naplóval és összeomlás-előzménnyel.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 15: Bonus Compliance Matrix -->
+      <section class="slide" data-title="Bónusz megfelelési mátrix">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>Bónusz megfelelés és ellenőrzőlista</h2>
+              <p>Minden bónusz ellenőrzése</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Audit 100%</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 30%;">Bónusz</th>
+                <th style="width: 25%;">Megvalósítás</th>
+                <th style="width: 15%;">Állapot</th>
+                <th style="width: 30%;">Ellenőrző parancs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>B1: <code>POST /reindex</code> igény szerint</td>
+                <td><code>bonus/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>curl -X POST http://127.0.0.1:8000/reindex</code></td>
+              </tr>
+              <tr>
+                <td>B2: a validált patch git commitja, LLM-üzenettel</td>
+                <td><code>bonus/git_committer.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>Kapcsold be az Auto Git Commitot, futtass egy patchet, <code>git log -1</code> (egy próba klónban)</td>
+              </tr>
+              <tr>
+                <td>B3: Docker SDK összeomlás-figyelő</td>
+                <td><code>bonus/crash_watcher.py</code> + <code>bonus/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>make demo-service</code>, majd <code>make bonus WATCH_CONTAINER=ioc-demo-service</code></td>
+              </tr>
+              <tr>
+                <td>B4: dry-run, diff a lemez érintése nélkül</td>
+                <td><code>bonus/api.py</code> + Dry-Run Mode jelölőnégyzet</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>POST /bonus/patch/run</code> <code>"dry_run": true</code> értékkel</td>
+              </tr>
+              <tr>
+                <td>B5: relevancia-pontszám, vizuális diff, élő SSE állapot</td>
+                <td><code>bonus/dashboard.py</code> + <code>bonus/diff_engine.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>make bonus</code>: az Ask &amp; Retrieve és a Patch Loop &amp; Bonus fül</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+<section class="slide" data-title="Egységes összefoglaló és következő lépések">
         <div class="slide-header">
           <div class="slide-header-left">
             <span class="ioc-badge">Összefoglaló</span>
             <div class="slide-title-group">
-              <h2>Jelenlegi 1. rész státusz és következő lépések</h2>
-              <p>Az elkészült alap összefoglalója és a 2. rész útiterve</p>
+              <h2>Egységes projektstátusz és következő lépések</h2>
+              <p>Az 1-3. rész és a B1-B5 bónuszok összefoglalója</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -2223,15 +4429,14 @@ html, body {
                 <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 Ami ma működik
               </span>
-              <span class="card-badge badge-emerald">1. rész kész</span>
+              <span class="card-badge badge-emerald">1-3. rész + B1-B5 kész</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Teljes offline kódbázis-indexelési folyamat.</li>
-                <li>Pontos szemantikus AST-darabolás, sortartományokkal és dekorátorokkal.</li>
-                <li>ChromaDB tartós vektortárolás SHA-256 inkrementális szinkronnal.</li>
-                <li>Valós idejű figyelő késleltetéssel (debounce) és periodikus lekérdezési tartalékkal.</li>
-                <li>FastAPI áttekintő felület élő SSE folyammal.</li>
+                <li>1. rész: offline indexelés, AST-darabolás, ChromaDB, valós idejű figyelő.</li>
+                <li>2. rész: hibrid visszakeresés, helyi LLM-megalapozás, REST API + SSE.</li>
+                <li>3. rész: autonóm patch loop validációval és 100%-os visszaállítással.</li>
+                <li>Bónuszok: reindex, automatikus git commit, összeomlás-figyelő, dry-run, bővített dashboard (pontszámok, vizuális diff, élő SSE).</li>
               </ul>
             </div>
           </div>
@@ -2257,21 +4462,14 @@ html, body {
             <div class="card-header">
               <span class="card-title">
                 <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                Következő mérföldkövek
+                Teljes lefedettség
               </span>
-              <span class="card-badge badge-amber">Következik</span>
+              <span class="card-badge badge-amber">Ez a deck</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>2. rész: Architect API és RAG</strong>
-                  <br>&bull; Végpontok: <code>POST /context</code> és <code>POST /ask</code>
-                  <br>&bull; Helyi Ollama-vezérlés (<code>qwen2.5:3b</code>)
-                  <br>&bull; Hibrid visszakeresés és Ask felület
-                </li>
-                <li><strong>3. rész: Patch Loop (javítási ciklus)</strong>
-                  <br>&bull; Strukturált patch JSON generálás
-                  <br>&bull; Validáció és atomikus visszaállítás
-                </li>
+                <li>Az 1., 2., 3. rész és a bónuszok minden diája teljes részletességgel benne van ebben az egységes deckben.</li>
+                <li>A részenkénti deckek referenciaként megmaradnak: <a href="P1_PRESENTATION_HU.html" target="_blank" style="color:var(--cyan);">P1</a> &middot; <a href="P2_PRESENTATION_HU.html" target="_blank" style="color:var(--cyan);">P2</a> &middot; <a href="P3_PRESENTATION_HU.html" target="_blank" style="color:var(--cyan);">P3</a> &middot; <a href="BONUS_PRESENTATION_HU.html" target="_blank" style="color:var(--cyan);">BONUS</a></li>
               </ul>
             </div>
           </div>
@@ -2295,7 +4493,7 @@ html, body {
         <button class="nav-btn" id="btnPrev" title="Előző dia (bal nyíl)">
           <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
-        <span class="slide-counter" id="slideCounter">01 / 12</span>
+        <span class="slide-counter" id="slideCounter">01 / 55</span>
         <button class="nav-btn" id="btnNext" title="Következő dia (jobb nyíl / Space)">
           <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>

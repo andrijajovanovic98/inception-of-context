@@ -72,6 +72,15 @@ class ApplierTest(unittest.TestCase):
         self.assertEqual(read(os.path.join(self.target, "formatter.py")), original)
         self.assertEqual(self.applier.rollback_last_run()["restored"], [])  # idempotent
 
+    def test_manual_rollback_of_a_committed_run_removes_the_directories_it_created(self) -> None:
+        before = tree_state(self.target)
+        self.applier.apply({"files": [
+            {"path": "newpkg/sub/helpers.py", "op": "create", "content": "H = 1\n"}]})
+        self.applier.commit()
+        outcome = self.applier.rollback_last_run()
+        self.assertEqual((outcome["removed"], outcome["mismatches"]), (["newpkg/sub/helpers.py"], []))
+        self.assertEqual(tree_state(self.target), before)  # newpkg/ and newpkg/sub/ gone too
+
     def test_modified_file_keeps_its_mode(self) -> None:
         path = os.path.join(self.target, "main.py")
         os.chmod(path, 0o750)
