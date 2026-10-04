@@ -2,10 +2,12 @@
 
 import json
 import os
+import re
 import tempfile
 import unittest
+from typing import Any, Dict
 
-from p1.tests.support import FakeLLM, copy_demo_app, read
+from p1.tests.support import PLACEHOLDER_ATTEMPT, PLACEHOLDER_INTENT, FakeLLM, copy_demo_app, read
 from p3.generator import (
     PatchGenerator,
     extract_json_patch,
@@ -207,19 +209,58 @@ class PromptTest(unittest.TestCase):
             # Seen live (crash watcher, typo fix): the fix right, the 4-line module
             # docstring and the blank line after it gone.
             dropped = calc[calc.index("from typing"):]
-            patch = gen.restore_module_docstrings(
+            patch = gen.restore_docstrings(
                 {"files": [{"path": "calculator.py", "op": "modify", "content": dropped}]},
                 "fix the crash: name 'precison' is not defined")
             self.assertEqual(patch["files"][0]["content"], calc)
-            self.assertEqual(patch["restored_docstrings"], ["calculator.py"])
+            self.assertEqual(patch["restored_docstrings"], ["calculator.py: module docstring"])
             # Asked about docstrings, or nothing dropped: left alone.
-            asked = gen.restore_module_docstrings(
+            asked = gen.restore_docstrings(
                 {"files": [{"path": "calculator.py", "op": "modify", "content": dropped}]},
                 "remove the module docstring of calculator.py")
             self.assertEqual(asked["files"][0]["content"], dropped)
-            kept = gen.restore_module_docstrings(
+            kept = gen.restore_docstrings(
                 {"files": [{"path": "calculator.py", "op": "modify", "content": calc}]}, "x")
             self.assertNotIn("restored_docstrings", kept)
+
+    def test_docstrings_go_back_only_where_they_still_describe_the_code(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = copy_demo_app(tmp)
+            gen = PatchGenerator(FakeLLM(), target)
+            calc = read(os.path.join(target, "calculator.py"))
+
+            def restore(content: str, intent: str = PLACEHOLDER_INTENT) -> Dict[str, Any]:
+                return gen.restore_docstrings({"files": [{"path": "calculator.py", "op": "modify",
+                                                          "content": content}]}, intent)
+
+            # Live: the module docstring became a copy of the class docstring.
+            # add and divide lost theirs too, but the patch changed their code,
+            # so their old docstrings may no longer be true: not restored.
+            patch = restore(PLACEHOLDER_ATTEMPT)
+            self.assertEqual(patch["restored_docstrings"], ["calculator.py: module docstring (rewritten)"])
+            fixed = patch["files"][0]["content"]
+            self.assertEqual(fixed[: calc.index("from typing")], calc[: calc.index("from typing")])
+            self.assertNotIn("Return the sum", fixed)
+
+            add_doc = '        """Return the sum of two numbers rounded to precision."""\n'
+            lossy = (calc.replace('    """A simple arithmetic calculator with configurable floating point '
+                                  'precision."""\n', "")
+                     .replace('        """Return the division of a by b. '
+                              'Raises ValueError if b is zero."""\n', "")
+                     .replace(add_doc + "        return round(a + b, self.precision)",
+                              "        raise ValueError('addition is disabled')"))
+            patch = restore(lossy)
+            self.assertEqual(patch["restored_docstrings"],
+                             ["calculator.py: class Calculator, Calculator.divide()"])
+            self.assertEqual(patch["files"][0]["content"],
+                             calc.replace(add_doc + "        return round(a + b, self.precision)",
+                                          "        raise ValueError('addition is disabled')"))
+            self.assertNotIn("restored_docstrings", restore(lossy, "make add raise and document it"))
+
+            # A re-indented file gets the docstring at its own indentation.
+            half = re.sub(r"(?m)^((?:    )+)", lambda m: "  " * (len(m.group(1)) // 4), calc)
+            divide_doc = '    """Return the division of a by b. Raises ValueError if b is zero."""\n'
+            self.assertEqual(restore(half.replace(divide_doc, ""), "x")["files"][0]["content"], half)
 
     def test_system_prompt_example_is_not_demo_code(self) -> None:
         from p3.generator import PATCH_SYSTEM_PROMPT

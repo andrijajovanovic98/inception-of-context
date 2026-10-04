@@ -751,12 +751,12 @@ html, body {
             INCEPTION OF CONTEXT - PART 3
           </div>
           <h1 class="hero-title">Patch Generation & Self-Healing Loop</h1>
-          <div class="hero-subtitle">Structured JSON, 6 AST Sanity Checks, Atomic Staging, and Rollback Guarantee</div>
+          <div class="hero-subtitle">Structured JSON, 6 Hard Refusals, Atomic Staging, and Verified Rollback</div>
           <p class="hero-desc">
             In Part 3, IoC evolves into an autonomous coding agent.
             Driven by user intent, it gathers project context, produces structured file modifications,
-            rigorously audits them prior to disk writes, executes project test suites,
-            and autonomously self-heals over 3 attempts - or executes a 100% atomic rollback.
+            refuses unsafe patches before any disk write, runs the project's validation command,
+            and feeds every failure back to the model for up to 3 attempts - or rolls back to the exact pre-run bytes.
           </p>
           <div class="hero-specs">
             <div class="spec-item">
@@ -765,15 +765,15 @@ html, body {
             </div>
             <div class="spec-item">
               <span class="spec-label">Pre-Validation</span>
-              <span class="spec-value">6 AST Sanity Checks</span>
+              <span class="spec-value">6 Hard Refusals + Guards</span>
             </div>
             <div class="spec-item">
               <span class="spec-label">Self-Healing</span>
-              <span class="spec-value">Max 3 Retry Attempts</span>
+              <span class="spec-value">Max 3 Attempts</span>
             </div>
             <div class="spec-item">
               <span class="spec-label">Safety</span>
-              <span class="spec-value">100% Atomic Rollback</span>
+              <span class="spec-value">Verified Rollback</span>
             </div>
           </div>
         </div>
@@ -801,8 +801,8 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Core Subject Sentence:</strong> <em>"This is a LOOP, not merely separate endpoints."</em></li>
-                <li>A single high-level intent (e.g. "add healthcheck route") initiates the complete autonomous flow.</li>
+                <li><strong>Core Subject Sentence:</strong> <em>"The deliverable is a loop, not a list of endpoints."</em></li>
+                <li>One intent (the subject's examples: "add a healthcheck route", "rename foo to bar") drives the whole flow.</li>
                 <li>The system independently drives forward until verified success or safe restoration.</li>
               </ul>
             </div>
@@ -816,7 +816,7 @@ html, body {
               <ul>
                 <li><strong>Zero Blind Disk Writes:</strong> Raw LLM generated patches must never directly overwrite source files.</li>
                 <li><strong>6 Mandatory Refusals:</strong> Stub functions, severe shrinkage, leaking retrieval prompt headers, etc.</li>
-                <li>Enforced via AST inspection before filesystem contact.</li>
+                <li>Hard refusals, not warnings: checked before any disk write.</li>
               </ul>
             </div>
           </div>
@@ -828,8 +828,8 @@ html, body {
             <div class="card-content">
               <ul>
                 <li><strong>ioc.config.yml:</strong> External configuration specifies compilation and testing routines.</li>
-                <li><strong>3 Self-Healing Retries:</strong> Error tracebacks are fed back to the local model to correct mistakes.</li>
-                <li><strong>100% Rollback:</strong> Complete state restoration if all 3 attempts fail.</li>
+                <li><strong>3 Attempts:</strong> the error log goes back to the model for another attempt.</li>
+                <li><strong>Exact Rollback:</strong> after three attempts without a green validation, back to the exact pre-run state.</li>
               </ul>
             </div>
           </div>
@@ -855,8 +855,8 @@ html, body {
             <div class="flow-node">
               <span class="node-num">Step 1</span>
               <span class="node-title">Intent & Retrieval</span>
-              <span class="node-file">p3/generator.py</span>
-              <span class="node-desc">Retrieve relevant code context and targeted source files using hybrid search.</span>
+              <span class="node-file">p3/loop.py</span>
+              <span class="node-desc">Top-k chunks from the hybrid retriever; the files the intent names are shown in full (and their callers for a rename).</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
@@ -869,8 +869,8 @@ html, body {
             <div class="flow-node">
               <span class="node-num">Step 3</span>
               <span class="node-title">6 Sanity Checks</span>
-              <span class="node-file">p3/validator.py</span>
-              <span class="node-desc">AST and heuristic validation. If any check fails, trigger an immediate refusal.</span>
+              <span class="node-file">p3/sanity.py</span>
+              <span class="node-desc">Six hard refusals plus guards; any failure refuses the patch before disk and goes back to the model.</span>
             </div>
           </div>
           <div class="flow-row">
@@ -884,15 +884,15 @@ html, body {
             <div class="flow-node">
               <span class="node-num">Step 5</span>
               <span class="node-title">Validation (ioc.config.yml)</span>
-              <span class="node-file">Subprocess</span>
-              <span class="node-desc">Execute test command. Exit code 0 signals verified success!</span>
+              <span class="node-file">p3/loop.py</span>
+              <span class="node-desc">Run the command from ioc.config.yml; exit code 0 is green.</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
               <span class="node-num">Step 6</span>
               <span class="node-title">Self-Healing or Rollback</span>
-              <span class="node-file">Self-Healing</span>
-              <span class="node-desc">Inject compiler traceback for retry (up to 3x). If exhausted, trigger 100% Rollback.</span>
+              <span class="node-file">p3/loop.py</span>
+              <span class="node-desc">Red: restore the files, feed the error back, try again (3 attempts in all). Still red: verified rollback.</span>
             </div>
           </div>
         </div>
@@ -922,29 +922,29 @@ html, body {
               <ul>
                 <li>Small 3B models frequently miscalculate hunk header line counts: <code>@@ -14,6 +14,8 @@</code>.</li>
                 <li>A single misplaced whitespace or indentation tab causes <code>patch</code> or <code>git apply</code> to fail.</li>
-                <li>Explicit subject rule: <em>"The patch must NOT be a free-form diff."</em></li>
+                <li>Subject rule: <em>"The patch is structured JSON, not free-form text and never a diff."</em></li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Subject-Mandated JSON Schema</span>
-              <span class="card-badge badge-emerald">Mandatory Schema</span>
+              <span class="card-title">The Reference Shape (Subject VI.3)</span>
+              <span class="card-badge badge-emerald">JSON Schema</span>
             </div>
             <div class="card-content">
-              <div class="code-box" style="height: 100%; font-size: 11px;">
+              <div class="code-box" style="font-size: 11px;">
 {
-  <span class="token-str">"summary"</span>: <span class="token-str">"Add divide method with zero-check"</span>,
+  <span class="token-str">"summary"</span>: <span class="token-str">"Add a square method to Calculator"</span>,
   <span class="token-str">"files"</span>: [
     {
       <span class="token-str">"path"</span>: <span class="token-str">"calculator.py"</span>,
       <span class="token-str">"op"</span>: <span class="token-str">"modify"</span>,
-      <span class="token-str">"content"</span>: <span class="token-str">"class Calculator:\n    def add..."</span>
+      <span class="token-str">"content"</span>: <span class="token-str">"&lt;every line of calculator.py, plus square()&gt;"</span>
     }
   ]
 }</div>
               <p style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
-                For <code>modify</code> operations, <code>content</code> represents the <strong>complete, post-change file</strong>, not an ambiguous partial fragment!
+                <code>op</code>: <code>create</code>, <code>modify</code> or <code>delete</code>; <code>content</code>: the <strong>complete post-change file</strong>, quotes and backslashes masked as <code>@@DQ@@</code>, <code>@@BS@@</code>.
               </p>
             </div>
           </div>
@@ -958,7 +958,7 @@ html, body {
             <span class="ioc-badge">Part 3</span>
             <div class="slide-title-group">
               <h2>The 6 Mandatory Sanity Checks (Immediate Refusal)</h2>
-              <p>Rigorous AST and heuristic pre-flight checks executed by p3/validator.py prior to disk writes</p>
+              <p>Hard refusals in p3/sanity.py, run before any disk write; the reason goes back to the model</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -979,26 +979,26 @@ html, body {
               <tr>
                 <td><strong>1</strong></td>
                 <td>Retrieval marker leakage</td>
-                <td>Model echoes prompt headers like <code>[SOURCE 1]:</code> or <code>--- CODE CHUNKS ---</code> into code.</td>
-                <td>Regex pattern scanning on generated file content.</td>
+                <td>Model echoes prompt headers like <code>=== RELEVANT CODEBASE CONTEXT ===</code> or <code>--- File:</code> into code.</td>
+                <td>Substring check against every marker in <code>p1/markers.py</code>, the constants both prompts are built from.</td>
               </tr>
               <tr>
                 <td><strong>2</strong></td>
                 <td>Creating existing file</td>
                 <td>Using <code>create</code> on a file that already exists on disk risks silent overwrite.</td>
-                <td>Filesystem check: <code>os.path.exists(path)</code>.</td>
+                <td>Filesystem check: <code>os.path.isfile(path)</code>.</td>
               </tr>
               <tr>
                 <td><strong>3</strong></td>
                 <td>Empty or null replacement</td>
                 <td>Replacing non-empty code with <code>""</code>, <code>"None"</code>, or <code>"null"</code> causes file loss.</td>
-                <td>Length and literal keyword check.</td>
+                <td>Stripped content compared with <code>""</code>, <code>None</code>, <code>null</code>; an empty create is refused too.</td>
               </tr>
               <tr>
                 <td><strong>4</strong></td>
                 <td>Stub-only functions</td>
-                <td>Model emits lazy placeholder bodies: <code>pass</code> or <code>raise NotImplementedError</code>.</td>
-                <td>AST analysis: function body must not contain only Pass/Raise nodes.</td>
+                <td>Lazy placeholder bodies: <code>pass</code>, <code>...</code>, <code>return None</code>, <code>raise NotImplementedError</code>, or a constant return marked as a placeholder.</td>
+                <td>AST: a new function whose body (docstring aside) is only one of those; comments are read for the placeholder mark.</td>
               </tr>
               <tr>
                 <td><strong>5</strong></td>
@@ -1014,6 +1014,9 @@ html, body {
               </tr>
             </tbody>
           </table>
+          <p style="margin-top: 10px; font-size: 11.5px; color: var(--text-muted);">
+            Also refused: invalid Python (the syntax gate), any edit of <code>ioc.config.yml</code>, a patch that changes nothing, paths outside the target or into hidden or vendored files, removing a definition, an error check or the <code>__main__</code> block the intent does not name, code that never runs (behind a condition that never holds, after a <code>return</code>, a <code>raise</code> its own <code>except</code> swallows), and a rename that puts the new name where the old one never was.
+          </p>
         </div>
       </section>
 
@@ -1039,11 +1042,14 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li>Before touching disk, exact contents of all targeted files are cached in memory.</li>
-                <li>For newly created files, the system records that rollback must delete the file.</li>
+                <li>Before any write, each touched file's raw bytes and mode (and, under root, its owner) are kept, keyed by its canonical path: <code>./calc.py</code> and <code>calc.py</code> are one entry.</li>
+                <li>For a newly created file, rollback deletes it, and the directories the run created with it.</li>
               </ul>
               <div class="code-box" style="margin-top: 10px;">
-snapshots[file_path] = file_path.read_text()</div>
+with open(full_path, "rb") as f:
+    content = f.read()          # bytes: CRLF and odd bytes survive
+st = os.stat(full_path)
+mode = stat.S_IMODE(st.st_mode)  # +x survives too</div>
             </div>
           </div>
           <div class="card glow-emerald">
@@ -1053,9 +1059,9 @@ snapshots[file_path] = file_path.read_text()</div>
             </div>
             <div class="card-content">
               <ul>
-                <li>Generated content is first written to temporary sibling files: <code>calculator.py.ioc.tmp</code>.</li>
+                <li>Generated content is first written to temporary sibling files, <code>calculator.py.ioc.tmp</code>, each one fsync'ed.</li>
                 <li>Only after <strong>all</strong> files stage successfully does the system execute POSIX atomic swaps: <code>os.replace(tmp_path, target_path)</code>.</li>
-                <li>There is never a corrupted intermediate state on disk if a process terminates abruptly!</li>
+                <li>A failure while staging removes the temporaries and restores the snapshot: nothing half-written is ever renamed into place.</li>
               </ul>
             </div>
           </div>
@@ -1083,28 +1089,29 @@ snapshots[file_path] = file_path.read_text()</div>
               <span class="card-badge badge-cyan">YAML Spec</span>
             </div>
             <div class="card-content">
-              <div class="code-box" style="height: 100%;">
-version: 1
-validation:
-  command: "python3 -m py_compile {files} &amp;&amp; python3 main.py"
-  timeout_seconds: 15
-  stop_on_first_failure: true</div>
+              <div class="code-box">
+validation_command: "python3 -m py_compile {files}
+  &amp;&amp; python3 -m flake8 --select=E9,F63,F7,F82 {files}
+  &amp;&amp; python3 main.py"           <span class="token-comm"># one line in the file</span>
+
+validation_file_extensions: [".py"]</div>
               <ul style="margin-top: 10px;">
-                <li>The <code>{files}</code> token is dynamically populated with modified target paths.</li>
-                <li>Chains compilation (<code>py_compile</code>) with execution checks (<code>main.py</code>).</li>
+                <li><code>{files}</code>: the touched files with a listed extension; a patch touching none (a README) validates every <code>.py</code> file instead.</li>
+                <li>Three gates: it compiles, no undefined names (flake8 E9/F63/F7/F82), it runs.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Execution: p3/validator.py</span>
+              <span class="card-title">Execution: p3/loop.py</span>
               <span class="card-badge badge-emerald">Subprocess</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Executed via asynchronous subprocess: <code>asyncio.create_subprocess_shell</code>.</li>
-                <li>Enforces a strict timeout guard against infinite loops in generated code.</li>
-                <li>Captures the exit code, stdout, and detailed stderr traceback for the recovery loop.</li>
+                <li>Read once, before the first attempt: a patch cannot rewrite its own judge (and may not touch <code>ioc.config.yml</code>).</li>
+                <li><code>subprocess.Popen</code> in its own session, on a worker thread; after 30 s the whole process group is killed.</li>
+                <li>No <code>__pycache__</code> in the target (<code>PYTHONDONTWRITEBYTECODE</code>, <code>PYTHONPYCACHEPREFIX</code>); the target's own modules are imported first.</li>
+                <li>Exit code and output (the last 2000 characters) go back to the model.</li>
               </ul>
             </div>
           </div>
@@ -1118,7 +1125,7 @@ validation:
             <span class="ioc-badge">Part 3</span>
             <div class="slide-title-group">
               <h2>Self-Healing Retry Loop: Autonomous Error Feedback</h2>
-              <p>Feeding compiler tracebacks directly back to the local model to correct mistakes</p>
+              <p>Every refusal or red validation goes back to the model verbatim; the files are restored in between</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1128,39 +1135,41 @@ validation:
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-rose">
             <div class="card-header">
-              <span class="card-title">Attempt 1 Fails (Traceback Intercepted)</span>
+              <span class="card-title">Attempt 1 Fails Validation</span>
               <span class="card-badge badge-rose">Failure</span>
             </div>
             <div class="card-content">
               <p style="margin-bottom: 8px;">
-                Suppose Attempt 1 introduces a typo in an exception identifier:
+                A red attempt, replayed by <code>make test</code> with a scripted model: the patch left an undefined name in <code>main.py</code>.
               </p>
               <div class="code-box" style="font-size: 10.5px;">
-Traceback (most recent call last):
-  File "calculator.py", line 18
-    except ZeroDivisionErrorr:
-                           ^
-SyntaxError: invalid syntax</div>
+$ python3 -m py_compile main.py &amp;&amp; python3 -m flake8 \
+    --select=E9,F63,F7,F82 main.py &amp;&amp; python3 main.py
+main.py:48:29: F821 undefined name 'undefined_name'
+(exit code 1)</div>
               <p style="margin-top: 8px; font-size: 11.5px;">
-                Rather than aborting, this exact compiler diagnostic is captured and structured into the retry prompt!
+                The files go back to their snapshot before attempt 2 starts; the log becomes feedback.
               </p>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Attempt 2: Targeted Correction Prompt</span>
+              <span class="card-title">Attempt 2: The Feedback in Its Prompt</span>
               <span class="card-badge badge-emerald">Correction</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="font-size: 10.5px; height: 100%;">
-RETRY_PROMPT = f"""
-The previous patch failed project validation!
-ERROR OUTPUT:
-{captured_stderr}
+=== PREVIOUS ATTEMPT FAILED (ATTEMPT 1) ===
+Your previous patch produced the following validation or
+sanity errors:
+Validation command 'python3 -m py_compile main.py &amp;&amp; ...'
+failed (exit code 1):
+main.py:48:29: F821 undefined name 'undefined_name'
+Fix the code to resolve this compiler/syntax/test error.
 
-TASK: Fix the reported error and return the corrected complete
-file contents in the required JSON format!
-"""</div>
+CRITICAL: You MUST correct these specific errors in this
+attempt. Do not repeat the same mistake. Output the
+corrected, complete JSON patch.</div>
             </div>
           </div>
         </div>
@@ -1188,9 +1197,9 @@ file contents in the required JSON format!
             </div>
             <div class="card-content">
               <ul>
-                <li>Attempts 1, 2, and 3 all fail project validation.</li>
-                <li>Sanity check hard refusal cannot be resolved.</li>
-                <li>Unexpected runtime exception occurs during file staging.</li>
+                <li>All 3 attempts end red (refused, unparseable or failed validation); after each red attempt the files are restored first.</li>
+                <li>A failure while staging the files.</li>
+                <li>The run is cancelled (Ctrl+C, server shutdown).</li>
               </ul>
             </div>
           </div>
@@ -1201,9 +1210,9 @@ file contents in the required JSON format!
             </div>
             <div class="card-content">
               <ul>
-                <li>Snapshotted content is atomically restored via <code>os.replace</code>.</li>
-                <li>Created files (<code>op: create</code>) are deleted from disk.</li>
-                <li>All leftover <code>*.ioc.tmp</code> artifacts are removed.</li>
+                <li>Snapshotted bytes and mode are written back through <code>*.ioc.tmp</code> and <code>os.replace</code>.</li>
+                <li>Created files (<code>op: create</code>) are deleted, with the directories they brought.</li>
+                <li>Leftover <code>*.ioc.tmp</code> files are removed, then every file is compared byte for byte with its snapshot: <code>rollback_verified</code>.</li>
               </ul>
             </div>
           </div>
@@ -1215,7 +1224,7 @@ file contents in the required JSON format!
             <div class="card-content">
               <ul>
                 <li>Running <code>git status</code> and <code>git diff</code> demonstrates an entirely clean working tree.</li>
-                <li>Zero stray files or altered source lines remain after failed attempts!</li>
+                <li>The CLI prints <code>Rollback verified: every touched file matches its pre-call snapshot byte-for-byte.</code></li>
               </ul>
             </div>
           </div>
@@ -1229,7 +1238,7 @@ file contents in the required JSON format!
             <span class="ioc-badge">Part 3</span>
             <div class="slide-title-group">
               <h2>Walkthrough: Successful Patch Application</h2>
-              <p>Example: 'Add power method to Calculator class'</p>
+              <p>A real run: make p3-cli, square method, qwen2.5:3b, 94 s on a laptop CPU</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1239,49 +1248,56 @@ file contents in the required JSON format!
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">Execution Log</span>
-              <span class="card-badge badge-cyan">Status Log</span>
+              <span class="card-title">make p3-cli Output (abridged)</span>
+              <span class="card-badge badge-cyan">Real Run</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
-[10:00:01] Intent received: "Add power method to Calculator"
-[10:00:02] Context retrieved: calculator.py (4 chunks)
-[10:00:04] LLM patch generated (qwen2.5:3b)
-[10:00:04] Sanity check: PASSED (No stubs, no marker leak)
-[10:00:04] Baseline snapshot captured for calculator.py
-[10:00:05] Staged to calculator.py.ioc.tmp
-[10:00:05] Atomic replacement executed
-[10:00:06] Running validation: python3 -m py_compile...
-[10:00:07] Validation PASSED (Exit code: 0)
-[10:00:07] Status: SUCCESS (Attempts: 1/3)</div>
+ Patch Loop Outcome: SUCCESS
+ Attempts taken : 1 / 3
+
+--- Attempt #1 [success] ---
+  [+] Sanity Checks: PASSED
+  [+] Atomic apply: Succeeded
+  [*] Validation: 'python3 -m py_compile calculator.py
+      &amp;&amp; python3 -m flake8 --select=E9,F63,F7,F82
+      calculator.py &amp;&amp; python3 main.py' (Exit code: 0)
+      Output log:
+        [DemoApp] Addition = 200.0
+        Tax rate: 20.00% -&gt; Tax: $40.00
+
+[&#10003;] GREEN: Code modifications validated and committed
+    to codebase!</div>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Modified Code Preview</span>
+              <span class="card-title">The Diff: +4 &minus;0</span>
               <span class="card-badge badge-emerald">calculator.py</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
-<span class="token-kw">class</span> <span class="token-cls">Calculator</span>:
-    <span class="token-comm"># ... existing arithmetic methods preserved ...</span>
-    
-    <span class="token-kw">def</span> <span class="token-fn">power</span>(self, base: float, exp: float) -> float:
-        <span class="token-str">"""Calculate base raised to the power of exp."""</span>
-        <span class="token-kw">return</span> base ** exp</div>
+<span class="token-comm">@@ -34,3 +34,7 @@</span>
+     <span class="token-kw">def</span> <span class="token-fn">power</span>(self, base: float, exp: float) -&gt; float:
+         <span class="token-str">"""Return base raised to the power of exp."""</span>
+         <span class="token-kw">return</span> round(base ** exp, self.precision)
+<span class="token-str">+</span>
+<span class="token-str">+    def square(self, a: float) -&gt; float:</span>
+<span class="token-str">+        """Return the square of a number rounded to precision."""</span>
+<span class="token-str">+        return round(a * a, self.precision)</span></div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- SLIDE 11: Walkthrough: Self-Healing in Action -->
-      <section class="slide" data-title="Walkthrough: Self-Healing in Action">
+      <!-- SLIDE 11: Walkthrough: Retry Loop in Action -->
+      <section class="slide" data-title="Walkthrough: Retry Loop in Action">
         <div class="slide-header">
           <div class="slide-header-left">
             <span class="ioc-badge">Part 3</span>
             <div class="slide-title-group">
-              <h2>Walkthrough: Self-Healing in Action (Retry Loop)</h2>
-              <p>How the autonomous system repairs errors without human intervention</p>
+              <h2>Walkthrough: The Retry Loop in Action</h2>
+              <p>A real run that never healed, and a replay that does: both end in a verified state</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1291,27 +1307,39 @@ file contents in the required JSON format!
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-rose">
             <div class="card-header">
-              <span class="card-title">Attempt 1: Failure</span>
-              <span class="card-badge badge-rose">Attempt 1 (Fail)</span>
+              <span class="card-title">Live: Three Refusals, Verified Rollback</span>
+              <span class="card-badge badge-rose">Real Run, 217 s</span>
             </div>
             <div class="card-content">
-              <ul>
-                <li>The model generates the <code>divide</code> method but leaves an unclosed docstring quotation.</li>
-                <li>Validation aborts: <code>SyntaxError: unterminated string literal</code>.</li>
-                <li>The system captures the traceback and constructs a targeted corrective retry prompt.</li>
-              </ul>
+              <div class="code-box" style="font-size: 10.5px;">
+$ make p3-cli INTENT="add a function percent_change(old,
+    new) to formatter.py ... uses math.isclose ..."
+--- Attempt #1 [sanity_failed] ---
+  Rule 5 Violation: Modification would shrink
+  'formatter.py' by 74.2% (from 1431 to 369 characters).
+--- Attempt #2 [sanity_failed] ---
+  Rule 0 Violation: ... unterminated string literal
+--- Attempt #3 [sanity_failed] ---
+  Rule 0 Violation: ... unterminated string literal
+[&#10007;] RED: ... Project restored to exact pre-call
+    state (verified byte-for-byte).</div>
+              <p style="margin-top: 8px; font-size: 11.5px;">
+                Each refusal reached the next prompt: attempt 2 kept every definition, but the 3B model broke a string. Nothing was ever written.
+              </p>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Attempt 2: Recovery</span>
-              <span class="card-badge badge-emerald">Attempt 2 (Success)</span>
+              <span class="card-title">Replayed: Red, Then Green</span>
+              <span class="card-badge badge-emerald">make test</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>The model analyzes the SyntaxError location from the feedback.</li>
-                <li>Closes the string literal and emits corrected complete file contents.</li>
-                <li>Validation re-executes: <strong>EXIT CODE 0</strong>. The patch is verified and applied!</li>
+                <li>Attempt 1 leaves an undefined name in <code>main.py</code>: validation red (F821), files restored.</li>
+                <li>Attempt 2 receives that log (previous slide) and adds the requested method: green.</li>
+                <li>Result: <code>success</code>, attempts <code>[validation_failed, success]</code>, <code>main.py</code> byte-identical to before.</li>
+                <li>Test: <code>test_red_attempt_feeds_back_and_second_attempt_goes_green</code> in <code>p3/tests/test_loop.py</code>, with a scripted model.</li>
+                <li>Live, the square and rename intents went green on attempt 1.</li>
               </ul>
             </div>
           </div>
@@ -1340,22 +1368,22 @@ file contents in the required JSON format!
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Intent Input Box:</strong> Natural language prompt describing desired code modifications.</li>
-                <li><strong>Dry-Run Toggle:</strong> Simulation mode testing patch generation without writing to disk.</li>
-                <li><strong>Attempt Stepper:</strong> Real-time visual progress counter (1/3, 2/3, 3/3).</li>
+                <li><strong>Intent and Top-k:</strong> one <code>POST /patch/run</code>; a second run while one is active gets a 409.</li>
+                <li><strong>Live Stages over SSE:</strong> attempt n/3, sanity, apply, validation, green or red.</li>
+                <li><strong>Manual Rollback and History:</strong> undo the last run (a green one too), or reopen the latest result.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-indigo">
             <div class="card-header">
-              <span class="card-title">Live Terminal & Diff Inspector</span>
+              <span class="card-title">Attempt Records & Final Patch</span>
               <span class="card-badge badge-indigo">Audit</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Embedded Terminal:</strong> Displays live compiler and test output streamed via SSE.</li>
-                <li><strong>Unified Diff Viewer:</strong> Color-coded additions (+) and deletions (-) illustrating changes.</li>
-                <li><strong>Final Status Badge:</strong> <code>APPLIED</code> (green) or <code>ROLLED_BACK</code> (red).</li>
+                <li><strong>Attempt Cards:</strong> the seven rule pills, the refusal reasons, each file's patched content, the validation command, its exit code and output.</li>
+                <li><strong>Final Patch as JSON:</strong> the applied patch, or the last attempted one after a rollback (Figure VI.4).</li>
+                <li><strong>Status Badge:</strong> <code>GREEN (PASSED)</code> or <code>FAILED (ROLLED BACK, VERIFIED)</code>.</li>
               </ul>
             </div>
           </div>
@@ -1376,41 +1404,50 @@ file contents in the required JSON format!
             <span class="header-tag">Bonus XP</span>
           </div>
         </div>
-        <div class="grid-4" style="margin-top: 14px;">
+        <div class="grid-3" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">POST /reindex</span>
+              <span class="card-title">B1: POST /reindex</span>
               <span class="card-badge badge-cyan">API</span>
             </div>
             <div class="card-content">
-              Explicit HTTP endpoint to wipe and rebuild the vector database dynamically at runtime.
-            </div>
-          </div>
-          <div class="card glow-emerald">
-            <div class="card-header">
-              <span class="card-title">Visual Diff</span>
-              <span class="card-badge badge-emerald">Engine</span>
-            </div>
-            <div class="card-content">
-              Unified diff calculator with colorized line-by-line inspection on the web dashboard.
+              Full re-chunk and re-embed on demand; also purges files deleted while no watcher ran.
             </div>
           </div>
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">Git Committer</span>
+              <span class="card-title">B2: Auto Git Commit</span>
               <span class="card-badge badge-amber">Git</span>
             </div>
             <div class="card-content">
-              Automatic git commit with conventional commit messages authored by the local LLM.
+              Opt-in: a green patch is committed, with a message the local model writes from the patch summary.
+            </div>
+          </div>
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">B3: Crash Watcher</span>
+              <span class="card-badge badge-rose">Docker SDK</span>
+            </div>
+            <div class="card-content">
+              Follows a service container's log; a crash runs the patch loop, a green patch restarts the service.
             </div>
           </div>
           <div class="card glow-indigo">
             <div class="card-header">
-              <span class="card-title">Dry-Run Mode</span>
+              <span class="card-title">B4: Dry-Run Mode</span>
               <span class="card-badge badge-indigo">Safety</span>
             </div>
             <div class="card-content">
-              Simulation mode previewing patch diffs and sanity checks without altering the filesystem.
+              Generates and sanity-checks the patch and shows its diff, without touching the disk.
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">B5: Richer Dashboard</span>
+              <span class="card-badge badge-emerald">UI</span>
+            </div>
+            <div class="card-content">
+              Per-chunk relevance scores, a visual diff of every attempt, live validation status over SSE.
             </div>
           </div>
         </div>
@@ -1442,6 +1479,12 @@ file contents in the required JSON format!
             </thead>
             <tbody>
               <tr>
+                <td>A full iteration from the Patch Loop tab</td>
+                <td><code>p3/dashboard.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>make p3</code>, then the Patch Loop tab</td>
+              </tr>
+              <tr>
                 <td>Autonomous patch loop (Loop)</td>
                 <td><code>p3/loop.py</code> engine</td>
                 <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
@@ -1449,15 +1492,15 @@ file contents in the required JSON format!
               </tr>
               <tr>
                 <td>Structured JSON patch (not diff)</td>
-                <td>Pydantic models (<code>op, path, content</code>)</td>
+                <td><code>extract_json_patch()</code> + schema checks in <code>p3/sanity.py</code></td>
                 <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
-                <td>Audit LLM patch output format</td>
+                <td>"Final patch" JSON panel of the Patch Loop tab</td>
               </tr>
               <tr>
                 <td>6 mandatory Sanity Refusal checks</td>
-                <td><code>p3/validator.py</code> AST inspection</td>
+                <td><code>p3/sanity.py</code></td>
                 <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
-                <td>Stub and file-shrinkage unit tests</td>
+                <td><code>make test-p3</code> (a test per rule)</td>
               </tr>
               <tr>
                 <td>ioc.config.yml validation command</td>
@@ -1466,10 +1509,10 @@ file contents in the required JSON format!
                 <td>Subprocess test command execution</td>
               </tr>
               <tr>
-                <td>Max 3 self-healing retry attempts</td>
+                <td>Max 3 attempts, each error fed back</td>
                 <td><code>p3/loop.py</code> retry engine</td>
                 <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
-                <td>Trigger syntax error and monitor recovery</td>
+                <td>Attempt cards: a refusal or log is quoted in the next prompt</td>
               </tr>
               <tr>
                 <td>100% Rollback on failure</td>
@@ -1504,20 +1547,20 @@ file contents in the required JSON format!
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Intent:</strong> "Add multiply method to Calculator".</li>
-                <li><strong>Show Evaluator:</strong> Green status badge on dashboard, unified diff view, and execute <code>python3 main.py</code> to prove functionality!</li>
+                <li><strong>Intent:</strong> "add a method square(self, a) to the Calculator class in calculator.py that returns a squared, rounded to the calculator precision" (green on attempt 1, +4 &minus;0).</li>
+                <li><strong>Show Evaluator:</strong> the GREEN badge, the final patch JSON and <code>git diff demo_app</code>; then Manual Rollback restores the file byte for byte.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">2. Sanity Check Interception</span>
+              <span class="card-title">2. The Subject's Rename</span>
               <span class="card-badge badge-amber">Demo 2</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Intent:</strong> "Add dummy stub function with pass".</li>
-                <li><strong>Show Evaluator:</strong> The validator immediately triggers Hard Refusal #4, preventing any disk write!</li>
+                <li><strong>Intent:</strong> "rename the method add to plus in the Calculator class and update every caller".</li>
+                <li><strong>Show Evaluator:</strong> green on attempt 1 (about 3 min); <code>git diff demo_app</code> shows exactly the two renamed lines.</li>
               </ul>
             </div>
           </div>
@@ -1528,8 +1571,8 @@ file contents in the required JSON format!
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Intent:</strong> Request an impossible or invalid syntax task.</li>
-                <li><strong>Show Evaluator:</strong> 3 retry attempts execute, all fail, and the system restores the exact original files. <code>git status</code> is 100% clean!</li>
+                <li><strong>Intent:</strong> one that cannot pass validation, e.g. "make main() in main.py always return 1 instead of the result of run_demo()".</li>
+                <li><strong>Show Evaluator:</strong> 3 attempts, each refusal or log fed back, then "Rollback verified"; <code>git status</code> is clean.</li>
               </ul>
             </div>
           </div>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inception-of-Context - Bonusz: Halado fejlesztoi eszkozok</title>
+  <title>Inception-of-Context - Bónusz: haladó fejlesztői eszközök</title>
   <style>
 /* ==========================================================================
    Inception-of-Context (IoC) - Bonus Presentation Stylesheet
@@ -740,408 +740,406 @@ html, body {
     <div class="slides-wrapper">
 
       <!-- SLIDE 1: Title Hero -->
-      <section class="slide active" data-title="Cim es attekintes">
+      <section class="slide active" data-title="Cím és áttekintés">
         <div class="slide-title-hero">
-          <div class="hero-pill">
-            <span class="pulse-dot"></span>
-            INCEPTION OF CONTEXT - BONUSZ RESZ
-          </div>
-          <h1 class="hero-title">Halado Fejlesztoi Eszkozok</h1>
-          <div class="hero-subtitle">Dinamikus Reindex, Vizualis Diff, Automata Git Commit es Dry-Run</div>
-          <p class="hero-desc">
-            A bonus/ modulban az IoC egy teljes erteku, ipari szintu autonom fejlesztoi asszisztensse bovul.
-            Ujratelepites nelkuli dinamikus adatbazis-ujraepites (POST /reindex),
-            szintaxissal szinezett unified diff motor, helyi LLM altal irt konvencionalis git commitok,
-            es kockazatmentes szimulacios mod (Dry-Run).
-          </p>
+          <div class="hero-pill"><span class="pulse-dot"></span> INCEPTION OF CONTEXT - BÓNUSZ RÉSZ</div>
+          <h1 class="hero-title">Haladó fejlesztői eszközök</h1>
+          <div class="hero-subtitle">Újraindexelés, automatikus Git commit, Docker SDK összeomlás-figyelő, dry-run és bővített dashboard</div>
+          <p class="hero-desc">A bonus/ modul a subject bónuszfejezetének öt ötletét valósítja meg, annak sorrendjében: igény szerinti POST /reindex, a validált patch bekapcsolható git commitja LLM-írta üzenettel, Docker SDK összeomlás-figyelő, amely egy leálló szolgáltatásra elindítja a patch-ciklust, dry-run, amely a lemez érintése nélkül mutatja a diffet, és bővített dashboard (relevancia-pontszámok, vizuális diff, élő validációs állapot).</p>
           <div class="hero-specs">
             <div class="spec-item">
-              <span class="spec-label">Reindexalas</span>
+              <span class="spec-label">Újraindexelés</span>
               <span class="spec-value">POST /reindex</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Diff Megjelenites</span>
-              <span class="spec-value">Unified Line Engine</span>
+              <span class="spec-label">Összeomlás-figyelő</span>
+              <span class="spec-value">Docker SDK</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Verziokezeles</span>
-              <span class="spec-value">LLM Git Committer</span>
+              <span class="spec-label">Verziókezelés</span>
+              <span class="spec-value">LLM Git committer</span>
             </div>
             <div class="spec-item">
-              <span class="spec-label">Biztonsagos Teszt</span>
-              <span class="spec-value">Dry-Run Mod</span>
+              <span class="spec-label">Biztonságos próba</span>
+              <span class="spec-value">Dry-run mód</span>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 2: Goal of Bonus -->
-      <section class="slide" data-title="A bonusz celja">
+      <section class="slide" data-title="A bónusz célja">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>A Bonusz modul celja es szerepe</h2>
-              <p>Miert szukseges a kotelezo reszeken feluli kiegeszites a professzionalis hasznalathoz?</p>
+              <h2>A bónuszmodul célja és szerepe</h2>
+              <p>Mit adnak a bónuszötletek a működő 1-3. részhez</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Developer Experience</span>
+            <span class="header-tag">Fejlesztői élmény</span>
           </div>
         </div>
         <div class="grid-3" style="margin-top: 14px;">
           <div class="card glow-purple">
             <div class="card-header">
-              <span class="card-title">1. Dinamikus eletciklus</span>
-              <span class="card-badge badge-purple">Reindex</span>
+              <span class="card-title">1. Dinamikus életciklus</span>
+              <span class="card-badge badge-purple">Újraindexelés</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A Part 1-ben a ChromaDB index az inditaskor epul fel, a watcher figyeli a valtozasokat.</li>
-                <li>De mi tortenik, ha a lemezen egy kulso git pull lefut vagy az adatbazis korrupttá válik?</li>
-                <li>A <code>POST /reindex</code> vegpont lehetove teszi a teljes adatbazis ujrageneralasat a szerver ujrainditasa nelkul.</li>
+                <li>Az 1. részben a ChromaDB induláskor indexel, a figyelő pedig követi az eseményeket.</li>
+                <li>Mi történik egy külső git ágváltáskor, vagy ha az indexnek tiszta lap kell?</li>
+                <li>A <code>POST /reindex</code> futás közben minden fájlt újradarabol és újra beágyaz, és kitisztítja a figyelő nélkül törölt fájlok darabjait.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">2. Lathato valtozasok</span>
-              <span class="card-badge badge-cyan">Visual Diff</span>
+              <span class="card-title">2. Vizuális audit</span>
+              <span class="card-badge badge-cyan">Vizuális diff</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A Part 3 teljes fajlcserevel dolgozik. De a fejleszto latni akarja, <em>pontosan mi</em> valtozott!</li>
-                <li>A vizualis diff motor soronkenti, szines unified diff nezetet general a felhasznaloi felulet szamara.</li>
-                <li>Zold (+) a hozzaadott, piros (-) a torolt sorokhoz.</li>
+                <li>A 3. rész egész fájlokat ír, a fejlesztőnek viszont a <em>pontos kódkülönbséget</em> kell átnéznie.</li>
+                <li>A vizuális diff motor színezett, soronkénti unified diffet készít a webes felületnek.</li>
+                <li>Zöld (+) a hozzáadás, piros (-) a törlés.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">3. Zárt CI/CD ciklus</span>
-              <span class="card-badge badge-emerald">Git Commit</span>
+              <span class="card-title">3. Git commit (bekapcsolható)</span>
+              <span class="card-badge badge-emerald">Git commit</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A sikeres kodgeneralas es validacio utan a kód automatikusan bekerul a Git repozitoriumba.</li>
-                <li>A helyi LLM elemezi a modositast, es szabvanyos konvencionalis uzenetet general (pl. <code>feat(calculator): add power method</code>).</li>
+                <li>Bekapcsolt Auto Git Commit mellett a zöld patch commitolódik: csak a patch fájljai, más stage-elt munka soha.</li>
+                <li>A helyi modell Conventional Commit üzenetet ír a szándékból és a patch összefoglalójából (élőben: <code>feat(calculator.py): add square method with rounding</code>).</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 3: Bonus Architecture -->
-      <section class="slide" data-title="Bonusz architektura">
+      <section class="slide" data-title="Bónusz architektúra">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>A bonus/ konyvtar moduljai es kapcsolatai</h2>
-              <p>Hogyan epulnek a bonusz funkciok a P1, P2 es P3 retegekre?</p>
+              <h2>A bónuszkönyvtár moduljai és architektúrája</h2>
+              <p>Hogyan épülnek a bónuszok a P1, P2 és P3 fölé</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Folder Structure</span>
+            <span class="header-tag">Könyvtárszerkezet</span>
           </div>
         </div>
         <div class="pipeline-flow" style="margin-top: 10px;">
           <div class="flow-row">
             <div class="flow-node">
-              <span class="node-num">Modul 1</span>
+              <span class="node-num">1. modul</span>
               <span class="node-title">bonus/api.py</span>
-              <span class="node-file">FastAPI Router</span>
-              <span class="node-desc">Kiterjesztett REST vegpontok: POST /reindex, POST /patch?dry_run=true, esemeny folyam.</span>
+              <span class="node-file">FastAPI router</span>
+              <span class="node-desc">POST /reindex, POST /bonus/patch/run (dry_run, auto_commit) és /bonus/crash-watch, az 1-3. rész minden útvonala mellett.</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
-              <span class="node-num">Modul 2</span>
+              <span class="node-num">2. modul</span>
               <span class="node-title">bonus/diff_engine.py</span>
-              <span class="node-file">Diff Engine</span>
-              <span class="node-desc">Python difflib alapu vizualis diff generator strukturált HTML/JSON kimenettel.</span>
+              <span class="node-file">Diff motor</span>
+              <span class="node-desc">Unified diff (difflib) +/- számlálással és HTML megjelenítéssel, a futás előtti eredetikhez képest.</span>
             </div>
           </div>
           <div class="flow-row">
             <div class="flow-node">
-              <span class="node-num">Modul 3</span>
+              <span class="node-num">3. modul</span>
               <span class="node-title">bonus/git_committer.py</span>
-              <span class="node-file">Git Automation</span>
-              <span class="node-desc">Ollama LLM prompt a commit uzenethez + Git subprocess futtato (git add, git commit).</span>
+              <span class="node-file">Git automatizálás</span>
+              <span class="node-desc">Ollama prompt a commitüzenethez, és alfolyamatban futó git add/commit.</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
-              <span class="node-num">Modul 4</span>
+              <span class="node-num">4. modul</span>
               <span class="node-title">bonus/dashboard.py</span>
-              <span class="node-file">4-Tab UI</span>
-              <span class="node-desc">Egyesitett iranyitopult: Overview, Files, Ask &amp; Retrieve, Patch &amp; Git Commit feed.</span>
+              <span class="node-file">4 fülös UI</span>
+              <span class="node-desc">4 fül: Overview, Files, Ask &amp; Retrieve, Patch Loop &amp; Bonus (dry-run, auto-commit, diffek, Crash Watcher kártya).</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">5. modul</span>
+              <span class="node-title">bonus/crash_watcher.py</span>
+              <span class="node-file">Docker SDK</span>
+              <span class="node-desc">Követi egy konténer naplóját; az összeomlásból patch-ciklus szándék lesz, a zöld patch után újraindul a szolgáltatás.</span>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 4: POST /reindex Deep Dive -->
-      <section class="slide" data-title="Dinamikus ujraindexeles (POST /reindex)">
+      <section class="slide" data-title="Újraindexelés igény szerint (POST /reindex)">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>Dinamikus Ujraindexeles: POST /reindex</h2>
-              <p>A vektoradatbazis teljes ujraepitese anelkul, hogy leallitank a kiszolgalot</p>
+              <h2>Újraindexelés igény szerint: POST /reindex</h2>
+              <p>A vektoradatbázis teljes újraépítése futás közben, folyamat- vagy konténer-újraindítás nélkül</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Dynamic Lifecycle</span>
+            <span class="header-tag">Dinamikus életciklus</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-purple">
             <div class="card-header">
-              <span class="card-title">A mukodes lepesei</span>
-              <span class="card-badge badge-purple">Execution Flow</span>
+              <span class="card-title">A lépések</span>
+              <span class="card-badge badge-purple">Végrehajtás</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>1. Gyujtemeny uritese:</strong> Torli a meglevo ChromaDB kollekciot es az in-memory BM25 indexet.</li>
-                <li><strong>2. Ujbóli AST bejaras:</strong> Ujra vegigfut a célkonyvtar osszes forrasfajljan.</li>
-                <li><strong>3. Uj embeddingek generálása:</strong> Lokalis <code>all-MiniLM-L6-v2</code> segitsegevel ujraszámolja a vektorokat.</li>
-                <li><strong>4. SSE esemeny sugarzasa:</strong> A dashboard feluleten azonnal frissul a darabszam jelzo.</li>
+                <li><strong>1. A hashek elfelejtése:</strong> <code>reset_state()</code>, így egy fájl sem marad ki változatlanként.</li>
+                <li><strong>2. Újradarabolás és beágyazás:</strong> az <code>index_all(force=True)</code> bejárja a célt, és minden darabot beágyaz az <code>all-MiniLM-L6-v2</code>-vel.</li>
+                <li><strong>3. Egyeztetés:</strong> a lemezről eltűnt fájlok darabjai törlődnek, akkor is, ha a törlést egy figyelő sem látta.</li>
+                <li><strong>4. Frissítés és jelzés:</strong> a BM25 korpusz és a szimbólumleltár újraépül; egy <code>REINDEX</code> esemény megjelenik az élő hírfolyamban. A <code>?full=false</code> helyette inkrementális szinkront futtat.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">API Kontraktus pelda</span>
-              <span class="card-badge badge-cyan">Request / Response</span>
+              <span class="card-title">API példa</span>
+              <span class="card-badge badge-cyan">Kérés / válasz</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%;">
-<span class="token-comm"># Hivas terminalbol:</span>
-$ curl -X POST http://localhost:8000/reindex
-
-<span class="token-comm"># Valasz JSON:</span>
+<span class="token-comm"># a real call against demo_app (0.49 s)</span>
+$ curl -X POST http://127.0.0.1:8000/reindex
 {
   <span class="token-str">"status"</span>: <span class="token-str">"success"</span>,
-  <span class="token-str">"message"</span>: <span class="token-str">"Target directory reindexed successfully."</span>,
-  <span class="token-str">"files_indexed"</span>: <span class="token-num">3</span>,
-  <span class="token-str">"total_chunks"</span>: <span class="token-num">12</span>,
-  <span class="token-str">"duration_ms"</span>: <span class="token-num">345</span>
-}</div>
+  <span class="token-str">"message"</span>: <span class="token-str">"On-demand full reindex completed successfully"</span>,
+  <span class="token-str">"full"</span>: <span class="token-kw">true</span>,
+  <span class="token-str">"indexed_files"</span>: <span class="token-num">5</span>,
+  <span class="token-str">"total_files"</span>: <span class="token-num">4</span>,
+  <span class="token-str">"total_chunks"</span>: <span class="token-num">23</span>,
+  <span class="token-str">"file_breakdown"</span>: {<span class="token-str">"calculator.py"</span>: <span class="token-num">8</span>, <span class="token-str">"formatter.py"</span>: <span class="token-num">7</span>,
+                     <span class="token-str">"main.py"</span>: <span class="token-num">5</span>, <span class="token-str">"ioc.config.yml"</span>: <span class="token-num">3</span>}
+}
+<span class="token-comm"># indexed_files counts the empty __init__.py too</span></div>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 5: Visual Diff Engine -->
-      <section class="slide" data-title="Vizualis Diff Motor">
+      <section class="slide" data-title="Vizuális diff motor">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>Vizualis Diff Motor: bonus/diff_engine.py</h2>
-              <p>Strukturált, ember altal azonnal auditálható valtozas-megjelenites a bongeszoben</p>
+              <h2>Vizuális diff motor: bonus/diff_engine.py</h2>
+              <p>Strukturált, ember által ellenőrizhető kódkülönbség a böngészőben</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Diff Engine</span>
+            <span class="header-tag">Diff motor</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">Hogyan epul fel a diff?</span>
-              <span class="card-badge badge-cyan">Működés</span>
+              <span class="card-title">Hogyan készül a diff</span>
+              <span class="card-badge badge-cyan">Architektúra</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A Python beepitett <code>difflib.unified_diff</code> algoritmusat hasznalja referencia alapként.</li>
-                <li>Minden sort kategorizal: hozzaadott (<code>+</code>), torolt (<code>-</code>), valtozatlan (szokasos kontextus).</li>
-                <li>Elkuloniti a fajlok fejlecet, es kiszamolja a modositott sorok szamat (<code>+3 / -1</code>).</li>
+                <li>A Python beépített <code>difflib.unified_diff</code> algoritmusára épül.</li>
+                <li>A sorokat hozzáadásra (<code>+</code>), törlésre (<code>-</code>) és változatlan környezetre bontja.</li>
+                <li>Megszámolja a változott sorokat: a square metódus patchje <code>+4 / -0</code>.</li>
+                <li>A diff a futás előtti eredetikhez képest készül, így egy már alkalmazott (zöld) patch diffje is látszik.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Diff Megjelenites pelda</span>
-              <span class="card-badge badge-emerald">UI Előnézet</span>
+              <span class="card-title">A diff megjelenítése</span>
+              <span class="card-badge badge-emerald">UI nézet</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
 --- a/calculator.py
 +++ b/calculator.py
-@@ -10,6 +10,10 @@
-     def subtract(self, a: float, b: float) -> float:
-         return a - b
- 
-<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+   def power(self, base: float, exp: float) -> float:</span>
-<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+       """Hatvanyozas muvelet."""</span>
-<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+       return base ** exp</span>
-+</div>
+@@ -34,3 +34,7 @@
+     def power(self, base: float, exp: float) -&gt; float:
+         """Return base raised to the power of exp."""
+         return round(base ** exp, self.precision)
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+</span>
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+    def square(self, a: float) -&gt; float:</span>
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+        """Return the square of a number rounded to precision."""</span>
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+        return round(a * a, self.precision)</span></div>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 6: Automated Git Committer -->
-      <section class="slide" data-title="Automata Git Committer">
+      <section class="slide" data-title="Automatikus Git commit">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>Automata Git Committer: bonus/git_committer.py</h2>
-              <p>Validalt valtozasok veglegesitese helyi LLM altal irt konvencionalis commit uzenettel</p>
+              <h2>Automatikus Git commit: bonus/git_committer.py</h2>
+              <p>Ellenőrzött módosítások commitolása a helyi LLM által írt Conventional Commit üzenettel</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Git Automation</span>
+            <span class="header-tag">Git automatizálás</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">Konvencionalis commit prompt</span>
-              <span class="card-badge badge-amber">LLM Generation</span>
+              <span class="card-title">A commitüzenet promptja</span>
+              <span class="card-badge badge-amber">LLM generálás</span>
             </div>
             <div class="card-content">
-              <p style="margin-bottom: 8px;">A helyi Ollama modell elemzi a diffet, es general egy rovid commit uzenetet:</p>
+              <p style="margin-bottom: 8px;">A helyi modell megkapja a szándékot, a patch összefoglalóját és az érintett fájlok nevét (diffet nem), és egy sort ad vissza:</p>
               <div class="code-box" style="font-size: 11px;">
-COMMIT_PROMPT = """
-Elemezze az alabbi diffet es irjon egy szabvanyos
-Conventional Commit uzenetet (feat, fix, refactor):
+Generate a single concise Conventional Commit message
+following the format: &lt;type&gt;(&lt;scope&gt;): &lt;short description&gt;
+Allowed types: feat, fix, refactor, test, docs, chore.
+Rules:
+- Exactly ONE line only.
+- Do not use quotes or markdown formatting.
+- Be brief and descriptive (max 72 characters).
 
-{diff_content}
+Coding Intent: {intent}
+Patch Explanation: {patch summary}
+Touched Files: {file names}
 
-Formátum:
-feat(scope): rovid osszefoglalo
-"""</div>
+Commit message:</div>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Biztonsagos Git muvelet</span>
-              <span class="card-badge badge-emerald">Subprocess</span>
+              <span class="card-title">Biztonságos git műveletek</span>
+              <span class="card-badge badge-emerald">Alfolyamat</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Csak siker eseten:</strong> A commit <em>kizarolag</em> akkor fut le, ha a validacio (tesztek) hibatlanul befejezodott.</li>
-                <li><strong>Csak az erintett fajlok:</strong> A <code>git add</code> nem mindent ad hozza (nincs <code>git add .</code>), hanem csak a patchben szereplo fajlokat!</li>
-                <li>Visszaadja a commit hasht es a naplobejegyzest a feluletre.</li>
+                <li><strong>Csak siker után, bekapcsolva:</strong> kizárólag zöld validáció után, és csak bekapcsolt Auto Git Commit mellett.</li>
+                <li><strong>Pontos stage-elés:</strong> <code>git add -A -- &lt;paths&gt;</code>, majd <code>git commit -- &lt;paths&gt;</code>: más stage-elt munka kimarad a commitból.</li>
+                <li>A hash és az üzenet visszakerül a dashboardra; a sikertelen commit látszik, soha nem csendes. Ha az Ollama nem fut, sablonüzenet készül.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 7: Dry-Run Simulation Mode -->
-      <section class="slide" data-title="Dry-Run szimulacios mod">
+      <section class="slide" data-title="Dry-run mód">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>Dry-Run Szimulacios Mod: Kockazatmentes elonezet</h2>
-              <p>Patch generalas, diff kalkulacio es sanity check ellenorzes a lemez erintese nelkul</p>
+              <h2>Dry-run mód: kockázatmentes előnézet</h2>
+              <p>Teljes patch-generálás, diffszámítás és sanity ellenőrzés a lemez módosítása nélkül</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Safety Mode</span>
+            <span class="header-tag">Biztonsági mód</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">Miert fontos a Dry-Run?</span>
-              <span class="card-badge badge-cyan">Hasznosság</span>
+              <span class="card-title">Miért hasznos a dry-run</span>
+              <span class="card-badge badge-cyan">Haszon</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A fejleszto vagy ertekelo elore latni akarja, hogy a modell milyen szinten ertette meg a feladatot.</li>
-                <li>Tesztelheto a kod generalasa lemeziras, fajlzarlat vagy a tesztfuttato terhelese nelkul.</li>
-                <li>A webes feluleten 1 kattintassal kapcsolhato az <em>"Enable Dry-Run"</em> kapcsoloval.</li>
+                <li>A fejlesztő és az értékelő megnézheti, mit csinálna a modell, mielőtt bármi a lemezre kerülne.</li>
+                <li>Egy generálás, validáció nélkül: gyors pillantás arra, mit változtatna a modell.</li>
+                <li>A Patch Loop &amp; Bonus fül <em>Dry-Run Mode</em> jelölőnégyzetével, vagy a CLI <code>--dry-run</code> kapcsolójával.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-purple">
             <div class="card-header">
-              <span class="card-title">Hogyan mukodik a motorban?</span>
-              <span class="card-badge badge-purple">Logika</span>
+              <span class="card-title">Hogyan kezeli a motor</span>
+              <span class="card-badge badge-purple">Végrehajtás</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A modell legeneralja a strukturalt JSON patchet.</li>
-                <li>Lefutnak a <strong>6 Sanity Check</strong> ellenorzesek az in-memory tartalmon.</li>
-                <li>A diff motor generalja a unified diff elonezetet a memoriaban levo eredeti es generalt kodbol.</li>
-                <li>A folyamat itt <strong>megall</strong>: nincs fájliras, nincs <code>*.ioc.tmp</code>, nincs subprocess futtatas.</li>
+                <li>A modell elkészíti a strukturált JSON patchet.</li>
+                <li>A <strong>6 sanity ellenőrzés</strong> és az őrök átvizsgálják a memóriában lévő kódot.</li>
+                <li>A diff motor kiszámolja a unified diffet a jelenlegi fájlokhoz képest.</li>
+                <li>A futás <strong>biztonságosan megáll</strong>: nincs lemezírás, nincs ideiglenes fájl, nincs tesztfolyamat.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 8: Bonus REST API -->
-      <section class="slide" data-title="Bonusz REST API vegpontok">
+      <section class="slide" data-title="Bónusz REST végpontok">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>Bonusz REST API Vegpontok attekintese</h2>
-              <p>A bonus/api.py altal kinalt bovitett interfesz</p>
+              <h2>Bónusz REST végpontok áttekintése</h2>
+              <p>A bonus/api.py által hozzáadott útvonalak; az 1-3. rész útvonalai (/patch/rollback, /patch/history, ...) megmaradnak</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">API Reference</span>
+            <span class="header-tag">API referencia</span>
           </div>
         </div>
         <div style="margin-top: 14px;">
           <table class="db-mock-table">
             <thead>
               <tr>
-                <th style="width: 18%;">Vegpont</th>
-                <th style="width: 10%;">Metodus</th>
-                <th style="width: 40%;">Leiras es felelosseg</th>
-                <th style="width: 32%;">Visszateresi pelda</th>
+                <th style="width: 18%;">Végpont</th>
+                <th style="width: 10%;">Metódus</th>
+                <th style="width: 40%;">Leírás és felelősség</th>
+                <th style="width: 32%;">Minta válasz</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td><code>/reindex</code></td>
                 <td><span class="card-badge badge-purple">POST</span></td>
-                <td>A teljes adatbazis torlese es ujraepitese futasidoben.</td>
-                <td><code>{"status":"success", "total_chunks":12}</code></td>
+                <td>Teljes újradarabolás és beágyazás; kitisztítja a figyelő nélkül törölt fájlokat; <code>?full=false</code>: inkrementális szinkron.</td>
+                <td><code>{"status":"success", "full":true, "total_chunks":23, ...}</code></td>
               </tr>
               <tr>
-                <td><code>/patch</code></td>
+                <td><code>/bonus/patch/run</code></td>
                 <td><span class="card-badge badge-amber">POST</span></td>
-                <td>Autonom patch ciklus inditasa (tamogatja a <code>?dry_run=true</code> parametert).</td>
-                <td><code>{"status":"success", "diff":"...", "commit":{...}}</code></td>
+                <td>A patch-ciklus <code>dry_run</code> és <code>auto_commit</code> opcióval; minden kísérlethez vizuális diff.</td>
+                <td><code>{"status":"dry_run_success", "dry_run":true, "diffs":[...], ...}</code></td>
               </tr>
               <tr>
-                <td><code>/diff</code></td>
+                <td><code>/bonus/crash-watch</code></td>
                 <td><span class="card-badge badge-cyan">POST</span></td>
-                <td>Ket szoveg kozotti unified diff azonnali kiszamolasa.</td>
-                <td><code>{"diff":"@@ -1,4 +1,5 @@\n..."}</code></td>
+                <td>Konténer figyelése: <code>{"container":"ioc-demo-service", "auto_restart":true}</code>; Docker nélkül 503.</td>
+                <td><code>{"watching":true, "state":"running", "crashes":[...]}</code></td>
               </tr>
               <tr>
-                <td><code>/git/status</code></td>
-                <td><span class="card-badge badge-emerald">GET</span></td>
-                <td>A celalkalmazas munkakonyvtaranak aktualis Git allapota.</td>
-                <td><code>{"clean":true, "branch":"main", "last_commit":"..."}</code></td>
+                <td><code>/bonus/crash-watch</code></td>
+                <td><span class="card-badge badge-emerald">GET</span> <span class="card-badge badge-rose">DELETE</span></td>
+                <td>A figyelő állapota, a kezelt összeomlások és a szolgáltatás utolsó naplósorai; a figyelés leállítása.</td>
+                <td><code>{"watching":false, "state":"not watching"}</code></td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
-
       <!-- SLIDE 9: Bonus 4-Tab Dashboard -->
-      <section class="slide" data-title="Bonusz Iranyitopult (4-Tab UI)">
+      <section class="slide" data-title="Bónusz dashboard (4 fül)">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>Egyesitett 4-Fulu Iranyitopult: bonus/dashboard.py</h2>
-              <p>Minden kepesseg egyetlen attekintheto, valos ideju webes feluleten</p>
+              <h2>Egységes, 4 fülös dashboard: bonus/dashboard.py</h2>
+              <p>Minden képesség egy élő webes dashboardon</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">All-in-One</span>
+            <span class="header-tag">Minden egyben</span>
           </div>
         </div>
         <div class="grid-4" style="margin-top: 14px;">
@@ -1150,215 +1148,216 @@ feat(scope): rovid osszefoglalo
               <span class="card-title">1. Overview</span>
               <span class="card-badge badge-cyan">P1</span>
             </div>
-            <div class="card-content">
-              Statisztikak, indexelt darabszam, figyeloi esemenyek es a Reindex gomb.
-            </div>
+            <div class="card-content">Darab- és fájlszám, célútvonal, modellek és az élő hírfolyam; az On-Demand Reindex gomb a fejlécben van.</div>
           </div>
           <div class="card glow-purple">
             <div class="card-header">
               <span class="card-title">2. Files</span>
               <span class="card-badge badge-purple">P1 / P2</span>
             </div>
-            <div class="card-content">
-              Forraskod bongeszo AST darabhatar jelolokkel es interaktiv inspectorral.
-            </div>
+            <div class="card-content">Az egész fájl, minden indexelt darab első során &#9654; jellel és címkével (VI.2. ábra).</div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">3. Ask &amp; RAG</span>
+              <span class="card-title">3. Ask &amp; Retrieve</span>
               <span class="card-badge badge-emerald">P2</span>
             </div>
-            <div class="card-content">
-              Keresesi es kerdezesi felulet Top-K allitasi lehetoseggel es forras audit kártyákkal.
-            </div>
+            <div class="card-content">Kérdés és top-k; a válasz a forrásjelvényével, és a rangsorolt darabok a relevancia-pontszámukkal.</div>
           </div>
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">4. Patch Loop</span>
-              <span class="card-badge badge-amber">P3 + Bonus</span>
+              <span class="card-title">4. Patch Loop &amp; Bonus</span>
+              <span class="card-badge badge-amber">P3 + bónusz</span>
             </div>
-            <div class="card-content">
-              Szandek beiras, Dry-Run kapcsolo, live terminal, szines diff es automatikus Git commit infok.
-            </div>
+            <div class="card-content">Dry-Run és Auto Git Commit jelölőnégyzet, élő validációs napló (SSE), kísérletenként vizuális diff, a végső patch JSON és a Crash Watcher kártya.</div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 10: Walkthrough: POST /reindex in Action -->
-      <section class="slide" data-title="Bemutato: POST /reindex mukodes kozben">
+      <section class="slide" data-title="Bemutató: POST /reindex">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>Bemutato: POST /reindex mukodes kozben</h2>
-              <p>Hogyan all helyre az index egyetlen kattintasra vagy API hivasra?</p>
+              <h2>Bemutató: POST /reindex működés közben</h2>
+              <p>Valódi hívás a demo_app ellen: 0.49 s 4 fájlra és 23 darabra, laptop CPU-n</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Live Rebuild</span>
+            <span class="header-tag">Élő újraépítés</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-purple">
             <div class="card-header">
-              <span class="card-title">A folyamat logjai</span>
-              <span class="card-badge badge-purple">Server Log</span>
+              <span class="card-title">A valódi hívás</span>
+              <span class="card-badge badge-purple">curl + SSE</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
-[11:15:00] POST /reindex keres erkezett
-[11:15:00] ChromaDB kollekcio uritese: 'ioc_chunks'
-[11:15:01] demo_app konyvtar bejarasa: 3 fajl talalva
-[11:15:01] calculator.py feldolgozasa (AST: 5 chunk)
-[11:15:02] formatter.py feldolgozasa (AST: 3 chunk)
-[11:15:02] main.py feldolgozasa (AST: 4 chunk)
-[11:15:03] 12 darab beagyazasa (all-MiniLM-L6-v2)
-[11:15:03] ChromaDB es BM25 index frissitve
-[11:15:03] SSE esemeny kisugarozva: 'index_reloaded'</div>
+$ curl -s -X POST http://127.0.0.1:8000/reindex
+{"status": "success",
+ "message": "On-demand full reindex completed successfully",
+ "full": true, "indexed_files": 5, "total_files": 4,
+ "total_chunks": 23,
+ "file_breakdown": {"main.py": 5, "formatter.py": 7,
+                    "calculator.py": 8, "ioc.config.yml": 3}}
+
+<span class="token-comm"># the live feed receives:</span>
+data: {"action": "REINDEX", "path": ".../demo_app",
+       "details": "On-demand reindex: 23 chunks", ...}</div>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">A vegeredmeny a feluleten</span>
+              <span class="card-title">A dashboard reakciója</span>
               <span class="card-badge badge-emerald">Dashboard</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Az Overview fülön az <em>Indexed Chunks</em> szamlalo azonnal frissul.</li>
-                <li>A felhasznalonak vagy a tesztelonek nem kell a szerver kontenerhez nyulnia.</li>
-                <li>Idealis demonstralni a vedesen a gyors helyreallitasi kepesseget!</li>
+                <li>Az <em>Indexed Chunks</em> számláló az Overview fülön azonnal frissül.</li>
+                <li>Nincs szükség konténer-újraindításra vagy kézi beavatkozásra.</li>
+                <li>Bemutató: nyomd meg a &#10227; On-Demand Reindex gombot; a felugró ablak mutatja a fájl- és darabszámot.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 11: Walkthrough: Automated Git Commit -->
-      <section class="slide" data-title="Bemutato: Automata Git Commit">
+      <section class="slide" data-title="Bemutató: automatikus Git commit">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>Bemutato: Automata Git Commit a sikeres validacio utan</h2>
-              <p>Egy teljes autonom lepes: Intenttol a verziovezerelt commitig</p>
+              <h2>Bemutató: automatikus Git commit validáció után</h2>
+              <p>Valódi futás egy próba git repozitóriumban: csak a patch fájlja kerül a commitba</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Git Trace</span>
+            <span class="header-tag">Git nyomon</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">A ciklus befejezese es commit</span>
-              <span class="card-badge badge-cyan">Folyamat</span>
+              <span class="card-title">bonus/index.py --auto-commit</span>
+              <span class="card-badge badge-cyan">Valódi futás, 75 s</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
-[Patch Loop] Validation PASSED (Exit code: 0)
-[Git Committer] Diff osszeallitasa az LLM szamara...
-[Git Committer] qwen2.5:3b altal generalt commit uzenet:
-"feat(calculator): implement power method"
-[Git Committer] Futtatas: git add demo_app/calculator.py
-[Git Committer] Futtatas: git commit -m "feat(calculator): implement power method"
-[Git Committer] Sikeres commit: hash c89f142</div>
+$ /tmp/ioc/venv/bin/python bonus/index.py demo_app \
+    --intent "add a method square(self, a) ..." --auto-commit
+[*] Mode: ACTIVE (Atomic Application)
+[*] Auto-commit: True
+Outcome: SUCCESS in 1 attempt(s)
+[&#10003;] GREEN: Code modifications validated and committed
+    to disk!
+[&#10003;] Git commit created: 734839f -
+    'feat(calculator.py): add square method with rounding'</div>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Git naplobejegyzes</span>
-              <span class="card-badge badge-emerald">git log -1</span>
+              <span class="card-title">Git napló</span>
+              <span class="card-badge badge-emerald">git log -1 --stat</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
-commit c89f142d591b9201a0bc5e8a719280a911
-Author: Inception-of-Context &lt;ioc@42.fr&gt;
-Date:   Fri Sep 11 11:20:00 2026 +0200
+commit 734839f
+Author: (your git identity; IoC Patch Loop
+        &lt;ioc@localhost&gt; when none is configured)
+Date:   Sun Oct 4 00:19:20 2026 +0200
 
-    feat(calculator): implement power method
-    
-    Validated with python3 -m py_compile &amp;&amp; python3 main.py.
-    Patch loop attempt: 1/3.</div>
+    feat(calculator.py): add square method with rounding
+
+ calculator.py | 4 ++++
+ 1 file changed, 4 insertions(+)</div>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 12: Walkthrough: Dry-Run Simulation -->
-      <section class="slide" data-title="Bemutato: Dry-Run szimulacio">
+      <section class="slide" data-title="Bemutató: dry-run">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>Bemutato: Dry-Run szimulacio a gyakorlatban</h2>
-              <p>Hogyan vizsgalhato meg a modell tervezett modositasa lemeziras nelkul?</p>
+              <h2>Bemutató: dry-run a gyakorlatban</h2>
+              <p>Valódi hívás élő modellel: 91 s, utána a lemez bájtra ellenőrizve</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Simulation Trace</span>
+            <span class="header-tag">Szimuláció nyomon</span>
           </div>
         </div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-amber">
             <div class="card-header">
-              <span class="card-title">Keres kuldese Dry-Run modban</span>
+              <span class="card-title">A dry-run kérés</span>
               <span class="card-badge badge-amber">Kérés</span>
             </div>
             <div class="card-content">
-              <div class="code-box" style="height: 100%;">
-POST /patch?dry_run=true
+              <div class="code-box">
+POST /bonus/patch/run
 {
-  <span class="token-str">"intent"</span>: <span class="token-str">"Add divide method with zero check"</span>
+  <span class="token-str">"intent"</span>: <span class="token-str">"add a method square(self, a) to the
+             Calculator class in calculator.py ..."</span>,
+  <span class="token-str">"dry_run"</span>: <span class="token-kw">true</span>
 }</div>
               <ul style="margin-top: 12px;">
-                <li>A felhasznalo a kapcsoloval bekapcsolta a szimulaciot.</li>
-                <li>A szerver feldolgozza a generalast, de a fájlrendszerhez nem nyul.</li>
+                <li>A Patch Loop &amp; Bonus fül Dry-Run Mode jelölőnégyzete pontosan ezt küldi.</li>
+                <li>Egy generálás, sanity ellenőrzés és diff: nincs alkalmazás, nincs validáció, nincs írás.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Valasz: Diff es Sanity audit</span>
+              <span class="card-title">A szimuláció válasza</span>
               <span class="card-badge badge-emerald">Válasz</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
 {
+  <span class="token-str">"status"</span>: <span class="token-str">"dry_run_success"</span>,
   <span class="token-str">"dry_run"</span>: <span class="token-kw">true</span>,
-  <span class="token-str">"status"</span>: <span class="token-str">"SIMULATED"</span>,
-  <span class="token-str">"sanity_checks"</span>: <span class="token-str">"PASSED (6/6)"</span>,
-  <span class="token-str">"diff"</span>: <span class="token-str">"--- a/calculator.py\n+++ b/calculator.py..."</span>,
-  <span class="token-str">"files_touched"</span>: [<span class="token-str">"calculator.py"</span>]
+  <span class="token-str">"sanity_passed"</span>: <span class="token-kw">true</span>,
+  <span class="token-str">"sanity_errors"</span>: [],
+  <span class="token-str">"sanity_rules"</span>: {<span class="token-str">"0"</span>: <span class="token-kw">true</span>, <span class="token-str">"1"</span>: <span class="token-kw">true</span>, ..., <span class="token-str">"6"</span>: <span class="token-kw">true</span>},
+  <span class="token-str">"patch"</span>: {<span class="token-str">"summary"</span>: <span class="token-str">"Add a method to calculate square
+             of a number and round it to the precision"</span>, ...},
+  <span class="token-str">"diffs"</span>: [{<span class="token-str">"path"</span>: <span class="token-str">"calculator.py"</span>, <span class="token-str">"op"</span>: <span class="token-str">"modify"</span>,
+             <span class="token-str">"additions"</span>: <span class="token-num">4</span>, <span class="token-str">"deletions"</span>: <span class="token-num">0</span>, ...}],
+  <span class="token-str">"message"</span>: <span class="token-str">"Dry-run complete: no files were
+              written to the disk."</span>
 }</div>
             </div>
           </div>
         </div>
       </section>
-
       <!-- SLIDE 13: Docker & Execution Modes -->
-      <section class="slide" data-title="Docker es futtatasi modok">
+      <section class="slide" data-title="Docker és futtatási módok">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>Dockerizacio es futtatasi modok (Makefile)</h2>
-              <p>Egyetlen paranccsal indithato kontenerizalt infrastruktura</p>
+              <h2>Docker és futtatási módok (Makefile)</h2>
+              <p>Egyparancsos indítás minden értékelési helyzetre</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Deployment</span>
+            <span class="header-tag">Telepítés</span>
           </div>
         </div>
         <div class="grid-3" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
               <span class="card-title">make bonus</span>
-              <span class="card-badge badge-cyan">Parancs</span>
+              <span class="card-badge badge-cyan">Cél</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Elinditja a <code>bonus/dashboard.py</code> szervert a <code>8000</code>-es porton.</li>
-                <li>Elerheto a 4-fulu iranyitopult az osszes halado funkcioval.</li>
+                <li>Elindítja az egységes <code>bonus/dashboard.py</code> szolgáltatást a <code>8000</code>-es porton.</li>
+                <li>Azonnal elérhető mind a 4 fül; a <code>WATCH_CONTAINER=name</code> az összeomlás-figyelőt is elindítja.</li>
               </ul>
               <div class="code-box" style="margin-top: 8px;">make bonus</div>
             </div>
@@ -1366,39 +1365,97 @@ POST /patch?dry_run=true
           <div class="card glow-purple">
             <div class="card-header">
               <span class="card-title">make up / down</span>
-              <span class="card-badge badge-purple">Docker Compose</span>
+              <span class="card-badge badge-purple">Compose</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A <code>docker-compose.yml</code> felhuzza a zart kornyezetet.</li>
-                <li>Host géprol a localhost:8000 cimen keresztul elerheto.</li>
+                <li>A <code>docker-compose.yml</code> alapján felépíti és elindítja a konténert; az embedding súlyok és a flake8 bele vannak sütve az image-be.</li>
+                <li>Elérés: <code>http://127.0.0.1:8000</code> (host hálózat).</li>
               </ul>
               <div class="code-box" style="margin-top: 8px;">make up</div>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Halozati izolacio</span>
+              <span class="card-title">Offline felépítés</span>
               <span class="card-badge badge-emerald">Offline</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>A kontener belulrol nem latja az internetet.</li>
-                <li>Kizarolag a megosztott demo_app kotettel es a helyi Ollamaval kommunikal.</li>
+                <li><code>HF_HUB_OFFLINE=1</code> és beépített súlyok: futás közben semmi nem töltődik le.</li>
+                <li>A <code>network_mode: host</code> révén a konténer eléri a hoszt Ollamáját a <code>127.0.0.1:11435</code>-ön; ez nem hálózati homokozó.</li>
+                <li>Az összeomlás-figyelő a hoszton fut, <code>make bonus</code>-szal: a konténerben nincs Docker socket (503).</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
-      <!-- SLIDE 14: Bonus Compliance Matrix -->
-      <section class="slide" data-title="Bonusz megfelelesi matrix">
+      <!-- SLIDE 14: B3: Docker SDK Crash Watcher -->
+      <section class="slide" data-title="B3: Docker SDK összeomlás-figyelő">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">B3 bónusz</span>
             <div class="slide-title-group">
-              <h2>Bonusz kepessegek ellenorzesi listaja</h2>
-              <p>A bonusz pontokert felelos modulok ellenorzesi leirasa</p>
+              <h2>B3: Docker SDK összeomlás-figyelő</h2>
+              <p>Egy célszolgáltatás naplójának figyelése, összeomláskor patch-ciklus</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">bonus/crash_watcher.py</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Docker SDK integráció</span>
+              <span class="card-badge badge-rose">bonus/crash_watcher.py</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A <code>CrashWatcher</code> egy konténer naplófolyamát követi a Docker SDK-n át (<code>docker.from_env()</code>).</li>
+                <li>A napló vége 200 soros gyűrűs pufferben, élőben látszik a dashboardon.</li>
+                <li>Nem nulla kilépési kód = összeomlás; mindegyiket egyszer kezeli (kulcs: <code>FinishedAt</code>).</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Összeomlás &rarr; patch-ciklus</span>
+              <span class="card-badge badge-cyan">Önjavítás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>A napló vége lesz a patch szándéka; a stack frame-ek a célhoz relatív <code>file:line in function</code> alakra íródnak át.</li>
+                <li>Ugyanazt a patch-ciklust, zárat és előzményt használja, mint a Patch Loop fül.</li>
+                <li>Zöld patch &rarr; a szolgáltatás újraindul; piros patch &rarr; leállítva marad egy embernek.</li>
+                <li>Az egymást követő összeomlás-futások száma korlátos (3), így egy hibás szolgáltatás nem foglalhatja le a modellt.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Végpontok és Makefile</span>
+              <span class="card-badge badge-emerald">Futtatás</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>API: <code>POST /bonus/crash-watch</code> (indítás), <code>GET</code> (állapot), <code>DELETE</code> (leállítás).</li>
+                <li>A <code>make demo-service</code> a célt összeomolható szolgáltatáskonténerként futtatja.</li>
+                <li>A <code>make bonus WATCH_CONTAINER=ioc-demo-service</code> elindítja a figyelőt.</li>
+                <li>Crash Watcher kártya a <code>bonus/dashboard.py</code>-ban, élő naplóval és összeomlás-előzménnyel.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 15: Bonus Compliance Matrix -->
+      <section class="slide" data-title="Bónusz megfelelési mátrix">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bónusz</span>
+            <div class="slide-title-group">
+              <h2>Bónusz megfelelés és ellenőrzőlista</h2>
+              <p>Minden bónusz ellenőrzése</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1409,96 +1466,95 @@ POST /patch?dry_run=true
           <table class="db-mock-table">
             <thead>
               <tr>
-                <th style="width: 30%;">Bonusz kepesseg</th>
-                <th style="width: 25%;">Megvalositas a kodban</th>
-                <th style="width: 15%;">Allapot</th>
-                <th style="width: 30%;">Hogyan ellenorizheto?</th>
+                <th style="width: 30%;">Bónusz</th>
+                <th style="width: 25%;">Megvalósítás</th>
+                <th style="width: 15%;">Állapot</th>
+                <th style="width: 30%;">Ellenőrző parancs</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>POST /reindex vegpont</td>
+                <td>B1: <code>POST /reindex</code> igény szerint</td>
                 <td><code>bonus/api.py</code></td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td><code>curl -X POST http://localhost:8000/reindex</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>curl -X POST http://127.0.0.1:8000/reindex</code></td>
               </tr>
               <tr>
-                <td>Visual Unified Diff Engine</td>
-                <td><code>bonus/diff_engine.py</code></td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td>Dashboard Patch fülön a szines sorok ellenorzese</td>
-              </tr>
-              <tr>
-                <td>Automata LLM Git Committer</td>
+                <td>B2: a validált patch git commitja, LLM-üzenettel</td>
                 <td><code>bonus/git_committer.py</code></td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td>Patch lefutasa utan <code>git log -1</code> vizsgalata</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td>Kapcsold be az Auto Git Commitot, futtass egy patchet, <code>git log -1</code> (egy próba klónban)</td>
               </tr>
               <tr>
-                <td>Dry-Run szimulacios mod</td>
-                <td><code>bonus/api.py</code> + UI kapcsoló</td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td><code>POST /patch?dry_run=true</code> hivasa</td>
+                <td>B3: Docker SDK összeomlás-figyelő</td>
+                <td><code>bonus/crash_watcher.py</code> + <code>bonus/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>make demo-service</code>, majd <code>make bonus WATCH_CONTAINER=ioc-demo-service</code></td>
               </tr>
               <tr>
-                <td>4-Fulu Egyesitett Dashboard</td>
-                <td><code>bonus/dashboard.py</code></td>
-                <td><span class="card-badge badge-emerald">[OK] KESZ</span></td>
-                <td>Bongeszoben: <code>http://localhost:8000</code></td>
+                <td>B4: dry-run, diff a lemez érintése nélkül</td>
+                <td><code>bonus/api.py</code> + Dry-Run Mode jelölőnégyzet</td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>POST /bonus/patch/run</code> <code>"dry_run": true</code> értékkel</td>
+              </tr>
+              <tr>
+                <td>B5: relevancia-pontszám, vizuális diff, élő SSE állapot</td>
+                <td><code>bonus/dashboard.py</code> + <code>bonus/diff_engine.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] TELJESÍTVE</span></td>
+                <td><code>make bonus</code>: az Ask &amp; Retrieve és a Patch Loop &amp; Bonus fül</td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
-
-      <!-- SLIDE 15: Summary & Defense Tips -->
-      <section class="slide" data-title="Osszefoglalo es vedesi forgatokonyv">
+      <!-- SLIDE 16: Summary & Defense Tips -->
+      <section class="slide" data-title="Összefoglaló és védési tippek">
         <div class="slide-header">
           <div class="slide-header-left">
-            <span class="ioc-badge">Bonus</span>
+            <span class="ioc-badge">Bónusz</span>
             <div class="slide-title-group">
-              <h2>Osszefoglalo es Bonusz vedesi forgatokonyv</h2>
-              <p>Hogyan mutasd be a bonuszt a maximális XP megszerzesehez?</p>
+              <h2>Összefoglaló és bónusz védési bemutató</h2>
+              <p>Három bemutató, mindegyik élőben ellenőrizve a demó alkalmazáson</p>
             </div>
           </div>
           <div class="slide-header-right">
-            <span class="header-tag">Bonus XP 125%</span>
+            <span class="header-tag">Védési bemutató</span>
           </div>
         </div>
         <div class="grid-3" style="margin-top: 14px;">
           <div class="card glow-purple">
             <div class="card-header">
-              <span class="card-title">1. Lepes: Reindex</span>
-              <span class="card-badge badge-purple">Demo 1</span>
+              <span class="card-title">1. lépés: újraindexelés futás közben</span>
+              <span class="card-badge badge-purple">1. bemutató</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Kattints a feluleten a <strong>Reindex</strong> gombra, vagy futtasd le a curl parancsot.</li>
-                <li>Mutasd meg az ertekelonek a logokban, hogy az adatbazis urulese es ujraepitese 0.3 masodperc alatt megtortent.</li>
+                <li>Kattints a <strong>Reindex</strong> gombra, vagy hívd meg curl-lel a végpontot.</li>
+                <li>Fél másodperc után a felugró ablak 4 fájlt és 23 darabot mutat, újraindítás nélkül.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">2. Lepes: Dry-Run &amp; Diff</span>
-              <span class="card-badge badge-cyan">Demo 2</span>
+              <span class="card-title">2. lépés: dry-run és diff</span>
+              <span class="card-badge badge-cyan">2. bemutató</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Kapcsold be az <strong>Enable Dry-Run</strong> kapcsolot es indits el egy patch feladatot.</li>
-                <li>Mutasd meg a szines diffet, majd fuss le egy <code>git status</code>-t a terminalban, bizonyitva, hogy semmi sem valtozott!</li>
+                <li>Kapcsold be a <strong>Dry-Run Mode</strong>-ot, és futtasd a square szándékot: a vizuális diff <code>+4 / -0</code>.</li>
+                <li>A <code>git status</code> igazolja, hogy a lemez érintetlen. (Az Auto Git Commit abba a repozitóriumba commitol, amelyben a <code>demo_app</code> van: egy próba klónban mutasd meg.)</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">3. Lepes: Valos Commit</span>
-              <span class="card-badge badge-emerald">Demo 3</span>
+              <span class="card-title">3. lépés: összeomlás-figyelő</span>
+              <span class="card-badge badge-emerald">3. bemutató</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Kapcsold ki a Dry-Runt, futtasd le a patchet.</li>
-                <li>A sikeres validacio utan mutasd meg a frissen letrejott Git commitot az LLM altal megfogalmazott uzenettel!</li>
+                <li><code>make demo-service</code>, majd Watch a Crash Watcher kártyán; rontsd el a <code>calculator.py</code>-t (<code>precision</code> &rarr; <code>precison</code>).</li>
+                <li><code>CRASH_DETECTED</code>, a ciklus zöld, <code>SERVICE_RESTARTED</code>: élőben kb. egy perc, a javított fájl bájtra azonos az eredetivel.</li>
               </ul>
             </div>
           </div>
@@ -1510,24 +1566,24 @@ POST /patch?dry_run=true
     <!-- Deck Footer -->
     <footer class="deck-footer">
       <div class="footer-left">
-        <span class="slide-counter" id="slideCounter">01 / 15</span>
-        <span class="key-hint"><span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> Diak</span>
-        <span class="key-hint"><span class="kbd">Space</span> Tovabb</span>
+        <span class="slide-counter" id="slideCounter">01 / 16</span>
+        <span class="key-hint"><span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> Diák</span>
+        <span class="key-hint"><span class="kbd">Space</span> Tovább</span>
       </div>
       <div class="footer-center">
-        <span style="color: var(--text-dim); font-size: 11px;">Inception-of-Context - Bonusz: Halado fejlesztoi eszkozok</span>
+        <span style="color: var(--text-dim); font-size: 11px;">Inception-of-Context - Bónusz: haladó fejlesztői eszközök</span>
       </div>
       <div class="footer-right">
-        <button class="nav-btn" id="btnOverview" title="Diaattekintes (O)">
+        <button class="nav-btn" id="btnOverview" title="Diaáttekintés (O)">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
         </button>
-        <button class="nav-btn" id="btnFullscreen" title="Teljes kepernyo (F)">
+        <button class="nav-btn" id="btnFullscreen" title="Teljes képernyő (F)">
           <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
         </button>
-        <button class="nav-btn" id="btnPrev" title="Elozo dia">
+        <button class="nav-btn" id="btnPrev" title="Előző dia">
           <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
-        <button class="nav-btn" id="btnNext" title="Kovetkezo dia">
+        <button class="nav-btn" id="btnNext" title="Következő dia">
           <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </div>
@@ -1536,8 +1592,8 @@ POST /patch?dry_run=true
     <!-- Slide Overview Modal -->
     <div id="overview-modal">
       <div class="overview-header">
-        <h3>Diaattekintes (Esc vagy O a bezarashoz)</h3>
-        <button class="nav-btn" id="btnCloseOverview" title="Attekintes bezarasa">
+        <h3>Diaáttekintés (Esc vagy O a bezáráshoz)</h3>
+        <button class="nav-btn" id="btnCloseOverview" title="Áttekintés bezárása">
           <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>

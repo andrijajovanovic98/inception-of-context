@@ -1030,6 +1030,7 @@ html, body {
 
 /* Compact full-file listing: must come after .code-line so it wins */
 .code-box-fit {
+  white-space: normal; /* rows are divs; HTML newlines must not add lines */
   font-size: 8.8px;
   line-height: 1.1;
   max-height: none;
@@ -1237,7 +1238,7 @@ html, body {
             <span class="ioc-badge">Repozitórium-ellenőrzés</span>
             <div class="slide-title-group">
               <h2>Jelenlegi repozitórium-struktúra</h2>
-              <p>Lemezen ellenőrizve: csak az 1. rész és a demoalkalmazás létezik</p>
+              <p>Az 1. rész részletesen; a repozitórium többi része dióhéjban</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1248,24 +1249,28 @@ html, body {
         <div class="grid-2" style="margin-top: 14px;">
           <div class="file-tree">
             <div><span class="tree-folder">inception-of-context/</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">p1/</span> <span class="tree-note">&larr; 1. rész implementáció</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">p1/</span> <span class="tree-note">&larr; Az 1. rész megvalósítása</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">index.py</span> <span class="tree-note">(CLI belépési pont, args, futtató)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">indexer.py</span> <span class="tree-note">(CodebaseIndexer, hash-szinkron, szűrők)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">chunker.py</span> <span class="tree-note">(ASTChunker, FallbackChunker, CodeChunk)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">db.py</span> <span class="tree-note">(VektorDB, ChromaDB PersistentClient)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">chunker.py</span> <span class="tree-note">(ASTChunker + regex/bekezdés tartalékok)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">db.py</span> <span class="tree-note">(VectorDB, ChromaDB PersistentClient)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">watcher.py</span> <span class="tree-note">(CodebaseWatcher, debounce, polling)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard.py</span> <span class="tree-note">(FastAPI szerver, SSE élő folyam)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard.py</span> <span class="tree-note">(Overview fül, élő SSE folyam)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard_files.py</span> <span class="tree-note">(Files fül + GET /file, közös)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">markers.py, dashboard_modal.py</span> <span class="tree-note">(közös a P2/P3-mal)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-folder">tests/</span> <span class="tree-note">(offline tesztek, rögzített demómásolat)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">requirements.txt</span> <span class="tree-note">(chromadb, watchdog, fastapi...)</span></div>
             <div>&boxvr;&boxh;&boxh; <span class="tree-folder">demo_app/</span> <span class="tree-note">&larr; Indexelendő célkódbázis</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">calculator.py</span> <span class="tree-note">(Calculator osztály aritmetikai metódusokkal)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">formatter.py</span> <span class="tree-note">(ResultFormatter, pénznem/százalék)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">main.py</span> <span class="tree-note">(calculate_tax, main / run_demo)</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">presentation/</span> <span class="tree-note">&larr; Prezentáció</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">PRESENTATION.html</span> <span class="tree-note">(angol)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">PRESENTATION_HU.html</span> <span class="tree-note">(magyar)</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Makefile</span> <span class="tree-note">(setup, p1, clean, fclean &rarr; /tmp/ioc)</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-file">README.md</span> <span class="tree-note">(Description, Instructions, Resources)</span></div>
-            <div>&boxur;&boxh;&boxh; <span class="tree-file">.gitignore</span> <span class="tree-note">(Kihagyja: .chroma_db, súlyok, cache-ek)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">main.py</span> <span class="tree-note">(calculate_tax, run_demo, main)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">ioc.config.yml</span> <span class="tree-note">(validációs parancs, 3. rész)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">p2/ p3/ bonus/</span> <span class="tree-note">&larr; 2., 3. rész és bónusz (saját prezentáció)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">presentation/</span> <span class="tree-note">&larr; P1, P2, P3, BONUS, egységes (EN/HU)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Dockerfile, docker-compose.yml</span> <span class="tree-note">(make up / make down)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Makefile</span> <span class="tree-note">(setup, p1-p3, bonus, gates &rarr; /tmp/ioc)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">README.md</span> <span class="tree-note">(indítás, API, minőségkapuk)</span></div>
+            <div>&boxur;&boxh;&boxh; <span class="tree-file">.gitignore</span> <span class="tree-note">(ChromaDB, súlyok, cache-ek)</span></div>
           </div>
 
           <div class="card glow-cyan">
@@ -1279,16 +1284,16 @@ html, body {
             <div class="card-content">
               <ul style="gap: 12px;">
                 <li>
-                  <strong>Megvalósított modulok:</strong> Az 1. rész összes magkomponense (<code>chunker.py</code>, <code>db.py</code>, <code>indexer.py</code>, <code>watcher.py</code>, <code>dashboard.py</code>, <code>index.py</code>) megvan és működik.
+                  <strong>Megvalósított modulok:</strong> Az 1. rész összes magkomponense (<code>chunker.py</code>, <code>db.py</code>, <code>indexer.py</code>, <code>watcher.py</code>, <code>dashboard.py</code>, <code>dashboard_files.py</code>, <code>index.py</code>) megvan és működik.
                 </li>
                 <li>
                   <strong>Cél demo app:</strong> Moduláris, 3 fájlos Python célalkalmazás (<code>demo_app/</code>) az AST-darabolás és a vektortárolás gyakorlásához.
                 </li>
                 <li>
-                  <strong>Még nincs implementálva:</strong> A <code>p2/</code> (Architect API / RAG) és a <code>p3/</code> (Patch Loop / javítási ciklus) még NEM létezik.
+                  <strong>Nem része ennek a prezentációnak:</strong> a <code>p2/</code> (Architect API / RAG), a <code>p3/</code> (Patch Loop / javítási ciklus) és a <code>bonus/</code> külön prezentációban szerepel.
                 </li>
                 <li>
-                  <strong>Csomagolási megjegyzés:</strong> A gyökér <code>Makefile</code> és a <code>README.md</code> megvan (<code>make setup</code> / <code>make p1</code>). A <code>Dockerfile</code> még nincs bevezetve.
+                  <strong>Csomagolási megjegyzés:</strong> A gyökér <code>Makefile</code> és a <code>README.md</code> megvan (<code>make setup</code> / <code>make p1</code>); a <code>Dockerfile</code> és a <code>docker-compose.yml</code> a teljes rendszert futtatja (<code>make up</code> / <code>make down</code>).
                 </li>
               </ul>
             </div>
@@ -1351,7 +1356,7 @@ html, body {
             <div class="flow-node">
               <span class="node-num">Lépés 05</span>
               <span class="node-title">Perzisztens vektor-DB</span>
-              <span class="node-file">.chroma_db/</span>
+              <span class="node-file">/tmp/ioc/chroma_db</span>
               <span class="node-desc">A ChromaDB dokumentumokat, beágyazásokat és metaadatot tárol</span>
             </div>
             <span class="flow-arrow">&rarr;</span>
@@ -1416,7 +1421,7 @@ html, body {
                 <li><strong>Dekorátor-biztonság:</strong> A <code>_get_start_line_with_decorators()</code> a <code>@staticmethod</code>-ot / dekorátorokat a függvénnyel csoportosítja.</li>
                 <li><strong>Szimbólum-hierarchia:</strong> Felismeri az osztályokat, és minden metódust külön, önálló darabként kezel (pl. <code>Calculator.add</code>).</li>
                 <li><strong>Pontos sortartományok:</strong> 1-indexelt <code>start_line</code> és <code>end_line</code> a pontos helyhez.</li>
-                <li><strong>Tartalék:</strong> Regex dupla-újsor <code>FallbackChunker</code> nem-Python vagy szintaktikailag törött fájlokhoz.</li>
+                <li><strong>Tartalékok:</strong> <code>RegexPythonChunker</code> (def/class fejlécek bármilyen behúzással) a nem elemezhető Pythonhoz; <code>FallbackChunker</code> (üres sorral tagolt blokkok) más fájlokhoz.</li>
               </ul>
             </div>
           </div>
@@ -1512,7 +1517,7 @@ html, body {
 
               <div class="chunk-item-card">
                 <div class="chunk-item-title">
-                  <span>2. Calculator (9&ndash;10. sor)</span>
+                  <span>2. Calculator (9&ndash;11. sor)</span>
                   <span class="badge-dim card-badge">class</span>
                 </div>
                 <div class="chunk-item-desc">Osztálydeklaráció és a precision docstring.</div>
@@ -1568,7 +1573,7 @@ html, body {
             <div class="card-content" style="display:flex; flex-direction:column; gap:10px;">
               <div>
                 <div style="font-size:11px; color:var(--text-dim); margin-bottom:3px; font-family:var(--font-mono);">1. BEMENET: nyers darab szöveg</div>
-                <div class="code-box" style="padding:6px 10px; font-size:11px;">"def add(self, a, b): return round(a + b, self.precision)"</div>
+                <div class="code-box" style="padding:6px 10px; font-size:11px;">"def add(self, a: float, b: float) -&gt; float: ..." (az egész 3 soros darab)</div>
               </div>
 
               <div style="text-align:center; color:var(--cyan); font-size:14px; margin:-4px 0;">&darr; <em>Tokenizálás és 6 rétegű transformer</em></div>
@@ -1576,12 +1581,12 @@ html, body {
               <div>
                 <div style="font-size:11px; color:var(--text-dim); margin-bottom:3px; font-family:var(--font-mono);">2. KIMENET: 384 dimenziós sűrű vektor</div>
                 <div class="vector-stream">
-                  <span class="vec-dim">d0: +0.0412</span>
-                  <span class="vec-dim">d1: -0.0189</span>
-                  <span class="vec-dim">d2: +0.0831</span>
+                  <span class="vec-dim">d0: -0.0049</span>
+                  <span class="vec-dim">d1: +0.0152</span>
+                  <span class="vec-dim">d2: -0.0812</span>
                   <span class="vec-dim">d3: -0.0054</span>
                   <span class="vec-dots">&bull;&bull;&bull;</span>
-                  <span class="vec-dim">d383: +0.0719</span>
+                  <span class="vec-dim">d383: +0.0109</span>
                 </div>
               </div>
 
@@ -1603,7 +1608,7 @@ html, body {
               <div class="cluster-group" style="border-color: rgba(56, 189, 248, 0.4);">
                 <div class="cluster-title">
                   <span style="color:var(--cyan);">1. klaszter: aritmetikai műveletek</span>
-                  <span style="color:var(--text-dim);">Koszinusz-távolság &lt; 0.20</span>
+                  <span style="color:var(--text-dim);">Koszinusz-távolság 0.19&ndash;0.30</span>
                 </div>
                 <div class="cluster-pills">
                   <span class="point-pill math">Calculator.add</span>
@@ -1616,7 +1621,7 @@ html, body {
               <div class="cluster-group" style="border-color: rgba(168, 85, 247, 0.4);">
                 <div class="cluster-title">
                   <span style="color:#c084fc;">2. klaszter: formázás és kimenet</span>
-                  <span style="color:var(--text-dim);">Koszinusz-távolság &lt; 0.22</span>
+                  <span style="color:var(--text-dim);">Koszinusz-távolság 0.27&ndash;0.57</span>
                 </div>
                 <div class="cluster-pills">
                   <span class="point-pill format">format_currency</span>
@@ -1650,7 +1655,7 @@ html, body {
             <span class="ioc-badge">Adatbázis-tárolás</span>
             <div class="slide-title-group">
               <h2>A ChromaDB belseje: perzisztens táblák és HNSW index</h2>
-              <p>Hogyan tárolódnak tartósan a vektorok, forrásszöveg és metaadat a .chroma_db/ mappában</p>
+              <p>Hogyan tárolódnak tartósan a vektorok, a forrásszöveg és a metaadat (make: /tmp/ioc/chroma_db)</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1679,34 +1684,34 @@ html, body {
                 </thead>
                 <tbody>
                   <tr>
-                    <td style="color:var(--cyan);"><code>calc.py:add:16</code></td>
-                    <td><code>def add(self, a, b):...</code></td>
-                    <td><code>{"symbol":"add", "lines":"16-18"}</code></td>
+                    <td style="color:var(--cyan);"><code>calculator.py:Calculator.add:16</code></td>
+                    <td><code>def add(self, a: float, b: float)...</code></td>
+                    <td><code>{"symbol_type":"method", "start_line":16, "end_line":18}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                   <tr>
-                    <td style="color:var(--cyan);"><code>calc.py:div:28</code></td>
-                    <td><code>def divide(self, a, b):...</code></td>
-                    <td><code>{"symbol":"divide", "lines":"28-32"}</code></td>
+                    <td style="color:var(--cyan);"><code>calculator.py:Calculator.divide:28</code></td>
+                    <td><code>def divide(self, a: float, b: float)...</code></td>
+                    <td><code>{"symbol_type":"method", "start_line":28, "end_line":32}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                   <tr>
-                    <td style="#c084fc;"><code>form.py:curr:10</code></td>
-                    <td><code>def format_currency:...</code></td>
-                    <td><code>{"symbol":"currency", "lines":"10-13"}</code></td>
+                    <td style="color:#c084fc;"><code>formatter.py:format_currency:10</code></td>
+                    <td><code>def format_currency(value: float, ...</code></td>
+                    <td><code>{"symbol_type":"function", "start_line":10, "end_line":12}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                   <tr>
-                    <td style="color:var(--emerald);"><code>main.py:tax:17</code></td>
-                    <td><code>def calculate_tax:...</code></td>
-                    <td><code>{"symbol":"calculate_tax", "lines":"17-21"}</code></td>
+                    <td style="color:var(--emerald);"><code>main.py:calculate_tax:20</code></td>
+                    <td><code>def calculate_tax(amount: float, ...</code></td>
+                    <td><code>{"symbol_type":"function", "start_line":20, "end_line":23}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
-              Minden rekord összeköti az egyedi chunk ID-t a nyers forrásszöveggel, a gazdag JSON sor-metaadattal és a nagydimenziós vektorral.
+              Minden rekord összeköti a chunk ID-t (fájl:szimbólum:első sor) a forrásszöveggel, a metaadattal (file_path, symbol_name, symbol_type, start_line, end_line, content_hash) és a 384 dimenziós vektorral.
             </div>
           </div>
 
@@ -1728,7 +1733,7 @@ html, body {
                   </div>
                 </li>
                 <li><strong>Logaritmikus bejárás:</strong> A HNSW a felső rétegű „autópályákon” ugrik \(O(\log N)\) időben, nem végigpásztázza az összes rekordot.</li>
-                <li><strong>Helyi fájlrendszer:</strong> A <code>.chroma_db/</code> mappában tartósan tárolódik. 100% offline.</li>
+                <li><strong>Helyi fájlrendszer:</strong> a <code>--db-dir</code> mappában (alapértelmezés <code>.chroma_db/</code>; a <code>make</code> a <code>/tmp/ioc/chroma_db</code>-t használja). 100% offline.</li>
               </ul>
             </div>
           </div>
@@ -1766,7 +1771,7 @@ html, body {
               <ul>
                 <li>Az indexer találkozik a <code>calculator.py</code> fájllal.</li>
                 <li>A <code>should_ignore_path()</code> ellenőrzi a kizárási szabályokat (kihagyja: <code>.git</code>, <code>venv</code>, <code>.chroma_db</code>).</li>
-                <li>Az <code>is_binary_file()</code> az első 1024 bájtban <code>\x00</code> null bájtokat keres.</li>
+                <li>Az <code>is_binary_file()</code> az első 1024 bájtot nézi; ha bárhol <code>\x00</code> van a szövegben, az is binárisnak számít.</li>
               </ul>
             </div>
           </div>
@@ -1816,7 +1821,7 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li>Régi fájlvektorok törölve: <code>delete_file_chunks()</code>.</li>
+                <li>Darabonként: az eltűnt ID-k törlődnek, az új vagy változott darabok újra beágyazódnak, a változatlanok maradnak.</li>
                 <li>Beszúrja a dokumentumszöveget, beágyazásokat és sor-metaadatot.</li>
                 <li>Elmenti az új SHA-256 hasht az <code>index_state.json</code>-ba.</li>
               </ul>
@@ -1873,8 +1878,8 @@ html, body {
             <div class="card-content">
               <ul>
                 <li>Lemezhash &ne; <code>index_state.json</code> hash.</li>
-                <li><strong>1. lépés:</strong> A <code>delete_file_chunks(path)</code> csak ehhez a fájlhoz tartozó régi vektorokat törli.</li>
-                <li><strong>2. lépés:</strong> Újradarabolás és <code>upsert_chunks()</code> friss vektorokkal.</li>
+                <li><strong>1. lépés:</strong> újradarabolja a fájlt, és minden darab hashét, sorait és nevét összeveti azzal, ami a ChromaDB-ben van.</li>
+                <li><strong>2. lépés:</strong> <code>upsert_chunks()</code> csak a változott darabokra: élőben „1 chunk(s) re-embedded, 7 unchanged”.</li>
                 <li><strong>3. lépés:</strong> Frissíti az új hasht az állapotfájlban.</li>
               </ul>
             </div>
@@ -1891,7 +1896,7 @@ html, body {
             <div class="card-content">
               <ul>
                 <li>A fájl követve volt, de már nincs a lemezen.</li>
-                <li><strong>Művelet:</strong> A <code>delete_file_chunks(path)</code> minden chunk ID-t töröl a ChromaDB-ből.</li>
+                <li><strong>Művelet:</strong> a <code>delete_file_chunks(path)</code> minden chunk ID-ját törli; minden bejárás egyeztet is azzal, ami a ChromaDB-ben van.</li>
                 <li>Törli a kulcsot az <code>index_state.json</code>-ból.</li>
                 <li><strong>Eredmény:</strong> Nincs holt vektor vagy fantom szimbólum.</li>
               </ul>
@@ -2016,7 +2021,7 @@ html, body {
             <div class="card-content">
               <ul>
                 <li><strong>A veszély:</strong> Ha a vektoradatbázis mappa is figyelve van, a ChromaDB írások újraindítják a figyelőt - végtelen indexelési ciklus!</li>
-                <li><strong>A védelem:</strong> A <code>should_ignore_path()</code> explicit kizárja a <code>.chroma</code>, <code>.chroma_db</code> és a beállított DB útvonalat.</li>
+                <li><strong>A védelem:</strong> a <code>should_ignore_path()</code> név szerint kizárja a <code>.chroma</code> és <code>.chroma_db</code> mappát; a <code>CodebaseIndexer.is_ignored()</code> a beállított tárat a valódi helye szerint is kizárja.</li>
               </ul>
             </div>
           </div>
@@ -2032,7 +2037,7 @@ html, body {
             <div class="card-content">
               <ul>
                 <li><strong>Kiterjesztés-szűrő:</strong> <code>.pyc</code>, <code>.so</code>, <code>.dll</code>, <code>.exe</code>, <code>.png</code>, <code>.jpg</code>, <code>.pdf</code>, <code>.zip</code>, <code>.safetensors</code>, <code>.gguf</code>.</li>
-                <li><strong>Null-bájt detekció:</strong> Az <code>is_binary_file()</code> az első 1024 bájtban <code>\x00</code>-t keres, hogy ne parse-oljon nem szöveges binárist.</li>
+                <li><strong>Null-bájt detekció:</strong> az <code>is_binary_file()</code> az első 1024 bájtot nézi, és ha a szövegben bárhol <code>\x00</code> van, a fájl szintén binárisnak számít.</li>
               </ul>
             </div>
           </div>
@@ -2068,9 +2073,9 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li><code>GET /api/status</code>: Visszaadja az összes darabot, fájlszámot, beágyazási modellt és a figyelő állapotát.</li>
-                <li><code>GET /api/files</code>: Visszaadja az indexelt fájlok rendezett listáját és a darabszámokat.</li>
-                <li><code>GET /api/file?path=...</code>: Visszaadja a részletes darabhatárokat és szimbólumadatokat.</li>
+                <li><code>GET /status</code>: darabszám, fájlszám, célútvonal, modellek, a figyelő állapota (<code>/api/</code> alatt is).</li>
+                <li><code>GET /files</code>: az indexelt fájlok rendezett listája a darabszámokkal.</li>
+                <li><code>GET /file?path=...</code>: a fájl és indexelt darabjai; kizárt vagy kívül eső útvonalra 403.</li>
                 <li><code>GET /api/activity</code>: Visszaadja a figyelő legutóbbi aktivitásának pillanatképét.</li>
                 <li><code>GET /events</code>: <strong>SSE (Server-Sent Events)</strong> - valós idejű eseményfolyam.</li>
                 <li><code>GET /</code>: Beágyazott offline dark-mode UI (Subject VI.1. ábra).</li>
@@ -2088,10 +2093,10 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Élő metrikakártyák:</strong> Indexelt darabszám, forrásfájlok száma, beágyazási modell (<code>all-MiniLM-L6-v2</code>), LLM modell (<code>qwen2.5:3b</code>).</li>
+                <li><strong>Élő metrikakártyák:</strong> indexelt darabok (és fájlok), célútvonal, vektortár, beágyazási modell (<code>all-MiniLM-L6-v2</code>), LLM modell (<code>qwen2.5:3b</code>).</li>
                 <li><strong>Fájlbontás tábla:</strong> Útvonal, darabszám és szinkron státusz.</li>
                 <li><strong>Élő figyelő folyam:</strong> Valós idejű eseménylog színes státuszjelölőkkel: <code>MODIFIED</code>, <code>DELETED</code>, <code>POLL_SYNC</code>, <code>WATCHER_START</code>.</li>
-                <li><strong>Fázishatárok:</strong> P1 Áttekintés aktív; a P2 (Kérdezés és visszakeresés) és P3 (Patch Loop) fülek láthatóan letiltva.</li>
+                <li><strong>Fázishatárok:</strong> az Overview és a Files fül aktív (VI.1. és VI.2. ábra); az Ask &amp; Retrieve és a Patch Loop láthatóan letiltva.</li>
               </ul>
             </div>
           </div>
@@ -2143,7 +2148,7 @@ html, body {
                 <td>ChromaDB PersistentClient tárolás</td>
                 <td><code>p1/db.py</code></td>
                 <td><span class="status-tag done">&check; Implementálva</span></td>
-                <td>Koszinusz-távolság, perzisztens a <code>.chroma_db</code>-ben</td>
+                <td>Koszinusz-távolság, tartós tárolás (<code>/tmp/ioc/chroma_db</code> a make-kel)</td>
               </tr>
               <tr>
                 <td>Inkrementális újraindexelés (SHA-256)</td>
@@ -2155,7 +2160,7 @@ html, body {
                 <td>Törléskezelés (vektor eltávolítás)</td>
                 <td><code>p1/indexer.py</code></td>
                 <td><span class="status-tag done">&check; Implementálva</span></td>
-                <td>A <code>delete_file_chunks</code> eltávolítja az árva vektorokat</td>
+                <td>A törölt fájlok kitisztulnak; minden bejárás egyeztet a ChromaDB-vel</td>
               </tr>
               <tr>
                 <td>Kizárási szabályok és DB önkizárás</td>
@@ -2190,8 +2195,8 @@ html, body {
               <tr>
                 <td>Docker környezet</td>
                 <td>Repozitórium gyökér</td>
-                <td><span class="status-tag not-done">&cross; Még nincs kész</span></td>
-                <td>Az integrációs fázisra tervezve</td>
+                <td><span class="status-tag done">&check; Implementálva</span></td>
+                <td><code>Dockerfile</code> + <code>docker-compose.yml</code>: <code>make up</code> / <code>make down</code></td>
               </tr>
             </tbody>
           </table>
@@ -2257,20 +2262,20 @@ html, body {
             <div class="card-header">
               <span class="card-title">
                 <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                Következő mérföldkövek
+                Erre az alapra épül
               </span>
-              <span class="card-badge badge-amber">Következik</span>
+              <span class="card-badge badge-amber">Saját prezentáció</span>
             </div>
             <div class="card-content">
               <ul>
                 <li><strong>2. rész: Architect API és RAG</strong>
-                  <br>&bull; Végpontok: <code>POST /context</code> és <code>POST /ask</code>
+                  <br>&bull; <code>POST /context</code> és <code>POST /ask</code>, SSE <code>/events</code>
                   <br>&bull; Helyi Ollama-vezérlés (<code>qwen2.5:3b</code>)
                   <br>&bull; Hibrid visszakeresés és Ask felület
                 </li>
                 <li><strong>3. rész: Patch Loop (javítási ciklus)</strong>
                   <br>&bull; Strukturált patch JSON generálás
-                  <br>&bull; Validáció és atomikus visszaállítás
+                  <br>&bull; Validáció és ellenőrzött visszagörgetés (bónusz: B1&ndash;B5)
                 </li>
               </ul>
             </div>

@@ -1,7 +1,9 @@
 # Upper bounds stop the next MAJOR release of a dependency from breaking a
-# fresh `make setup` / image build at evaluation time. Every version in range
-# was verified by docs/md/AUDIT.md (chromadb 1.5.9, sentence-transformers 6.1.0,
-# fastapi 0.141.1, pydantic 2.13.5, watchdog 6.0.0, flake8 7.4.1).
+# fresh `make setup` / image build at evaluation time. Last verified with
+# `make gates` and live runs, in the venv and in the Docker image, on
+# chromadb 1.5.9, sentence-transformers 6.1.0, watchdog 6.0.0,
+# fastapi 0.142.2, uvicorn 0.54.0, pydantic 2.13.5, rank-bm25 0.2.2
+# and httpx 0.28.1.
 # Part 2: Architect API and RAG Dependencies
 
 # Core Part 1 Stack (Inherited)

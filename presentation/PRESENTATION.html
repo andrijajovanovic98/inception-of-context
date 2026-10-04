@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inception-of-Context - Part 1: Indexing and Synchronization</title>
+  <title>Inception-of-Context - Unified Deck: Parts 1-3 &amp; Bonuses B1-B5</title>
   <style>
 /* ==========================================================================
    Inception-of-Context (IoC) - Part 1 Presentation Stylesheet
@@ -11,6 +11,8 @@
    ========================================================================== */
 
 :root {
+  --purple: #c084fc;
+  --purple-glow: rgba(192, 132, 252, 0.15);
   --bg-canvas: #070a11;
   --bg-slide: #0d1322;
   --bg-card: #131c31;
@@ -487,6 +489,7 @@ html, body {
   line-height: 1.1;
   background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -1030,6 +1033,7 @@ html, body {
 
 /* Compact full-file listing: must come after .code-line so it wins */
 .code-box-fit {
+  white-space: normal; /* rows are divs; HTML newlines must not add lines */
   font-size: 8.8px;
   line-height: 1.1;
   max-height: none;
@@ -1074,7 +1078,32 @@ html, body {
   font-size: 105% !important;
 }
 
-  </style>
+  
+/* Classes used by the P2, P3 and BONUS slides */
+.badge-indigo { background: var(--indigo-glow); color: var(--indigo); border: 1px solid rgba(129, 140, 248, 0.3); }
+
+.card.glow-indigo {
+  border-color: rgba(129, 140, 248, 0.4);
+  background: linear-gradient(180deg, rgba(129, 140, 248, 0.06) 0%, var(--bg-card) 60%);
+}
+
+.callout-box {
+  background: rgba(56, 189, 248, 0.05);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.badge-purple { background: var(--purple-glow); color: var(--purple); border: 1px solid rgba(192, 132, 252, 0.3); }
+
+.card.glow-purple {
+  border-color: rgba(192, 132, 252, 0.4);
+  background: linear-gradient(180deg, rgba(192, 132, 252, 0.06) 0%, var(--bg-card) 60%);
+}
+</style>
   <script>
     window.MathJax = {
       tex: {
@@ -1110,17 +1139,18 @@ html, body {
           </div>
 
           <h1 class="hero-title">Inception-of-Context</h1>
-          <h3 class="hero-subtitle">Part 1: Indexing and Synchronization</h3>
+          <h3 class="hero-subtitle">Unified Deck: Parts 1-3 &amp; Bonuses B1-B5</h3>
           
           <p class="hero-desc">
-            Turning a local codebase into a synchronized, searchable vector index with semantic AST chunking, 
-            local dense embeddings, and real-time filesystem reconciliation.
+            One walkthrough across the whole project: Part 1 indexing &amp; synchronization, Part 2 Architect API &amp; RAG,
+            Part 3 autonomous patch loop, and all five bonuses (B1-B5) including the Docker SDK crash watcher.
+            Detailed per-part decks are linked from the Deck Map slide.
           </p>
 
           <div class="hero-specs">
             <div class="spec-item">
-              <span class="spec-label">Current Phase</span>
-              <span class="spec-value" style="color:var(--emerald);">Part 1 Complete</span>
+              <span class="spec-label">Coverage</span>
+              <span class="spec-value" style="color:var(--emerald);">Parts 1-3 + B1-B5</span>
             </div>
             <div class="spec-item">
               <span class="spec-label">Vector Store</span>
@@ -1137,11 +1167,78 @@ html, body {
           </div>
         </div>
       </section>
+<section class="slide" data-title="Deck Map & Navigation">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Unified Deck</span>
+            <div class="slide-title-group">
+              <h2>Deck Map: Parts 1-3 &amp; Bonuses B1-B5</h2>
+              <p>Full walkthrough of the whole project; every slide from the per-part decks is included</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Navigation</span>
+          </div>
+        </div>
 
+        <div class="grid-4" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Part 1: Indexing &amp; Sync</span>
+              <span class="card-badge badge-cyan">Detailed Below</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Semantic AST chunking, local embeddings, ChromaDB persistence.</li>
+                <li>Real-time watcher with SHA-256 incremental sync.</li>
+                <li>Covered in full detail in this deck (slides 3-15).</li>
+              </ul>
+            </div>
+          </div>
 
-      <!-- ===================================================================
-           SLIDE 2: Goal of Part 1
-           =================================================================== -->
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Part 2: Architect API &amp; RAG</span>
+              <span class="card-badge badge-emerald">Detailed Below</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Hybrid retrieval (dense + BM25 score fusion), truthful symbol answers, local LLM grounding.</li>
+                <li>REST API: <code>POST /context</code>, <code>POST /ask</code>, SSE events.</li>
+                <li>Covered in full detail in this deck (slides 16-28).</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Part 3: Patch Loop</span>
+              <span class="card-badge badge-amber">Detailed Below</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Autonomous loop: structured JSON patches, 6 sanity checks, atomic staging.</li>
+                <li>Self-healing retry with 100% rollback guarantee.</li>
+                <li>Covered in full detail in this deck (slides 29-40).</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Bonuses B1-B5</span>
+              <span class="card-badge badge-rose">Detailed Below</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>B1 POST /reindex, B2 Auto Git Commit, B3 Docker SDK Crash Watcher, B4 Dry-Run, B5 Richer Dashboard (relevance scores, visual diff, live SSE status).</li>
+                <li>B3 gets its own slide in this deck.</li>
+                <li>Covered in full detail in this deck (slides 41-54).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
       <section class="slide" data-title="Goal of Part 1">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1226,18 +1323,13 @@ html, body {
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 3: Current Repository Structure
-           =================================================================== -->
       <section class="slide" data-title="Repository Layout">
         <div class="slide-header">
           <div class="slide-header-left">
             <span class="ioc-badge">Repository Audit</span>
             <div class="slide-title-group">
               <h2>Current Repository Structure</h2>
-              <p>Verified on-disk files  only Part 1 and demo application exist</p>
+              <p>Part 1 in detail; the rest of the repository at a glance</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1251,21 +1343,25 @@ html, body {
             <div>&boxvr;&boxh;&boxh; <span class="tree-folder">p1/</span> <span class="tree-note">&larr; Part 1 Implementation</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">index.py</span> <span class="tree-note">(CLI entrypoint, args, runner)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">indexer.py</span> <span class="tree-note">(CodebaseIndexer, hash sync, filters)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">chunker.py</span> <span class="tree-note">(ASTChunker, FallbackChunker, CodeChunk)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">chunker.py</span> <span class="tree-note">(ASTChunker + regex/paragraph fallbacks)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">db.py</span> <span class="tree-note">(VectorDB, ChromaDB PersistentClient)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">watcher.py</span> <span class="tree-note">(CodebaseWatcher, debounce, polling)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard.py</span> <span class="tree-note">(FastAPI server, SSE live stream)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard.py</span> <span class="tree-note">(Overview tab, SSE live feed)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard_files.py</span> <span class="tree-note">(Files tab + GET /file, shared)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">markers.py, dashboard_modal.py</span> <span class="tree-note">(shared with P2/P3)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-folder">tests/</span> <span class="tree-note">(offline tests, frozen demo copy)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">requirements.txt</span> <span class="tree-note">(chromadb, watchdog, fastapi...)</span></div>
             <div>&boxvr;&boxh;&boxh; <span class="tree-folder">demo_app/</span> <span class="tree-note">&larr; Target Codebase for Indexing</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">calculator.py</span> <span class="tree-note">(Calculator class with arithmetic methods)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">formatter.py</span> <span class="tree-note">(ResultFormatter, currency/percentage)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">main.py</span> <span class="tree-note">(calculate_tax, main / run_demo)</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">presentation/</span> <span class="tree-note">&larr; Slide deck</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">PRESENTATION.html</span> <span class="tree-note">(English)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">PRESENTATION_HU.html</span> <span class="tree-note">(Hungarian)</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Makefile</span> <span class="tree-note">(setup, p1, clean, fclean &rarr; /tmp/ioc)</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-file">README.md</span> <span class="tree-note">(Description, Instructions, Resources)</span></div>
-            <div>&boxur;&boxh;&boxh; <span class="tree-file">.gitignore</span> <span class="tree-note">(Ignores .chroma_db, weights, caches)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">main.py</span> <span class="tree-note">(calculate_tax, run_demo, main)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">ioc.config.yml</span> <span class="tree-note">(validation command, Part 3)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">p2/ p3/ bonus/</span> <span class="tree-note">&larr; Parts 2, 3 and bonus (own decks)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">presentation/</span> <span class="tree-note">&larr; P1, P2, P3, BONUS, unified (EN/HU)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Dockerfile, docker-compose.yml</span> <span class="tree-note">(make up / make down)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Makefile</span> <span class="tree-note">(setup, p1-p3, bonus, gates &rarr; /tmp/ioc)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">README.md</span> <span class="tree-note">(how to start, API, quality gates)</span></div>
+            <div>&boxur;&boxh;&boxh; <span class="tree-file">.gitignore</span> <span class="tree-note">(ChromaDB, weights, caches)</span></div>
           </div>
 
           <div class="card glow-cyan">
@@ -1279,27 +1375,22 @@ html, body {
             <div class="card-content">
               <ul style="gap: 12px;">
                 <li>
-                  <strong>Implemented Modules:</strong> All Part 1 core components (<code>chunker.py</code>, <code>db.py</code>, <code>indexer.py</code>, <code>watcher.py</code>, <code>dashboard.py</code>, <code>index.py</code>) are present and functional.
+                  <strong>Implemented Modules:</strong> All Part 1 core components (<code>chunker.py</code>, <code>db.py</code>, <code>indexer.py</code>, <code>watcher.py</code>, <code>dashboard.py</code>, <code>dashboard_files.py</code>, <code>index.py</code>) are present and functional.
                 </li>
                 <li>
                   <strong>Target Demo App:</strong> A modular 3-file Python target application (<code>demo_app/</code>) is included to exercise AST chunking and vector storage.
                 </li>
                 <li>
-                  <strong>Not Yet Implemented:</strong> <code>p2/</code> (Architect API / RAG) and <code>p3/</code> (Patch Loop) do NOT exist yet.
+                  <strong>Next Sections:</strong> <code>p2/</code> (Architect API / RAG), <code>p3/</code> (Patch Loop) and <code>bonus/</code> follow in this deck.
                 </li>
                 <li>
-                  <strong>Packaging Note:</strong> Root <code>Makefile</code> and <code>README.md</code> are present (<code>make setup</code> / <code>make p1</code>). <code>Dockerfile</code> is not introduced yet.
+                  <strong>Packaging Note:</strong> Root <code>Makefile</code> and <code>README.md</code> are present (<code>make setup</code> / <code>make p1</code>); <code>Dockerfile</code> + <code>docker-compose.yml</code> run the whole suite (<code>make up</code> / <code>make down</code>).
                 </li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 4: Architecture Flow
-           =================================================================== -->
       <section class="slide" data-title="Architecture Pipeline">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1351,7 +1442,7 @@ html, body {
             <div class="flow-node">
               <span class="node-num">Step 05</span>
               <span class="node-title">Persistent Vector DB</span>
-              <span class="node-file">.chroma_db/</span>
+              <span class="node-file">/tmp/ioc/chroma_db</span>
               <span class="node-desc">ChromaDB stores documents, embeddings &amp; metadata</span>
             </div>
             <span class="flow-arrow">&rarr;</span>
@@ -1364,11 +1455,6 @@ html, body {
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 5: Logical Chunking - Concept & Architecture
-           =================================================================== -->
       <section class="slide" data-title="Logical Chunking Concept">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1416,17 +1502,12 @@ html, body {
                 <li><strong>Decorator Safety:</strong> <code>_get_start_line_with_decorators()</code> groups <code>@staticmethod</code> or decorators with their function.</li>
                 <li><strong>Symbol Hierarchy:</strong> Detects classes and treats each method as a separate, self-contained chunk (e.g. <code>Calculator.add</code>).</li>
                 <li><strong>Exact Line Ranges:</strong> Attaches 1-indexed <code>start_line</code> and <code>end_line</code> for pinpoint line accuracy.</li>
-                <li><strong>Fallback:</strong> Regex double-newline <code>FallbackChunker</code> for non-Python or syntax-broken files.</li>
+                <li><strong>Fallbacks:</strong> <code>RegexPythonChunker</code> (def/class headers at any indentation) for Python that does not parse; <code>FallbackChunker</code> (blank-line blocks) for other files.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 6: Chunking in Action - Concrete Walkthrough
-           =================================================================== -->
       <section class="slide" data-title="Chunking Walkthrough">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1512,7 +1593,7 @@ html, body {
 
               <div class="chunk-item-card">
                 <div class="chunk-item-title">
-                  <span>2. Calculator (Lines 9&ndash;10)</span>
+                  <span>2. Calculator (Lines 9&ndash;11)</span>
                   <span class="badge-dim card-badge">class</span>
                 </div>
                 <div class="chunk-item-desc">Class declaration &amp; precision docstring.</div>
@@ -1537,11 +1618,6 @@ html, body {
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 7: Visual Vectorization - From Code to 384d Vector
-           =================================================================== -->
       <section class="slide" data-title="Visual Vectorization">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1568,7 +1644,7 @@ html, body {
             <div class="card-content" style="display:flex; flex-direction:column; gap:10px;">
               <div>
                 <div style="font-size:11px; color:var(--text-dim); margin-bottom:3px; font-family:var(--font-mono);">1. INPUT: Raw Chunk Text</div>
-                <div class="code-box" style="padding:6px 10px; font-size:11px;">"def add(self, a, b): return round(a + b, self.precision)"</div>
+                <div class="code-box" style="padding:6px 10px; font-size:11px;">"def add(self, a: float, b: float) -&gt; float: ..." (the whole 3-line chunk)</div>
               </div>
 
               <div style="text-align:center; color:var(--cyan); font-size:14px; margin:-4px 0;">&darr; <em>Tokenize &amp; 6-Layer Transformer</em></div>
@@ -1576,12 +1652,12 @@ html, body {
               <div>
                 <div style="font-size:11px; color:var(--text-dim); margin-bottom:3px; font-family:var(--font-mono);">2. OUTPUT: 384-Dimensional Dense Vector</div>
                 <div class="vector-stream">
-                  <span class="vec-dim">d0: +0.0412</span>
-                  <span class="vec-dim">d1: -0.0189</span>
-                  <span class="vec-dim">d2: +0.0831</span>
+                  <span class="vec-dim">d0: -0.0049</span>
+                  <span class="vec-dim">d1: +0.0152</span>
+                  <span class="vec-dim">d2: -0.0812</span>
                   <span class="vec-dim">d3: -0.0054</span>
                   <span class="vec-dots">&bull;&bull;&bull;</span>
-                  <span class="vec-dim">d383: +0.0719</span>
+                  <span class="vec-dim">d383: +0.0109</span>
                 </div>
               </div>
 
@@ -1603,7 +1679,7 @@ html, body {
               <div class="cluster-group" style="border-color: rgba(56, 189, 248, 0.4);">
                 <div class="cluster-title">
                   <span style="color:var(--cyan);">Cluster 1: Arithmetic Operations</span>
-                  <span style="color:var(--text-dim);">Cosine distance &lt; 0.20</span>
+                  <span style="color:var(--text-dim);">Cosine distance 0.19&ndash;0.30</span>
                 </div>
                 <div class="cluster-pills">
                   <span class="point-pill math">Calculator.add</span>
@@ -1616,7 +1692,7 @@ html, body {
               <div class="cluster-group" style="border-color: rgba(168, 85, 247, 0.4);">
                 <div class="cluster-title">
                   <span style="color:#c084fc;">Cluster 2: Formatting &amp; Output</span>
-                  <span style="color:var(--text-dim);">Cosine distance &lt; 0.22</span>
+                  <span style="color:var(--text-dim);">Cosine distance 0.27&ndash;0.57</span>
                 </div>
                 <div class="cluster-pills">
                   <span class="point-pill format">format_currency</span>
@@ -1639,18 +1715,13 @@ html, body {
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 8: Inside ChromaDB - Tables & HNSW Graph
-           =================================================================== -->
       <section class="slide" data-title="Inside ChromaDB">
         <div class="slide-header">
           <div class="slide-header-left">
             <span class="ioc-badge">Database Storage</span>
             <div class="slide-title-group">
               <h2>Inside ChromaDB: Persistent Tables &amp; HNSW Index</h2>
-              <p>How vectors, source text, and metadata are persisted inside .chroma_db/</p>
+              <p>How vectors, source text, and metadata are persisted (make: /tmp/ioc/chroma_db)</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1679,34 +1750,34 @@ html, body {
                 </thead>
                 <tbody>
                   <tr>
-                    <td style="color:var(--cyan);"><code>calc.py:add:16</code></td>
-                    <td><code>def add(self, a, b):...</code></td>
-                    <td><code>{"symbol":"add", "lines":"16-18"}</code></td>
+                    <td style="color:var(--cyan);"><code>calculator.py:Calculator.add:16</code></td>
+                    <td><code>def add(self, a: float, b: float)...</code></td>
+                    <td><code>{"symbol_type":"method", "start_line":16, "end_line":18}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                   <tr>
-                    <td style="color:var(--cyan);"><code>calc.py:div:28</code></td>
-                    <td><code>def divide(self, a, b):...</code></td>
-                    <td><code>{"symbol":"divide", "lines":"28-32"}</code></td>
+                    <td style="color:var(--cyan);"><code>calculator.py:Calculator.divide:28</code></td>
+                    <td><code>def divide(self, a: float, b: float)...</code></td>
+                    <td><code>{"symbol_type":"method", "start_line":28, "end_line":32}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                   <tr>
-                    <td style="#c084fc;"><code>form.py:curr:10</code></td>
-                    <td><code>def format_currency:...</code></td>
-                    <td><code>{"symbol":"currency", "lines":"10-13"}</code></td>
+                    <td style="color:#c084fc;"><code>formatter.py:format_currency:10</code></td>
+                    <td><code>def format_currency(value: float, ...</code></td>
+                    <td><code>{"symbol_type":"function", "start_line":10, "end_line":12}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                   <tr>
-                    <td style="color:var(--emerald);"><code>main.py:tax:17</code></td>
-                    <td><code>def calculate_tax:...</code></td>
-                    <td><code>{"symbol":"calculate_tax", "lines":"17-21"}</code></td>
+                    <td style="color:var(--emerald);"><code>main.py:calculate_tax:20</code></td>
+                    <td><code>def calculate_tax(amount: float, ...</code></td>
+                    <td><code>{"symbol_type":"function", "start_line":20, "end_line":23}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
-              Every record links its unique chunk ID to its raw source text, rich JSON line metadata, and high-dimensional vector.
+              Every record links its chunk ID (file:symbol:first line) to its source text, its metadata (file_path, symbol_name, symbol_type, start_line, end_line, content_hash) and its 384-d vector.
             </div>
           </div>
 
@@ -1728,17 +1799,12 @@ html, body {
                   </div>
                 </li>
                 <li><strong>Logarithmic Traversal:</strong> HNSW hops across high-layer expressways in \(O(\log N)\) time instead of scanning all records.</li>
-                <li><strong>Local Filesystem:</strong> Persisted in <code>.chroma_db/</code>. 100% offline.</li>
+                <li><strong>Local Filesystem:</strong> persisted in <code>--db-dir</code> (default <code>.chroma_db/</code>; <code>make</code> uses <code>/tmp/ioc/chroma_db</code>). 100% offline.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 8: How Indexing Works - Step-by-Step Pipeline
-           =================================================================== -->
       <section class="slide" data-title="Indexing Walkthrough">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1766,7 +1832,7 @@ html, body {
               <ul>
                 <li>Indexer encounters <code>calculator.py</code>.</li>
                 <li><code>should_ignore_path()</code> checks ignore rules (skips <code>.git</code>, <code>venv</code>, <code>.chroma_db</code>).</li>
-                <li><code>is_binary_file()</code> scans first 1024 bytes for <code>\x00</code> null bytes.</li>
+                <li><code>is_binary_file()</code> sniffs the first 1024 bytes; a <code>\x00</code> anywhere in the text also makes the file binary.</li>
               </ul>
             </div>
           </div>
@@ -1816,7 +1882,7 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li>Old file vectors purged: <code>delete_file_chunks()</code>.</li>
+                <li>Per chunk: vanished ids deleted, new or changed chunks re-embedded, unchanged ones kept.</li>
                 <li>Inserts document text, embeddings &amp; line metadata.</li>
                 <li>Saves new SHA-256 hash in <code>index_state.json</code>.</li>
               </ul>
@@ -1824,11 +1890,6 @@ html, body {
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 9: Incremental Indexing  3 Scenarios
-           =================================================================== -->
       <section class="slide" data-title="Incremental Scenarios">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1873,8 +1934,8 @@ html, body {
             <div class="card-content">
               <ul>
                 <li>Disk hash &ne; <code>index_state.json</code> hash.</li>
-                <li><strong>Step 1:</strong> <code>delete_file_chunks(path)</code> wipes old vectors for this file only.</li>
-                <li><strong>Step 2:</strong> Re-chunks &amp; <code>upsert_chunks()</code> embeds fresh vectors.</li>
+                <li><strong>Step 1:</strong> re-chunk the file; compare each chunk's hash, lines and name with what ChromaDB holds.</li>
+                <li><strong>Step 2:</strong> <code>upsert_chunks()</code> only for changed chunks: live, "1 chunk(s) re-embedded, 7 unchanged".</li>
                 <li><strong>Step 3:</strong> Updates new hash in state file.</li>
               </ul>
             </div>
@@ -1891,7 +1952,7 @@ html, body {
             <div class="card-content">
               <ul>
                 <li>File was tracked but now absent from disk.</li>
-                <li><strong>Action:</strong> <code>delete_file_chunks(path)</code> purges all chunk IDs from ChromaDB.</li>
+                <li><strong>Action:</strong> <code>delete_file_chunks(path)</code> purges all its chunk IDs; every scan also reconciles with what ChromaDB holds.</li>
                 <li>Purges key from <code>index_state.json</code>.</li>
                 <li><strong>Result:</strong> Zero dead vectors or phantom symbols.</li>
               </ul>
@@ -1909,11 +1970,6 @@ html, body {
           <span style="color:var(--emerald);">&check; Atomic ChromaDB Update</span>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 8: Watch Mode & Synchronization
-           =================================================================== -->
       <section class="slide" data-title="Watch Mode">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -1965,11 +2021,6 @@ html, body {
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 9: Exclusions & Safety Rules
-           =================================================================== -->
       <section class="slide" data-title="Exclusions & Safety">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -2016,7 +2067,7 @@ html, body {
             <div class="card-content">
               <ul>
                 <li><strong>The Danger:</strong> If the vector database folder is watched, ChromaDB writes trigger the watcher, causing an infinite indexing loop!</li>
-                <li><strong>The Defense:</strong> <code>should_ignore_path()</code> explicitly excludes <code>.chroma</code>, <code>.chroma_db</code>, and the configured DB path.</li>
+                <li><strong>The Defense:</strong> <code>should_ignore_path()</code> excludes <code>.chroma</code> and <code>.chroma_db</code> by name; <code>CodebaseIndexer.is_ignored()</code> also excludes the configured store by its real location.</li>
               </ul>
             </div>
           </div>
@@ -2032,17 +2083,12 @@ html, body {
             <div class="card-content">
               <ul>
                 <li><strong>Extension filter:</strong> <code>.pyc</code>, <code>.so</code>, <code>.dll</code>, <code>.exe</code>, <code>.png</code>, <code>.jpg</code>, <code>.pdf</code>, <code>.zip</code>, <code>.safetensors</code>, <code>.gguf</code>.</li>
-                <li><strong>Null-byte detection:</strong> <code>is_binary_file()</code> scans first 1024 bytes for <code>\x00</code> to prevent parsing non-text binaries.</li>
+                <li><strong>Null-byte detection:</strong> <code>is_binary_file()</code> sniffs the first 1024 bytes, and a <code>\x00</code> anywhere in the text marks the file binary too.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 10: Overview Dashboard
-           =================================================================== -->
       <section class="slide" data-title="Overview Dashboard">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -2068,9 +2114,9 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li><code>GET /api/status</code>: Returns total chunks, file count, embedding model, and watcher state.</li>
-                <li><code>GET /api/files</code>: Returns sorted list of all indexed files and chunk tallies.</li>
-                <li><code>GET /api/file?path=...</code>: Returns detailed chunk boundaries and symbol data.</li>
+                <li><code>GET /status</code>: total chunks, file count, target path, models, watcher state (also under <code>/api/</code>).</li>
+                <li><code>GET /files</code>: sorted list of all indexed files and chunk tallies.</li>
+                <li><code>GET /file?path=...</code>: the file plus its indexed chunks; 403 for excluded or outside paths.</li>
                 <li><code>GET /api/activity</code>: Returns recent watcher activity snapshot.</li>
                 <li><code>GET /events</code>: <strong>Server-Sent Events (SSE)</strong> real-time event stream.</li>
                 <li><code>GET /</code>: Embedded offline dark-mode UI (Figure VI.1 from Subject).</li>
@@ -2088,20 +2134,15 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Live Metric Cards:</strong> Indexed Chunk Count, Source Files Count, Embedding Model (<code>all-MiniLM-L6-v2</code>), LLM Model (<code>qwen2.5:3b</code>).</li>
+                <li><strong>Live Metric Cards:</strong> Indexed Chunks (and files), Target Path, Vector Store, Embedding Model (<code>all-MiniLM-L6-v2</code>), LLM Model (<code>qwen2.5:3b</code>).</li>
                 <li><strong>File Breakdown Table:</strong> Path, chunk count, and synchronization status.</li>
                 <li><strong>Live Watcher Feed:</strong> Real-time event log with color badges for <code>MODIFIED</code>, <code>DELETED</code>, <code>POLL_SYNC</code>, <code>WATCHER_START</code>.</li>
-                <li><strong>Phase Boundaries:</strong> P1 Overview tab active; P2 (Ask &amp; Retrieve) and P3 (Patch Loop) tabs are visibly disabled.</li>
+                <li><strong>Phase Boundaries:</strong> Overview and Files tabs active (Figures VI.1 and VI.2); Ask &amp; Retrieve and Patch Loop are visibly disabled.</li>
               </ul>
             </div>
           </div>
         </div>
       </section>
-
-
-      <!-- ===================================================================
-           SLIDE 11: Subject Compliance Checklist
-           =================================================================== -->
       <section class="slide" data-title="Subject Compliance">
         <div class="slide-header">
           <div class="slide-header-left">
@@ -2143,7 +2184,7 @@ html, body {
                 <td>ChromaDB PersistentClient storage</td>
                 <td><code>p1/db.py</code></td>
                 <td><span class="status-tag done">&check; Implemented</span></td>
-                <td>Cosine distance, persistent to <code>.chroma_db</code></td>
+                <td>Cosine distance, persisted (<code>/tmp/ioc/chroma_db</code> via make)</td>
               </tr>
               <tr>
                 <td>Incremental reindexing (SHA-256)</td>
@@ -2155,7 +2196,7 @@ html, body {
                 <td>Deletion handling (vector removal)</td>
                 <td><code>p1/indexer.py</code></td>
                 <td><span class="status-tag done">&check; Implemented</span></td>
-                <td><code>delete_file_chunks</code> removes orphaned vectors</td>
+                <td>Deleted files purged; every scan reconciles with ChromaDB</td>
               </tr>
               <tr>
                 <td>Exclusion rules &amp; DB self-exclusion</td>
@@ -2190,25 +2231,2216 @@ html, body {
               <tr>
                 <td>Docker environment</td>
                 <td>Repository root</td>
-                <td><span class="status-tag not-done">&cross; Not Yet Done</span></td>
-                <td>Planned for integration phase</td>
+                <td><span class="status-tag done">&check; Implemented</span></td>
+                <td><code>Dockerfile</code> + <code>docker-compose.yml</code>: <code>make up</code> / <code>make down</code></td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
+      <!-- SLIDE 2: Goal of Part 2 -->
+      <section class="slide" data-title="Goal of Part 2">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Part 2 Specification & Requirements</h2>
+              <p>What does the official subject mandate for the second phase?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Subject Audit</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">HTTP API Over Index</span>
+              <span class="card-badge badge-cyan">FastAPI</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>REST Endpoints:</strong> An API interface allowing clients to inspect and retrieve repository index state.</li>
+                <li><strong>Baseline Endpoints:</strong> <code>/status</code>, <code>/files</code>, <code>/file</code>, <code>/chunks</code>, <code>/context</code>, <code>/ask</code>, <code>/events</code> (the surface the subject suggests).</li>
+                <li><strong>Ask &amp; Retrieve Tab:</strong> intent and top-k on the form; retrieval alone, or retrieval plus a grounded answer.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">RAG & Hybrid Search</span>
+              <span class="card-badge badge-emerald">Retrieval</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Context Retrieval:</strong> <code>POST /context</code> returns the most relevant code chunks for any intent.</li>
+                <li><strong>Truthful Answers:</strong> on "is there a function called X?" and "what functions exist in this file?", <code>/ask</code> must not hallucinate symbols that are not in the index.</li>
+                <li><strong>Hybrid Strategy:</strong> ChromaDB stays the canonical store; an in-memory BM25 index re-ranks for exact identifiers.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">100% Local LLM (Ollama)</span>
+              <span class="card-badge badge-amber">Local AI</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Strict Rule:</strong> any call to a remote LLM service is forbidden and results in a grade of zero.</li>
+                <li><strong>Model Class:</strong> ~3B parameter class local model (e.g. <code>qwen2.5:3b</code> or <code>qwen2.5-coder:3b</code>).</li>
+                <li><strong>Grounded Answer:</strong> The local model must strictly formulate responses from retrieved code context.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 3: Architecture Pipeline -->
+      <section class="slide" data-title="Architecture Pipeline">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Architecture Pipeline: From Query to Grounded Answer</h2>
+              <p>How an incoming user intent flows to the local model and generates verified code answers</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Dataflow</span>
+          </div>
+        </div>
+        <div class="pipeline-flow" style="margin-top: 10px;">
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">Step 1</span>
+              <span class="node-title">Request & Symbol Detection</span>
+              <span class="node-file">p2/api.py</span>
+              <span class="node-desc">POST /ask: the two graded question shapes are matched against the in-memory symbol inventory; a pure fact question is answered from the index.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Step 2</span>
+              <span class="node-title">Hybrid Retrieval</span>
+              <span class="node-file">p2/retriever.py</span>
+              <span class="node-desc">Perform ChromaDB cosine search (Dense) + BM25Okapi lexical matching (Sparse).</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Step 3</span>
+              <span class="node-title">Score Fusion</span>
+              <span class="node-file">p2/retriever.py</span>
+              <span class="node-desc">0.5 &times; dense + 0.5 &times; BM25 (scaled by its maximum), plus a boost when the query names a symbol or a file; the top-k are kept.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">Step 4</span>
+              <span class="node-title">Prompt Assembly</span>
+              <span class="node-file">p2/llm.py</span>
+              <span class="node-desc">Verified fact first, then every indexed symbol with its line range, the ranked chunks and the question.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Step 5</span>
+              <span class="node-title">Local Ollama Evaluation</span>
+              <span class="node-file">127.0.0.1:11435</span>
+              <span class="node-desc">Inference via local qwen2.5:3b with zero external network transmission.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Step 6</span>
+              <span class="node-title">Answer & Index Check</span>
+              <span class="node-file">p2/llm.py</span>
+              <span class="node-desc">Return the answer, its source (index, model+index or model) and the chunks; names found nowhere in the code are flagged.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 4: Hybrid Retrieval: Dense + Sparse -->
+      <section class="slide" data-title="Hybrid Retrieval: Dense & BM25">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Hybrid Retrieval: Dense Vectors & Sparse BM25Okapi</h2>
+              <p>Why vector similarity alone fails on source code queries and how hybrid search fixes it</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Search Engine</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Dense Search (ChromaDB + all-MiniLM)</span>
+              <span class="card-badge badge-cyan">Semantics</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>How It Works:</strong> Maps text into 384-dimensional vector space; computes cosine distance.</li>
+                <li><strong>Strengths:</strong> paraphrased intent: "how is a value formatted as currency?" ranks <code>format_currency</code> first (0.88).</li>
+                <li><strong>Weakness in Code:</strong> weaker on exact identifier matches: "where is X used?" can miss the caller entirely (subject VI.2).</li>
+              </ul>
+              <div class="code-box" style="margin-top: 10px;">
+candidate_count = max(target_k * 3, min(total_count, 15))
+chroma_res = self.db.query(query_text=query,
+                           n_results=candidate_count)
+dense = max(0.0, min(1.0, 1.0 - float(dist)))</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Sparse Search (BM25Okapi)</span>
+              <span class="card-badge badge-emerald">Exact Keywords</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>How It Works:</strong> TF-IDF variant measuring exact term frequency and inverse document frequency.</li>
+                <li><strong>Strengths:</strong> exact identifiers: "where is multiply used?" also ranks the caller <code>calculate_tax</code> in <code>main.py</code>.</li>
+                <li><strong>Weakness:</strong> no semantics: a light stemmer folds inflections ("divides" meets <code>divide</code>), but a synonym never matches.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 10px;">
+query_tokens = tokenize_code(query)  # format_currency -&gt;
+                                    # format_currency, format, currency
+                                    # divides -&gt; divid, like divide
+raw_bm25 = bm25.get_scores(query_tokens)
+bm25 = score / max(raw_bm25)        # scaled to [0, 1]</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 5: Symbol Pre-Resolution -->
+      <section class="slide" data-title="Symbol Pre-Resolution">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Symbol Pre-Resolution: Truthful Answers</h2>
+              <p>The two question shapes the subject grades are answered from the index, not by the model</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Anti-Hallucination</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">The Challenge: LLM Symbol Hallucination</span>
+              <span class="card-badge badge-rose">Risk</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Subject (VI.2):</strong> "is there a function called X?" and "what functions exist in this file?" are easy for a small model to get wrong; on those, <code>/ask</code> must not hallucinate symbols that are not in the index.</li>
+                <li>Measured before the fix: asked for the functions of <code>main.py</code>, the 3B model answered <code>&lt;entrypoint&gt;</code>, the indexer's name for the <code>__main__</code> block.</li>
+                <li>Purely generative token predictors favor probability over ground-truth negatives.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">The IoC Solution: Deterministic Pre-Resolution</span>
+              <span class="card-badge badge-emerald">Engine Solution</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>1. Question Shapes:</strong> <code>resolve_symbol_query()</code> recognises both shapes in their natural variants: backticks, <code>Class.method</code>, "does X exist", "which functions are in &lt;file&gt;", Hungarian.</li>
+                <li><strong>2. Symbol Inventory:</strong> functions, methods and classes of the indexed AST chunks with their line ranges; module blocks are not symbols.</li>
+                <li><strong>3. The Index Answers:</strong> a question that is only that fact never reaches the model (<code>answer_source: "index"</code>); for broader questions the verified fact leads and names found nowhere in the code are flagged.</li>
+              </ul>
+              <div class="callout-box" style="margin-top: 8px;">
+                <strong>Defense Tip:</strong> ask "is there a function called sqrt?": the badge reads "Answered from the index (model not consulted)".
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 6: Hybrid Score Fusion -->
+      <section class="slide" data-title="Hybrid Score Fusion">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Hybrid Score Fusion: Dense + BM25</h2>
+              <p>How p2/retriever.py turns two score scales into one similarity score per chunk</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Algorithm</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">The Fusion Formula</span>
+              <span class="card-badge badge-cyan">Mathematics</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 10px;">
+                Cosine similarity is already in [0, 1]; BM25 is unbounded, so it is first divided by the best BM25 score of the query. Then a weighted sum:
+              </p>
+              <div class="code-box" style="font-size: 13px; text-align: center; padding: 14px;">
+score = 0.5 &times; dense + 0.5 &times; bm25 / max(bm25)
+      + 0.25 if the query names the symbol
+      + 0.15 if the query names the file
+score = min(score, 1.0)</div>
+              <ul style="margin-top: 10px;">
+                <li>Candidates: the dense hits plus the best BM25 hits, max(3 &times; k, 15) of each on the demo index.</li>
+                <li>Equal scores are ordered by file and line, so a query always ranks the same way.</li>
+                <li>ChromaDB stays the canonical store: the BM25 corpus is rebuilt from its documents after every index change.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">Implementation: p2/retriever.py</span>
+              <span class="card-badge badge-indigo">Code</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+<span class="token-comm"># Retriever.retrieve(query, k=3, alpha=0.5), abridged</span>
+combined_score = (alpha * d_score) + ((<span class="token-num">1.0</span> - alpha) * b_score)
 
+boost = <span class="token-num">0.0</span>
+<span class="token-kw">if</span> symbol_name <span class="token-kw">and</span> (symbol_name <span class="token-kw">in</span> query_words
+                    <span class="token-kw">or</span> short_sym <span class="token-kw">in</span> query_words):
+    boost += <span class="token-num">0.25</span>
+<span class="token-kw">if</span> file_stem <span class="token-kw">and</span> file_stem <span class="token-kw">in</span> query_words:
+    boost += <span class="token-num">0.15</span>
 
-      <!-- ===================================================================
-           SLIDE 12: Final Summary & Next Steps
-           =================================================================== -->
-      <section class="slide" data-title="Summary & Next Steps">
+final_score = min(<span class="token-num">1.0</span>, combined_score + boost)
+
+<span class="token-comm"># ties break on location: a stable ranking</span>
+scored_candidates.sort(key=<span class="token-kw">lambda</span> x: (-x[<span class="token-num">0</span>],
+    str(x[<span class="token-num">1</span>][<span class="token-str">"file_path"</span>]),
+    int(x[<span class="token-num">1</span>][<span class="token-str">"start_line"</span>] <span class="token-kw">or</span> <span class="token-num">0</span>)))</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 7: Local LLM Integration (Ollama) -->
+      <section class="slide" data-title="Local LLM Integration">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Local LLM Integration: Ollama & qwen2.5:3b</h2>
+              <p>Completely offline, low-latency code inference with zero external dependencies</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Local Engine</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Why qwen2.5:3b?</span>
+              <span class="card-badge badge-cyan">Model Choice</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>3B Parameter Footprint:</strong> Runs smoothly on modern CPUs without requiring dedicated high-end GPUs.</li>
+                <li><strong>Instruct Model:</strong> the subject suggests <code>qwen2.5:3b</code> for <code>/ask</code>; one model is enough to pass, so it drives the patch loop too.</li>
+                <li><strong>Subject Reference:</strong> The subject explicitly references models in the ~3B parameter class.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Ollama REST API</span>
+              <span class="card-badge badge-emerald">Integration</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Communicates directly via HTTP POST: <code>http://127.0.0.1:11435/api/generate</code>.</li>
+                <li>Zero external heavy SDKs: cleanly handled with native asynchronous <code>httpx</code> requests.</li>
+                <li>Non-streaming calls (<code>"stream": false</code>), temperature 0.1, one fixed <code>num_ctx</code> of 8192 for every request.</li>
+                <li>Falls back to the standard <code>:11434</code> only when <code>:11435</code> refuses the connection, and says so on stderr.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Security & Isolation</span>
+              <span class="card-badge badge-amber">Offline Rule</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Ollama runs on the host; the app (also inside the <code>make up</code> container) reaches it over loopback only.</li>
+                <li>No API tokens, no subscriptions, zero external internet dependencies.</li>
+                <li>Verifiable during defense by disconnecting network interfaces or auditing traffic.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 8: Prompt Engineering & Grounding -->
+      <section class="slide" data-title="Prompt Engineering & Grounding">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Prompt Engineering & Strict Context Grounding</h2>
+              <p>The real prompt of p2/llm.py: verified facts and the complete symbol list come before any retrieved chunk</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Prompt Engineering</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">System Prompt Anatomy</span>
+              <span class="card-badge badge-cyan">System Prompt</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 11px; height: 100%;">
+GROUNDED_SYSTEM_PROMPT = """You are an expert AI software
+architect and codebase assistant for this project. [...]
+
+CRITICAL NON-NEGOTIABLE RULES:
+1. Be truthful, concise, and grounded in the provided code
+   context.
+2. Under NO circumstances should you hallucinate, invent, or
+   assume functions, methods, classes, or files that do not
+   appear in the context or verified facts.
+3. If a symbol or function does not exist in the codebase,
+   you MUST explicitly and clearly state that it does not exist.
+4. Reference file paths and line numbers when citing code.
+5. Do not include unnecessary conversational filler; focus on
+   technical precision."""</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">build_rag_prompt(): Sections in Order</span>
+              <span class="card-badge badge-emerald">User Prompt</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 11px; height: 100%;">
+=== VERIFIED CODEBASE GROUND TRUTH (AST ANALYSIS) ===
+{fact, when the question matched a graded shape}
+Treat the above verified facts as absolute truth.
+
+=== EVERY INDEXED SYMBOL (COMPLETE LIST) ===
+- calculator.py: class Calculator (lines 9-36),
+  method Calculator.divide (lines 28-32), ...
+No other function, method or class exists in this codebase.
+
+=== RETRIEVED CODEBASE CONTEXT CHUNKS ===
+--- [Chunk 1] File: calculator.py | method Calculator.divide
+    (Lines 28-32) | Relevance: 0.6825 ---
+{chunk source}
+
+=== USER QUESTION ===
+{question}
+
+=== INSTRUCTIONS FOR YOUR ANSWER ===
+Only mention functions, methods and classes that appear in
+the complete symbol list. [...]</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 9: FastAPI REST Endpoints -->
+      <section class="slide" data-title="REST API Endpoints">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>FastAPI REST API Endpoints Overview</h2>
+              <p>Interfaces exposed by p2/api.py; each one is also served under /api/...</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">API Reference</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 15%;">Endpoint</th>
+                <th style="width: 10%;">Method</th>
+                <th style="width: 35%;">Description & Responsibility</th>
+                <th style="width: 40%;">Sample Return Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>/status</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Index state, total chunk count, active models, and watcher activity.</td>
+                <td><code>{"status":"ready", "total_chunks":23, "total_files":4, "ollama_available":true, ...}</code></td>
+              </tr>
+              <tr>
+                <td><code>/files</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Indexed files with their chunk counts.</td>
+                <td><code>{"total_files":4, "files":[{"path":"calculator.py", "chunk_count":8}, ...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/file</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>File text plus its indexed chunks; 403 outside the target or for excluded paths.</td>
+                <td><code>{"file_path":"main.py", "content":"...", "chunks":[...], "in_sync":true}</code></td>
+              </tr>
+              <tr>
+                <td><code>/chunks</code></td>
+                <td><span class="card-badge badge-cyan">GET</span></td>
+                <td>Indexed chunks in file/line order, paged with <code>?limit</code> (max 100) and <code>?offset</code>.</td>
+                <td><code>{"total_chunks":23, "limit":50, "offset":0, "chunks":[...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/context</code></td>
+                <td><span class="card-badge badge-amber">POST</span></td>
+                <td>Hybrid retrieval returning the most relevant code chunks for a query.</td>
+                <td><code>{"query":"...", "k":3, "total_retrieved":3, "chunks":[{..., "similarity_score":0.8791}]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/ask</code></td>
+                <td><span class="card-badge badge-emerald">POST</span></td>
+                <td>Retrieve, then generate; the two graded question shapes are answered from the index.</td>
+                <td><code>{"answer":"...", "answer_source":"index", "retrieved_chunks":[...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/events</code></td>
+                <td><span class="card-badge badge-indigo">GET</span></td>
+                <td>Server-Sent Events (SSE) stream for real-time dashboard updates.</td>
+                <td><code>data: {"action":"MODIFIED", "path":"calculator.py", ...}</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- SLIDE 10: Walkthrough: POST /context -->
+      <section class="slide" data-title="Walkthrough: POST /context">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Walkthrough: POST /context</h2>
+              <p>A real call against demo_app: the top-k chunks with their similarity score</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">JSON Contract</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Request JSON</span>
+              <span class="card-badge badge-cyan">Input</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box">
+{
+  <span class="token-str">"query"</span>: <span class="token-str">"how is a value formatted as currency?"</span>,
+  <span class="token-str">"k"</span>: <span class="token-num">2</span>
+}</div>
+              <p style="margin-top: 12px; font-size: 11.5px; color: var(--text-muted);">
+                <code>k</code> is optional: default 3, at most 20 (422 above); an empty query gets a 400.
+              </p>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Response JSON</span>
+              <span class="card-badge badge-emerald">Output</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+{
+  <span class="token-str">"query"</span>: <span class="token-str">"how is a value formatted as currency?"</span>,
+  <span class="token-str">"k"</span>: <span class="token-num">2</span>,
+  <span class="token-str">"total_retrieved"</span>: <span class="token-num">2</span>,
+  <span class="token-str">"chunks"</span>: [
+    {
+      <span class="token-str">"chunk_id"</span>: <span class="token-str">"formatter.py:format_currency:10"</span>,
+      <span class="token-str">"file_path"</span>: <span class="token-str">"formatter.py"</span>,
+      <span class="token-str">"symbol_name"</span>: <span class="token-str">"format_currency"</span>,
+      <span class="token-str">"symbol_type"</span>: <span class="token-str">"function"</span>,
+      <span class="token-str">"start_line"</span>: <span class="token-num">10</span>,
+      <span class="token-str">"end_line"</span>: <span class="token-num">12</span>,
+      <span class="token-str">"content"</span>: <span class="token-str">"def format_currency(value: float, ..."</span>,
+      <span class="token-str">"similarity_score"</span>: <span class="token-num">0.8791</span>
+    },
+    { <span class="token-str">"chunk_id"</span>: <span class="token-str">"formatter.py:format_percentage:15"</span>, ...,
+      <span class="token-str">"similarity_score"</span>: <span class="token-num">0.5348</span> }
+  ]
+}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 11: Walkthrough: POST /ask -->
+      <section class="slide" data-title="Walkthrough: POST /ask">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Walkthrough: POST /ask</h2>
+              <p>A real call: a graded question shape, answered from the index</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Full RAG</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Request JSON</span>
+              <span class="card-badge badge-cyan">Request</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box">
+{
+  <span class="token-str">"query"</span>: <span class="token-str">"what methods does the Calculator class have?"</span>,
+  <span class="token-str">"k"</span>: <span class="token-num">3</span>
+}</div>
+              <ul style="margin-top: 12px;">
+                <li>The question matches a graded shape (the members of a class), so <code>resolve_symbol_query()</code> answers it from the index.</li>
+                <li>The model is not called: <code>answer_source</code> is <code>"index"</code>, and the dashboard badge says so.</li>
+                <li>Broader questions go to <code>qwen2.5:3b</code> with the verified fact first; the answer is then checked against the index.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Response JSON</span>
+              <span class="card-badge badge-emerald">Response</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+{
+  <span class="token-str">"query"</span>: <span class="token-str">"what methods does the Calculator class have?"</span>,
+  <span class="token-str">"answer"</span>: <span class="token-str">"Class `Calculator` (calculator.py, lines 9-36)
+     defines 6 method(s): __init__ (lines 12-14),
+     add (lines 16-18), subtract (lines 20-22),
+     multiply (lines 24-26), divide (lines 28-32),
+     power (lines 34-36)."</span>,
+  <span class="token-str">"answer_source"</span>: <span class="token-str">"index"</span>,
+  <span class="token-str">"model"</span>: <span class="token-str">"qwen2.5:3b"</span>,
+  <span class="token-str">"retrieved_chunks"</span>: [ <span class="token-comm">/* 3 ranked chunks */</span> ],
+  <span class="token-str">"pre_resolved"</span>: { <span class="token-str">"query_type"</span>: <span class="token-str">"class_members"</span>, <span class="token-str">"pure"</span>: <span class="token-kw">true</span>, ... },
+  <span class="token-str">"index_check"</span>: { <span class="token-str">"unknown_identifiers"</span>: [] }
+}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 12: Server-Sent Events & Realtime -->
+      <section class="slide" data-title="Real-Time Events (SSE)">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Real-Time Event Stream (Server-Sent Events)</h2>
+              <p>GET /events endpoint: pushing live updates to the browser without periodic polling</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Reactivity</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Why SSE Over WebSockets or Polling?</span>
+              <span class="card-badge badge-cyan">Architecture</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Simplicity:</strong> Pure HTTP stream, avoiding complex bidirectional handshakes or extra protocol layers.</li>
+                <li><strong>Built-in Reconnection:</strong> Native browser <code>EventSource</code> handles connection drops transparently.</li>
+                <li><strong>Zero Network Overhead:</strong> Eliminates continuous HTTP request spam produced by naive client-side polling.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">The Real Stream (captured)</span>
+              <span class="card-badge badge-indigo">Event Stream</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+<span class="token-comm"># GET /events: one JSON object per "data:" line</span>
+data: {"action": "CONNECTED", "details": "SSE stream connected"}
+: keep-alive
+data: {"timestamp": "2026-10-04 00:15:35",
+       "action": "MODIFIED", "path": "calculator.py",
+       "details": "1 chunk(s) re-embedded, 7 unchanged, 0 removed"}
+
+<span class="token-comm"># actions: WATCHER_START, CREATED, MODIFIED, DELETED,</span>
+<span class="token-comm">#   POLL_SYNC, ERROR; Part 3 adds PATCH_ATTEMPT,</span>
+<span class="token-comm">#   PATCH_SANITY, PATCH_APPLY, PATCH_VALIDATION, ...</span>
+<span class="token-comm"># an idle stream sends ": keep-alive" every 0.5 s</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 13: Files Browser & Chunk Gutter -->
+      <section class="slide" data-title="Files Browser & Chunk Gutter">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Files Browser & Chunk Gutter Indicators</h2>
+              <p>Subject Figure VI.2: every chunk boundary lines up with a definition</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">UI Component</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Chunk Markers in the Gutter</span>
+              <span class="card-badge badge-cyan">Visual Design</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 10px;">
+                Selecting a file shows it whole, with a &#9654; in the gutter on the first line of every indexed chunk:
+              </p>
+              <ul>
+                <li><strong>Chunk Label:</strong> above each chunk: its number, type and name, line range and the first 10 hex digits of its SHA-256.</li>
+                <li><strong>From the Index:</strong> backed by <code>GET /file</code>, which returns what ChromaDB holds, not a fresh parse; "re-indexing&hellip;" shows while the watcher catches up.</li>
+                <li><strong>Shared:</strong> the same tab (<code>p1/dashboard_files.py</code>) is in every dashboard, Part 1 to bonus.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">calculator.py in the Files Tab</span>
+              <span class="card-badge badge-emerald">Real View</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+<span style="color: var(--cyan);">chunk #3 &middot; method Calculator.__init__ &middot; lines 12-14 &middot; 166eb04999</span>
+&#9654; <span class="token-num">12</span>     <span class="token-kw">def</span> <span class="token-fn">__init__</span>(self, precision: int = 2) -&gt; None:
+  <span class="token-num">13</span>         <span class="token-str">"""Initialize the calculator with a rounding precision."""</span>
+  <span class="token-num">14</span>         self.precision = precision
+  <span class="token-num">15</span>
+<span style="color: var(--cyan);">chunk #4 &middot; method Calculator.add &middot; lines 16-18 &middot; 754be3851e</span>
+&#9654; <span class="token-num">16</span>     <span class="token-kw">def</span> <span class="token-fn">add</span>(self, a: float, b: float) -&gt; float:
+  <span class="token-num">17</span>         <span class="token-str">"""Return the sum of two numbers rounded to precision."""</span>
+  <span class="token-num">18</span>         <span class="token-kw">return</span> round(a + b, self.precision)
+  <span class="token-num">19</span>
+<span style="color: var(--cyan);">chunk #5 &middot; method Calculator.subtract &middot; lines 20-22 &middot; 2f0dc8637e</span>
+&#9654; <span class="token-num">20</span>     <span class="token-kw">def</span> <span class="token-fn">subtract</span>(self, a: float, b: float) -&gt; float:</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 14: Subject Compliance -->
+      <section class="slide" data-title="Subject Compliance">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 2</span>
+            <div class="slide-title-group">
+              <h2>Subject Compliance & Verification Checklist</h2>
+              <p>Verifying full compliance with all Part 2 requirements from the official subject PDF</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Audit 100%</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 35%;">Subject Requirement</th>
+                <th style="width: 25%;">Codebase Implementation</th>
+                <th style="width: 15%;">Status</th>
+                <th style="width: 25%;">Verification Command</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>FastAPI HTTP API over the index</td>
+                <td><code>p2/api.py</code> (FastAPI app)</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>curl http://localhost:8000/status</code></td>
+              </tr>
+              <tr>
+                <td>POST /context for relevant code chunks</td>
+                <td><code>p2/retriever.py</code> (Hybrid search)</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>curl -X POST http://127.0.0.1:8000/context -H 'Content-Type: application/json' -d '{"query":"where is multiply used?","k":3}'</code></td>
+              </tr>
+              <tr>
+                <td>POST /ask Retrieval-Augmented Generation</td>
+                <td><code>p2/llm.py</code> + <code>p2/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>Dashboard "Ask &amp; Retrieve" tab</td>
+              </tr>
+              <tr>
+                <td>100% Local model runtime (Ollama ~3B)</td>
+                <td><code>qwen2.5:3b</code> on local server</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>Offline execution without internet connection</td>
+              </tr>
+              <tr>
+                <td>Prohibit code symbol hallucinations</td>
+                <td>The index answers the graded shapes (<code>p2/retriever.py</code>)</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>Ask "is there a function called sqrt?" and "what functions exist in this file?"</td>
+              </tr>
+              <tr>
+                <td>BM25 re-ranker over the Chroma documents</td>
+                <td><code>rank_bm25</code> in <code>p2/retriever.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>"where is multiply used?" also ranks the caller <code>calculate_tax</code></td>
+              </tr>
+              <tr>
+                <td>File events over SSE (<code>GET /events</code>)</td>
+                <td><code>p2/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>curl -N http://127.0.0.1:8000/events</code>, then edit a file</td>
+              </tr>
+              <tr>
+                <td>Ask &amp; Retrieve user dashboard</td>
+                <td>FastAPI HTML/JS dashboard</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>Browser: <code>http://localhost:8000</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- SLIDE 2: Goal of Part 3 -->
+      <section class="slide" data-title="Goal of Part 3">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Part 3 Specification: This is a LOOP</h2>
+              <p>What does the official subject mandate for the third phase?</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Subject Audit</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Not Merely Separate Endpoints</span>
+              <span class="card-badge badge-amber">The Loop</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Core Subject Sentence:</strong> <em>"The deliverable is a loop, not a list of endpoints."</em></li>
+                <li>One intent (the subject's examples: "add a healthcheck route", "rename foo to bar") drives the whole flow.</li>
+                <li>The system independently drives forward until verified success or safe restoration.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Strict Pre-Flight Validation</span>
+              <span class="card-badge badge-rose">Sanity Checks</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Zero Blind Disk Writes:</strong> Raw LLM generated patches must never directly overwrite source files.</li>
+                <li><strong>6 Mandatory Refusals:</strong> Stub functions, severe shrinkage, leaking retrieval prompt headers, etc.</li>
+                <li>Hard refusals, not warnings: checked before any disk write.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Validation & Rollback Guarantee</span>
+              <span class="card-badge badge-emerald">Safety First</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>ioc.config.yml:</strong> External configuration specifies compilation and testing routines.</li>
+                <li><strong>3 Attempts:</strong> the error log goes back to the model for another attempt.</li>
+                <li><strong>Exact Rollback:</strong> after three attempts without a green validation, back to the exact pre-run state.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 3: The Autonomous Loop Pipeline -->
+      <section class="slide" data-title="Autonomous Loop Pipeline">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>The Autonomous Patch Loop Step by Step</h2>
+              <p>How execution flows from high-level intent to atomic repository updates</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Control Flow</span>
+          </div>
+        </div>
+        <div class="pipeline-flow" style="margin-top: 10px;">
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">Step 1</span>
+              <span class="node-title">Intent & Retrieval</span>
+              <span class="node-file">p3/loop.py</span>
+              <span class="node-desc">Top-k chunks from the hybrid retriever; the files the intent names are shown in full (and their callers for a rename).</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Step 2</span>
+              <span class="node-title">Structured JSON Patch</span>
+              <span class="node-file">qwen2.5:3b</span>
+              <span class="node-desc">Generate complete post-change file contents in structured JSON rather than brittle diffs.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Step 3</span>
+              <span class="node-title">6 Sanity Checks</span>
+              <span class="node-file">p3/sanity.py</span>
+              <span class="node-desc">Six hard refusals plus guards; any failure refuses the patch before disk and goes back to the model.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">Step 4</span>
+              <span class="node-title">Snapshots & *.ioc.tmp</span>
+              <span class="node-file">p3/applier.py</span>
+              <span class="node-desc">Capture baseline snapshots. Stage writes to temporary files before atomic swap.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Step 5</span>
+              <span class="node-title">Validation (ioc.config.yml)</span>
+              <span class="node-file">p3/loop.py</span>
+              <span class="node-desc">Run the command from ioc.config.yml; exit code 0 is green.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Step 6</span>
+              <span class="node-title">Self-Healing or Rollback</span>
+              <span class="node-file">p3/loop.py</span>
+              <span class="node-desc">Red: restore the files, feed the error back, try again (3 attempts in all). Still red: verified rollback.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 4: Structured JSON Format -->
+      <section class="slide" data-title="Structured JSON Patch Format">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Why Structured JSON and NOT Free-Form Diffs?</h2>
+              <p>Addressing small language model limitations through deterministic representation</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">JSON Schema</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Failure of Free-Form Diffs</span>
+              <span class="card-badge badge-rose">Problematic</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Small 3B models frequently miscalculate hunk header line counts: <code>@@ -14,6 +14,8 @@</code>.</li>
+                <li>A single misplaced whitespace or indentation tab causes <code>patch</code> or <code>git apply</code> to fail.</li>
+                <li>Subject rule: <em>"The patch is structured JSON, not free-form text and never a diff."</em></li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">The Reference Shape (Subject VI.3)</span>
+              <span class="card-badge badge-emerald">JSON Schema</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 11px;">
+{
+  <span class="token-str">"summary"</span>: <span class="token-str">"Add a square method to Calculator"</span>,
+  <span class="token-str">"files"</span>: [
+    {
+      <span class="token-str">"path"</span>: <span class="token-str">"calculator.py"</span>,
+      <span class="token-str">"op"</span>: <span class="token-str">"modify"</span>,
+      <span class="token-str">"content"</span>: <span class="token-str">"&lt;every line of calculator.py, plus square()&gt;"</span>
+    }
+  ]
+}</div>
+              <p style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
+                <code>op</code>: <code>create</code>, <code>modify</code> or <code>delete</code>; <code>content</code>: the <strong>complete post-change file</strong>, quotes and backslashes masked as <code>@@DQ@@</code>, <code>@@BS@@</code>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 5: The 6 Hard Refusals -->
+      <section class="slide" data-title="The 6 Hard Refusal Sanity Checks">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>The 6 Mandatory Sanity Checks (Immediate Refusal)</h2>
+              <p>Hard refusals in p3/sanity.py, run before any disk write; the reason goes back to the model</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Hard Refusals</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 8%;">#</th>
+                <th style="width: 27%;">Sanity Check</th>
+                <th style="width: 40%;">Why It Fails (Subject Rationale)</th>
+                <th style="width: 25%;">Detection Technique</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1</strong></td>
+                <td>Retrieval marker leakage</td>
+                <td>Model echoes prompt headers like <code>=== RELEVANT CODEBASE CONTEXT ===</code> or <code>--- File:</code> into code.</td>
+                <td>Substring check against every marker in <code>p1/markers.py</code>, the constants both prompts are built from.</td>
+              </tr>
+              <tr>
+                <td><strong>2</strong></td>
+                <td>Creating existing file</td>
+                <td>Using <code>create</code> on a file that already exists on disk risks silent overwrite.</td>
+                <td>Filesystem check: <code>os.path.isfile(path)</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>3</strong></td>
+                <td>Empty or null replacement</td>
+                <td>Replacing non-empty code with <code>""</code>, <code>"None"</code>, or <code>"null"</code> causes file loss.</td>
+                <td>Stripped content compared with <code>""</code>, <code>None</code>, <code>null</code>; an empty create is refused too.</td>
+              </tr>
+              <tr>
+                <td><strong>4</strong></td>
+                <td>Stub-only functions</td>
+                <td>Lazy placeholder bodies: <code>pass</code>, <code>...</code>, <code>return None</code>, <code>raise NotImplementedError</code>, or a constant return marked as a placeholder.</td>
+                <td>AST: a new function whose body (docstring aside) is only one of those; comments are read for the placeholder mark.</td>
+              </tr>
+              <tr>
+                <td><strong>5</strong></td>
+                <td>File shrinkage (> 60%)</td>
+                <td>Drastic unexpected size reduction signals code loss or truncated output.</td>
+                <td>Check: <code>len(new) &lt; len(old) * 0.4</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>6</strong></td>
+                <td>More than 3 files modified</td>
+                <td>Preventing runaway hallucinations: 1 patch is limited to at most 3 source files.</td>
+                <td>Check: <code>len(patch["files"]) &gt; 3</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="margin-top: 10px; font-size: 11.5px; color: var(--text-muted);">
+            Also refused: invalid Python (the syntax gate), any edit of <code>ioc.config.yml</code>, a patch that changes nothing, paths outside the target or into hidden or vendored files, removing a definition, an error check or the <code>__main__</code> block the intent does not name, code that never runs (behind a condition that never holds, after a <code>return</code>, a <code>raise</code> its own <code>except</code> swallows), and a rename that puts the new name where the old one never was.
+          </p>
+        </div>
+      </section>
+      <!-- SLIDE 6: Atomic Staging & Snapshotting -->
+      <section class="slide" data-title="Atomic Staging & Snapshots">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Atomic Staging and Snapshotting</h2>
+              <p>Guaranteeing filesystem integrity against crashes and partial write failures</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Atomic Safety</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Step 1: In-Memory Baseline Snapshot</span>
+              <span class="card-badge badge-cyan">Snapshot</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Before any write, each touched file's raw bytes and mode (and, under root, its owner) are kept, keyed by its canonical path: <code>./calc.py</code> and <code>calc.py</code> are one entry.</li>
+                <li>For a newly created file, rollback deletes it, and the directories the run created with it.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 10px;">
+with open(full_path, "rb") as f:
+    content = f.read()          # bytes: CRLF and odd bytes survive
+st = os.stat(full_path)
+mode = stat.S_IMODE(st.st_mode)  # +x survives too</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Step 2: *.ioc.tmp Staging & os.replace</span>
+              <span class="card-badge badge-emerald">Atomicity</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Generated content is first written to temporary sibling files, <code>calculator.py.ioc.tmp</code>, each one fsync'ed.</li>
+                <li>Only after <strong>all</strong> files stage successfully does the system execute POSIX atomic swaps: <code>os.replace(tmp_path, target_path)</code>.</li>
+                <li>A failure while staging removes the temporaries and restores the snapshot: nothing half-written is ever renamed into place.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 7: Validation Engine & ioc.config.yml -->
+      <section class="slide" data-title="Validation: ioc.config.yml">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Validation Engine & ioc.config.yml</h2>
+              <p>Decoupling project-specific build and test routines from the IoC core engine</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Config Driven</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Configuration: demo_app/ioc.config.yml</span>
+              <span class="card-badge badge-cyan">YAML Spec</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box">
+validation_command: "python3 -m py_compile {files}
+  &amp;&amp; python3 -m flake8 --select=E9,F63,F7,F82 {files}
+  &amp;&amp; python3 main.py"           <span class="token-comm"># one line in the file</span>
+
+validation_file_extensions: [".py"]</div>
+              <ul style="margin-top: 10px;">
+                <li><code>{files}</code>: the touched files with a listed extension; a patch touching none (a README) validates every <code>.py</code> file instead.</li>
+                <li>Three gates: it compiles, no undefined names (flake8 E9/F63/F7/F82), it runs.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Execution: p3/loop.py</span>
+              <span class="card-badge badge-emerald">Subprocess</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Read once, before the first attempt: a patch cannot rewrite its own judge (and may not touch <code>ioc.config.yml</code>).</li>
+                <li><code>subprocess.Popen</code> in its own session, on a worker thread; after 30 s the whole process group is killed.</li>
+                <li>No <code>__pycache__</code> in the target (<code>PYTHONDONTWRITEBYTECODE</code>, <code>PYTHONPYCACHEPREFIX</code>); the target's own modules are imported first.</li>
+                <li>Exit code and output (the last 2000 characters) go back to the model.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 8: Self-Healing Retry Loop -->
+      <section class="slide" data-title="Self-Healing Retry Loop">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Self-Healing Retry Loop: Autonomous Error Feedback</h2>
+              <p>Every refusal or red validation goes back to the model verbatim; the files are restored in between</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Retry Engine</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Attempt 1 Fails Validation</span>
+              <span class="card-badge badge-rose">Failure</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 8px;">
+                A red attempt, replayed by <code>make test</code> with a scripted model: the patch left an undefined name in <code>main.py</code>.
+              </p>
+              <div class="code-box" style="font-size: 10.5px;">
+$ python3 -m py_compile main.py &amp;&amp; python3 -m flake8 \
+    --select=E9,F63,F7,F82 main.py &amp;&amp; python3 main.py
+main.py:48:29: F821 undefined name 'undefined_name'
+(exit code 1)</div>
+              <p style="margin-top: 8px; font-size: 11.5px;">
+                The files go back to their snapshot before attempt 2 starts; the log becomes feedback.
+              </p>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Attempt 2: The Feedback in Its Prompt</span>
+              <span class="card-badge badge-emerald">Correction</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 10.5px; height: 100%;">
+=== PREVIOUS ATTEMPT FAILED (ATTEMPT 1) ===
+Your previous patch produced the following validation or
+sanity errors:
+Validation command 'python3 -m py_compile main.py &amp;&amp; ...'
+failed (exit code 1):
+main.py:48:29: F821 undefined name 'undefined_name'
+Fix the code to resolve this compiler/syntax/test error.
+
+CRITICAL: You MUST correct these specific errors in this
+attempt. Do not repeat the same mistake. Output the
+corrected, complete JSON patch.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 9: 100% Rollback Guarantee -->
+      <section class="slide" data-title="100% Rollback Guarantee">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>100% Rollback Guarantee: Zero Code Corruption</h2>
+              <p>A non-negotiable peer evaluation requirement: the repository must never be left in a broken state</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Fail-Safe</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">When Does Rollback Trigger?</span>
+              <span class="card-badge badge-rose">Triggers</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>All 3 attempts end red (refused, unparseable or failed validation); after each red attempt the files are restored first.</li>
+                <li>A failure while staging the files.</li>
+                <li>The run is cancelled (Ctrl+C, server shutdown).</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">How Does Rollback Execute?</span>
+              <span class="card-badge badge-amber">Mechanism</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Snapshotted bytes and mode are written back through <code>*.ioc.tmp</code> and <code>os.replace</code>.</li>
+                <li>Created files (<code>op: create</code>) are deleted, with the directories they brought.</li>
+                <li>Leftover <code>*.ioc.tmp</code> files are removed, then every file is compared byte for byte with its snapshot: <code>rollback_verified</code>.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Peer Evaluation Proof</span>
+              <span class="card-badge badge-emerald">Audit</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Running <code>git status</code> and <code>git diff</code> demonstrates an entirely clean working tree.</li>
+                <li>The CLI prints <code>Rollback verified: every touched file matches its pre-call snapshot byte-for-byte.</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 10: Walkthrough: Successful Patch -->
+      <section class="slide" data-title="Walkthrough: Successful Patch">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Walkthrough: Successful Patch Application</h2>
+              <p>A real run: make p3-cli, square method, qwen2.5:3b, 94 s on a laptop CPU</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Happy Path</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">make p3-cli Output (abridged)</span>
+              <span class="card-badge badge-cyan">Real Run</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+ Patch Loop Outcome: SUCCESS
+ Attempts taken : 1 / 3
+
+--- Attempt #1 [success] ---
+  [+] Sanity Checks: PASSED
+  [+] Atomic apply: Succeeded
+  [*] Validation: 'python3 -m py_compile calculator.py
+      &amp;&amp; python3 -m flake8 --select=E9,F63,F7,F82
+      calculator.py &amp;&amp; python3 main.py' (Exit code: 0)
+      Output log:
+        [DemoApp] Addition = 200.0
+        Tax rate: 20.00% -&gt; Tax: $40.00
+
+[&#10003;] GREEN: Code modifications validated and committed
+    to codebase!</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">The Diff: +4 &minus;0</span>
+              <span class="card-badge badge-emerald">calculator.py</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+<span class="token-comm">@@ -34,3 +34,7 @@</span>
+     <span class="token-kw">def</span> <span class="token-fn">power</span>(self, base: float, exp: float) -&gt; float:
+         <span class="token-str">"""Return base raised to the power of exp."""</span>
+         <span class="token-kw">return</span> round(base ** exp, self.precision)
+<span class="token-str">+</span>
+<span class="token-str">+    def square(self, a: float) -&gt; float:</span>
+<span class="token-str">+        """Return the square of a number rounded to precision."""</span>
+<span class="token-str">+        return round(a * a, self.precision)</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 11: Walkthrough: Retry Loop in Action -->
+      <section class="slide" data-title="Walkthrough: Retry Loop in Action">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Walkthrough: The Retry Loop in Action</h2>
+              <p>A real run that never healed, and a replay that does: both end in a verified state</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Self-Healing Trace</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Live: Three Refusals, Verified Rollback</span>
+              <span class="card-badge badge-rose">Real Run, 217 s</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="font-size: 10.5px;">
+$ make p3-cli INTENT="add a function percent_change(old,
+    new) to formatter.py ... uses math.isclose ..."
+--- Attempt #1 [sanity_failed] ---
+  Rule 5 Violation: Modification would shrink
+  'formatter.py' by 74.2% (from 1431 to 369 characters).
+--- Attempt #2 [sanity_failed] ---
+  Rule 0 Violation: ... unterminated string literal
+--- Attempt #3 [sanity_failed] ---
+  Rule 0 Violation: ... unterminated string literal
+[&#10007;] RED: ... Project restored to exact pre-call
+    state (verified byte-for-byte).</div>
+              <p style="margin-top: 8px; font-size: 11.5px;">
+                Each refusal reached the next prompt: attempt 2 kept every definition, but the 3B model broke a string. Nothing was ever written.
+              </p>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Replayed: Red, Then Green</span>
+              <span class="card-badge badge-emerald">make test</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Attempt 1 leaves an undefined name in <code>main.py</code>: validation red (F821), files restored.</li>
+                <li>Attempt 2 receives that log (previous slide) and adds the requested method: green.</li>
+                <li>Result: <code>success</code>, attempts <code>[validation_failed, success]</code>, <code>main.py</code> byte-identical to before.</li>
+                <li>Test: <code>test_red_attempt_feeds_back_and_second_attempt_goes_green</code> in <code>p3/tests/test_loop.py</code>, with a scripted model.</li>
+                <li>Live, the square and rename intents went green on attempt 1.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 12: Part 3 Dashboard & UI -->
+      <section class="slide" data-title="Part 3 Dashboard & UI">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Part 3 Dashboard: Patch &amp; Self-Healing Interface</h2>
+              <p>Interactive web components for triggering, monitoring, and auditing patch loops</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Web UI</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">User Controls</span>
+              <span class="card-badge badge-cyan">Controls</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Intent and Top-k:</strong> one <code>POST /patch/run</code>; a second run while one is active gets a 409.</li>
+                <li><strong>Live Stages over SSE:</strong> attempt n/3, sanity, apply, validation, green or red.</li>
+                <li><strong>Manual Rollback and History:</strong> undo the last run (a green one too), or reopen the latest result.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-indigo">
+            <div class="card-header">
+              <span class="card-title">Attempt Records & Final Patch</span>
+              <span class="card-badge badge-indigo">Audit</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Attempt Cards:</strong> the seven rule pills, the refusal reasons, each file's patched content, the validation command, its exit code and output.</li>
+                <li><strong>Final Patch as JSON:</strong> the applied patch, or the last attempted one after a rollback (Figure VI.4).</li>
+                <li><strong>Status Badge:</strong> <code>GREEN (PASSED)</code> or <code>FAILED (ROLLED BACK, VERIFIED)</code>.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 14: Subject Compliance -->
+      <section class="slide" data-title="Subject Compliance">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Part 3</span>
+            <div class="slide-title-group">
+              <h2>Subject Compliance & Verification Checklist</h2>
+              <p>Verifying full compliance with all Part 3 mandatory requirements</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Audit 100%</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 35%;">Subject Requirement</th>
+                <th style="width: 25%;">Codebase Implementation</th>
+                <th style="width: 15%;">Status</th>
+                <th style="width: 25%;">Verification Command</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>A full iteration from the Patch Loop tab</td>
+                <td><code>p3/dashboard.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>make p3</code>, then the Patch Loop tab</td>
+              </tr>
+              <tr>
+                <td>Autonomous patch loop (Loop)</td>
+                <td><code>p3/loop.py</code> engine</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>make p3-cli</code> with coding intent</td>
+              </tr>
+              <tr>
+                <td>Structured JSON patch (not diff)</td>
+                <td><code>extract_json_patch()</code> + schema checks in <code>p3/sanity.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>"Final patch" JSON panel of the Patch Loop tab</td>
+              </tr>
+              <tr>
+                <td>6 mandatory Sanity Refusal checks</td>
+                <td><code>p3/sanity.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>make test-p3</code> (a test per rule)</td>
+              </tr>
+              <tr>
+                <td>ioc.config.yml validation command</td>
+                <td><code>demo_app/ioc.config.yml</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>Subprocess test command execution</td>
+              </tr>
+              <tr>
+                <td>Max 3 attempts, each error fed back</td>
+                <td><code>p3/loop.py</code> retry engine</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>Attempt cards: a refusal or log is quoted in the next prompt</td>
+              </tr>
+              <tr>
+                <td>100% Rollback on failure</td>
+                <td>Snapshots and atomic <code>os.replace</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>Verify clean <code>git status</code> after failure</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- SLIDE 2: Goal of Bonus -->
+      <section class="slide" data-title="Goal of Bonus">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Goal and Role of the Bonus Module</h2>
+              <p>What the bonus ideas add on top of a working Part 1-3</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Developer Experience</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">1. Dynamic Lifecycle</span>
+              <span class="card-badge badge-purple">Reindex</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>In Part 1, ChromaDB indexes at startup, and the watcher monitors events.</li>
+                <li>What happens if an external git branch switch occurs or the index needs a clean slate?</li>
+                <li><code>POST /reindex</code> re-chunks and re-embeds every file at runtime, and purges the chunks of files deleted while no watcher ran.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">2. Visual Auditing</span>
+              <span class="card-badge badge-cyan">Visual Diff</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Part 3 writes whole files, but human developers must review <em>exact code deltas</em>.</li>
+                <li>The visual diff engine generates colorized, line-by-line unified diffs for the web UI.</li>
+                <li>Green (+) for additions, red (-) for deletions.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">3. Git Commit (Opt-in)</span>
+              <span class="card-badge badge-emerald">Git Commit</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>With Auto Git Commit ticked, a green patch is committed: only the patch's files, never other staged work.</li>
+                <li>The local model writes a Conventional Commit message from the intent and the patch summary (live: <code>feat(calculator.py): add square method with rounding</code>).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 3: Bonus Architecture -->
+      <section class="slide" data-title="Bonus Architecture">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Bonus Directory Modules & Architecture</h2>
+              <p>How the bonus components layer cleanly on top of P1, P2, and P3</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Folder Structure</span>
+          </div>
+        </div>
+        <div class="pipeline-flow" style="margin-top: 10px;">
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">Module 1</span>
+              <span class="node-title">bonus/api.py</span>
+              <span class="node-file">FastAPI Router</span>
+              <span class="node-desc">POST /reindex, POST /bonus/patch/run (dry_run, auto_commit) and /bonus/crash-watch, on top of every Part 1-3 route.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Module 2</span>
+              <span class="node-title">bonus/diff_engine.py</span>
+              <span class="node-file">Diff Engine</span>
+              <span class="node-desc">Unified diffs (difflib) with +/- counts and an HTML rendering, against the pre-run originals.</span>
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-num">Module 3</span>
+              <span class="node-title">bonus/git_committer.py</span>
+              <span class="node-file">Git Automation</span>
+              <span class="node-desc">Ollama prompt for conventional commit generation and subprocess git add/commit runner.</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Module 4</span>
+              <span class="node-title">bonus/dashboard.py</span>
+              <span class="node-file">4-Tab UI</span>
+              <span class="node-desc">4 tabs: Overview, Files, Ask &amp; Retrieve, Patch Loop &amp; Bonus (dry run, auto-commit, diffs, Crash Watcher card).</span>
+            </div>
+            <div class="flow-arrow">-&gt;</div>
+            <div class="flow-node">
+              <span class="node-num">Module 5</span>
+              <span class="node-title">bonus/crash_watcher.py</span>
+              <span class="node-file">Docker SDK</span>
+              <span class="node-desc">Follows a container's log; a crash becomes a patch-loop intent, a green patch restarts the service.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 4: POST /reindex Deep Dive -->
+      <section class="slide" data-title="Dynamic Reindexing (POST /reindex)">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Dynamic Reindexing: POST /reindex</h2>
+              <p>Full vector database regeneration at runtime without restarting processes or containers</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Dynamic Lifecycle</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">Execution Steps</span>
+              <span class="card-badge badge-purple">Execution Flow</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>1. Forget the Hashes:</strong> <code>reset_state()</code>, so no file is skipped as unchanged.</li>
+                <li><strong>2. Re-chunk and Re-embed:</strong> <code>index_all(force=True)</code> walks the target and embeds every chunk with <code>all-MiniLM-L6-v2</code>.</li>
+                <li><strong>3. Reconcile:</strong> chunks of files that are gone from disk are deleted, even when no watcher saw the deletion.</li>
+                <li><strong>4. Refresh and Announce:</strong> the BM25 corpus and symbol inventory are rebuilt; a <code>REINDEX</code> event reaches the live feed. <code>?full=false</code> runs an incremental sync instead.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">API Contract Sample</span>
+              <span class="card-badge badge-cyan">Request / Response</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%;">
+<span class="token-comm"># a real call against demo_app (0.49 s)</span>
+$ curl -X POST http://127.0.0.1:8000/reindex
+{
+  <span class="token-str">"status"</span>: <span class="token-str">"success"</span>,
+  <span class="token-str">"message"</span>: <span class="token-str">"On-demand full reindex completed successfully"</span>,
+  <span class="token-str">"full"</span>: <span class="token-kw">true</span>,
+  <span class="token-str">"indexed_files"</span>: <span class="token-num">5</span>,
+  <span class="token-str">"total_files"</span>: <span class="token-num">4</span>,
+  <span class="token-str">"total_chunks"</span>: <span class="token-num">23</span>,
+  <span class="token-str">"file_breakdown"</span>: {<span class="token-str">"calculator.py"</span>: <span class="token-num">8</span>, <span class="token-str">"formatter.py"</span>: <span class="token-num">7</span>,
+                     <span class="token-str">"main.py"</span>: <span class="token-num">5</span>, <span class="token-str">"ioc.config.yml"</span>: <span class="token-num">3</span>}
+}
+<span class="token-comm"># indexed_files counts the empty __init__.py too</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 5: Visual Diff Engine -->
+      <section class="slide" data-title="Visual Diff Engine">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Visual Diff Engine: bonus/diff_engine.py</h2>
+              <p>Structured, human-auditable code delta visualization in the browser</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Diff Engine</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">How the Diff is Computed</span>
+              <span class="card-badge badge-cyan">Architecture</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Employs Python native <code>difflib.unified_diff</code> algorithm as the calculation backbone.</li>
+                <li>Categorizes lines into additions (<code>+</code>), deletions (<code>-</code>), and contextual unchanged code.</li>
+                <li>Counts the changed lines: the square-method patch is <code>+4 / -0</code>.</li>
+                <li>Diffs are taken against the run's pre-run originals, so a committed (green) patch still shows its diff.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Diff Presentation Preview</span>
+              <span class="card-badge badge-emerald">UI Inspector</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+--- a/calculator.py
++++ b/calculator.py
+@@ -34,3 +34,7 @@
+     def power(self, base: float, exp: float) -&gt; float:
+         """Return base raised to the power of exp."""
+         return round(base ** exp, self.precision)
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+</span>
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+    def square(self, a: float) -&gt; float:</span>
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+        """Return the square of a number rounded to precision."""</span>
+<span style="color: #34d399; background: rgba(52, 211, 153, 0.1);">+        return round(a * a, self.precision)</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 6: Automated Git Committer -->
+      <section class="slide" data-title="Automated Git Committer">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Automated Git Committer: bonus/git_committer.py</h2>
+              <p>Committing verified modifications with local LLM-authored conventional commit messages</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Git Automation</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Conventional Commit Prompting</span>
+              <span class="card-badge badge-amber">LLM Generation</span>
+            </div>
+            <div class="card-content">
+              <p style="margin-bottom: 8px;">The local model gets the intent, the patch summary and the touched file names (no diff), and returns one line:</p>
+              <div class="code-box" style="font-size: 11px;">
+Generate a single concise Conventional Commit message
+following the format: &lt;type&gt;(&lt;scope&gt;): &lt;short description&gt;
+Allowed types: feat, fix, refactor, test, docs, chore.
+Rules:
+- Exactly ONE line only.
+- Do not use quotes or markdown formatting.
+- Be brief and descriptive (max 72 characters).
+
+Coding Intent: {intent}
+Patch Explanation: {patch summary}
+Touched Files: {file names}
+
+Commit message:</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Safe Git Operations</span>
+              <span class="card-badge badge-emerald">Subprocess</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><strong>Success Gated, Opt-in:</strong> only after a green validation, and only with Auto Git Commit ticked.</li>
+                <li><strong>Precise Staging:</strong> <code>git add -A -- &lt;paths&gt;</code>, then <code>git commit -- &lt;paths&gt;</code>: other staged work stays out of the commit.</li>
+                <li>The hash and message come back to the dashboard; a failed commit is shown, never silent. With Ollama down the message falls back to a template.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 7: Dry-Run Simulation Mode -->
+      <section class="slide" data-title="Dry-Run Simulation Mode">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Dry-Run Simulation Mode: Risk-Free Previews</h2>
+              <p>Full patch generation, diff calculation, and sanity check audit without disk modification</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Safety Mode</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Why Dry-Run Matters</span>
+              <span class="card-badge badge-cyan">Utility</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Allows developers and evaluators to inspect model code reasoning before committing to disk.</li>
+                <li>One generation and no validation run: a quick look at what the model would change.</li>
+                <li>Ticked with the <em>Dry-Run Mode</em> box of the Patch Loop &amp; Bonus tab, or <code>--dry-run</code> on the CLI.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">How the Engine Handles Dry-Run</span>
+              <span class="card-badge badge-purple">Execution Logic</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Model generates the structured JSON patch.</li>
+                <li>The <strong>6 sanity checks</strong> and the guards audit the generated in-memory code.</li>
+                <li>The diff engine calculates the unified diff against current files.</li>
+                <li>Execution <strong>halts safely</strong>: zero disk writes, zero temporary files, zero test subprocesses.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 8: Bonus REST API -->
+      <section class="slide" data-title="Bonus REST API Endpoints">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Bonus REST API Endpoints Overview</h2>
+              <p>The routes bonus/api.py adds; the Part 1-3 routes (/patch/rollback, /patch/history, ...) stay</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">API Reference</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 18%;">Endpoint</th>
+                <th style="width: 10%;">Method</th>
+                <th style="width: 40%;">Description & Responsibility</th>
+                <th style="width: 32%;">Sample Return</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>/reindex</code></td>
+                <td><span class="card-badge badge-purple">POST</span></td>
+                <td>Full re-chunk and re-embed; purges files deleted while no watcher ran; <code>?full=false</code> for an incremental sync.</td>
+                <td><code>{"status":"success", "full":true, "total_chunks":23, ...}</code></td>
+              </tr>
+              <tr>
+                <td><code>/bonus/patch/run</code></td>
+                <td><span class="card-badge badge-amber">POST</span></td>
+                <td>The patch loop with <code>dry_run</code> and <code>auto_commit</code>; a visual diff for every attempt.</td>
+                <td><code>{"status":"dry_run_success", "dry_run":true, "diffs":[...], ...}</code></td>
+              </tr>
+              <tr>
+                <td><code>/bonus/crash-watch</code></td>
+                <td><span class="card-badge badge-cyan">POST</span></td>
+                <td>Watch a container: <code>{"container":"ioc-demo-service", "auto_restart":true}</code>; 503 without Docker.</td>
+                <td><code>{"watching":true, "state":"running", "crashes":[...]}</code></td>
+              </tr>
+              <tr>
+                <td><code>/bonus/crash-watch</code></td>
+                <td><span class="card-badge badge-emerald">GET</span> <span class="card-badge badge-rose">DELETE</span></td>
+                <td>Watcher state, handled crashes and the service's last log lines; stop watching.</td>
+                <td><code>{"watching":false, "state":"not watching"}</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- SLIDE 9: Bonus 4-Tab Dashboard -->
+      <section class="slide" data-title="Bonus 4-Tab Dashboard">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Unified 4-Tab Dashboard: bonus/dashboard.py</h2>
+              <p>All capabilities brought together into a responsive real-time web dashboard</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">All-in-One</span>
+          </div>
+        </div>
+        <div class="grid-4" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">1. Overview</span>
+              <span class="card-badge badge-cyan">P1</span>
+            </div>
+            <div class="card-content">
+              Chunk and file counts, target path, models and the live feed; the On-Demand Reindex button sits in the header.
+            </div>
+          </div>
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">2. Files</span>
+              <span class="card-badge badge-purple">P1 / P2</span>
+            </div>
+            <div class="card-content">
+              The whole file, with a &#9654; on the first line of every indexed chunk and its label (Figure VI.2).
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">3. Ask &amp; Retrieve</span>
+              <span class="card-badge badge-emerald">P2</span>
+            </div>
+            <div class="card-content">
+              Question and top-k; the answer with its source badge, and the ranked chunks with their relevance score.
+            </div>
+          </div>
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">4. Patch Loop &amp; Bonus</span>
+              <span class="card-badge badge-amber">P3 + Bonus</span>
+            </div>
+            <div class="card-content">
+              Dry-Run and Auto Git Commit boxes, live validation log (SSE), a visual diff per attempt, the final patch JSON and the Crash Watcher card.
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 10: Walkthrough: POST /reindex in Action -->
+      <section class="slide" data-title="Walkthrough: POST /reindex">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Walkthrough: POST /reindex in Action</h2>
+              <p>A real call against demo_app: 0.49 s for 4 files and 23 chunks on a laptop CPU</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Live Rebuild</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">The Real Call</span>
+              <span class="card-badge badge-purple">curl + SSE</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+$ curl -s -X POST http://127.0.0.1:8000/reindex
+{"status": "success",
+ "message": "On-demand full reindex completed successfully",
+ "full": true, "indexed_files": 5, "total_files": 4,
+ "total_chunks": 23,
+ "file_breakdown": {"main.py": 5, "formatter.py": 7,
+                    "calculator.py": 8, "ioc.config.yml": 3}}
+
+<span class="token-comm"># the live feed receives:</span>
+data: {"action": "REINDEX", "path": ".../demo_app",
+       "details": "On-demand reindex: 23 chunks", ...}</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Dashboard Reaction</span>
+              <span class="card-badge badge-emerald">Dashboard</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>The <em>Indexed Chunks</em> counter refreshes seamlessly on the Overview tab.</li>
+                <li>Zero container restart or manual process intervention required.</li>
+                <li>Demo: press &#10227; On-Demand Reindex; the alert shows the file and chunk totals.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 11: Walkthrough: Automated Git Commit -->
+      <section class="slide" data-title="Walkthrough: Automated Git Commit">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Walkthrough: Automated Git Commit After Validation</h2>
+              <p>A real run in a scratch git repository: only the patch's file is committed</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Git Trace</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">bonus/index.py --auto-commit</span>
+              <span class="card-badge badge-cyan">Real Run, 75 s</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+$ /tmp/ioc/venv/bin/python bonus/index.py demo_app \
+    --intent "add a method square(self, a) ..." --auto-commit
+[*] Mode: ACTIVE (Atomic Application)
+[*] Auto-commit: True
+Outcome: SUCCESS in 1 attempt(s)
+[&#10003;] GREEN: Code modifications validated and committed
+    to disk!
+[&#10003;] Git commit created: 734839f -
+    'feat(calculator.py): add square method with rounding'</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Git Repository Log</span>
+              <span class="card-badge badge-emerald">git log -1 --stat</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+commit 734839f
+Author: (your git identity; IoC Patch Loop
+        &lt;ioc@localhost&gt; when none is configured)
+Date:   Sun Oct 4 00:19:20 2026 +0200
+
+    feat(calculator.py): add square method with rounding
+
+ calculator.py | 4 ++++
+ 1 file changed, 4 insertions(+)</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 12: Walkthrough: Dry-Run Simulation -->
+      <section class="slide" data-title="Walkthrough: Dry-Run Simulation">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Walkthrough: Dry-Run Simulation in Practice</h2>
+              <p>A real call with the live model: 91 s, the disk checked byte for byte afterwards</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Simulation Trace</span>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 14px;">
+          <div class="card glow-amber">
+            <div class="card-header">
+              <span class="card-title">Sending Dry-Run Request</span>
+              <span class="card-badge badge-amber">Request</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box">
+POST /bonus/patch/run
+{
+  <span class="token-str">"intent"</span>: <span class="token-str">"add a method square(self, a) to the
+             Calculator class in calculator.py ..."</span>,
+  <span class="token-str">"dry_run"</span>: <span class="token-kw">true</span>
+}</div>
+              <ul style="margin-top: 12px;">
+                <li>The Dry-Run Mode box of the Patch Loop &amp; Bonus tab sends exactly this.</li>
+                <li>One generation, the sanity checks and a diff: no apply, no validation, no write.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Simulation Audit Response</span>
+              <span class="card-badge badge-emerald">Response</span>
+            </div>
+            <div class="card-content">
+              <div class="code-box" style="height: 100%; font-size: 11px;">
+{
+  <span class="token-str">"status"</span>: <span class="token-str">"dry_run_success"</span>,
+  <span class="token-str">"dry_run"</span>: <span class="token-kw">true</span>,
+  <span class="token-str">"sanity_passed"</span>: <span class="token-kw">true</span>,
+  <span class="token-str">"sanity_errors"</span>: [],
+  <span class="token-str">"sanity_rules"</span>: {<span class="token-str">"0"</span>: <span class="token-kw">true</span>, <span class="token-str">"1"</span>: <span class="token-kw">true</span>, ..., <span class="token-str">"6"</span>: <span class="token-kw">true</span>},
+  <span class="token-str">"patch"</span>: {<span class="token-str">"summary"</span>: <span class="token-str">"Add a method to calculate square
+             of a number and round it to the precision"</span>, ...},
+  <span class="token-str">"diffs"</span>: [{<span class="token-str">"path"</span>: <span class="token-str">"calculator.py"</span>, <span class="token-str">"op"</span>: <span class="token-str">"modify"</span>,
+             <span class="token-str">"additions"</span>: <span class="token-num">4</span>, <span class="token-str">"deletions"</span>: <span class="token-num">0</span>, ...}],
+  <span class="token-str">"message"</span>: <span class="token-str">"Dry-run complete: no files were
+              written to the disk."</span>
+}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 13: Docker & Execution Modes -->
+      <section class="slide" data-title="Docker & Execution Modes">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Dockerization & Execution Modes (Makefile)</h2>
+              <p>Simple single-command launch configurations for every evaluation context</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Deployment</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">make bonus</span>
+              <span class="card-badge badge-cyan">Target</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Launches the unified <code>bonus/dashboard.py</code> service on port <code>8000</code>.</li>
+                <li>Grants immediate access to all 4 tabs; <code>WATCH_CONTAINER=name</code> also starts the crash watcher.</li>
+              </ul>
+              <div class="code-box" style="margin-top: 8px;">make bonus</div>
+            </div>
+          </div>
+          <div class="card glow-purple">
+            <div class="card-header">
+              <span class="card-title">make up / down</span>
+              <span class="card-badge badge-purple">Compose</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Builds and starts the container via <code>docker-compose.yml</code>; embedding weights and flake8 are baked into the image.</li>
+                <li>Serves <code>http://127.0.0.1:8000</code> (host networking).</li>
+              </ul>
+              <div class="code-box" style="margin-top: 8px;">make up</div>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Offline by Design</span>
+              <span class="card-badge badge-emerald">Offline</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><code>HF_HUB_OFFLINE=1</code> with baked weights: nothing is downloaded at run time.</li>
+                <li><code>network_mode: host</code> lets the container reach the host's Ollama on <code>127.0.0.1:11435</code>; it is not a network sandbox.</li>
+                <li>The crash watcher runs with <code>make bonus</code> on the host: the container has no Docker socket (503).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 14: B3: Docker SDK Crash Watcher -->
+      <section class="slide" data-title="B3: Docker SDK Crash Watcher">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus B3</span>
+            <div class="slide-title-group">
+              <h2>B3: Docker SDK Crash Watcher</h2>
+              <p>Watch a target service's logs and trigger the patch loop on crash</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">bonus/crash_watcher.py</span>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="card glow-rose">
+            <div class="card-header">
+              <span class="card-title">Docker SDK Integration</span>
+              <span class="card-badge badge-rose">bonus/crash_watcher.py</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li><code>CrashWatcher</code> follows one container's log stream via the Docker SDK (<code>docker.from_env()</code>).</li>
+                <li>Log tail kept in a 200-line ring buffer, shown live on the dashboard.</li>
+                <li>Non-zero exit code = crash; each crash handled once (keyed by <code>FinishedAt</code>).</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-cyan">
+            <div class="card-header">
+              <span class="card-title">Crash &rarr; Patch Loop</span>
+              <span class="card-badge badge-cyan">Self-Healing</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>Log tail becomes the patch intent; stack frames rewritten to target-relative <code>file:line in function</code>.</li>
+                <li>Runs the same patch loop, lock and history as the Patch Loop tab.</li>
+                <li>Green patch &rarr; service restarted; red patch &rarr; left stopped for a human.</li>
+                <li>Consecutive crash runs capped (3) so a broken service cannot keep the model busy.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card glow-emerald">
+            <div class="card-header">
+              <span class="card-title">Endpoints &amp; Makefile</span>
+              <span class="card-badge badge-emerald">Run It</span>
+            </div>
+            <div class="card-content">
+              <ul>
+                <li>API: <code>POST /bonus/crash-watch</code> (start), <code>GET</code> (status), <code>DELETE</code> (stop).</li>
+                <li><code>make demo-service</code> runs the target as a crashable service container.</li>
+                <li><code>make bonus WATCH_CONTAINER=ioc-demo-service</code> starts the watcher.</li>
+                <li>Crash Watcher card in <code>bonus/dashboard.py</code> with live log and crash history.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- SLIDE 15: Bonus Compliance Matrix -->
+      <section class="slide" data-title="Bonus Compliance Matrix">
+        <div class="slide-header">
+          <div class="slide-header-left">
+            <span class="ioc-badge">Bonus</span>
+            <div class="slide-title-group">
+              <h2>Bonus Compliance & Verification Checklist</h2>
+              <p>Verification table for all bonus features</p>
+            </div>
+          </div>
+          <div class="slide-header-right">
+            <span class="header-tag">Audit 100%</span>
+          </div>
+        </div>
+        <div style="margin-top: 14px;">
+          <table class="db-mock-table">
+            <thead>
+              <tr>
+                <th style="width: 30%;">Bonus Feature</th>
+                <th style="width: 25%;">Codebase Implementation</th>
+                <th style="width: 15%;">Status</th>
+                <th style="width: 30%;">Verification Command</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>B1: <code>POST /reindex</code> on demand</td>
+                <td><code>bonus/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>curl -X POST http://127.0.0.1:8000/reindex</code></td>
+              </tr>
+              <tr>
+                <td>B2: Git commit of a validated patch, LLM message</td>
+                <td><code>bonus/git_committer.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>Tick Auto Git Commit, run a patch, <code>git log -1</code> (in a scratch clone)</td>
+              </tr>
+              <tr>
+                <td>B3: Docker SDK crash watcher</td>
+                <td><code>bonus/crash_watcher.py</code> + <code>bonus/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>make demo-service</code>, then <code>make bonus WATCH_CONTAINER=ioc-demo-service</code></td>
+              </tr>
+              <tr>
+                <td>B4: Dry run, a diff without touching the disk</td>
+                <td><code>bonus/api.py</code> + Dry-Run Mode box</td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>POST /bonus/patch/run</code> with <code>"dry_run": true</code></td>
+              </tr>
+              <tr>
+                <td>B5: Relevance scores, visual diff, live SSE status</td>
+                <td><code>bonus/dashboard.py</code> + <code>bonus/diff_engine.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>make bonus</code>: Ask &amp; Retrieve and Patch Loop &amp; Bonus tabs</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+<section class="slide" data-title="Unified Summary & Next Steps">
         <div class="slide-header">
           <div class="slide-header-left">
             <span class="ioc-badge">Conclusion</span>
             <div class="slide-title-group">
-              <h2>Current Part 1 Status &amp; Next Steps</h2>
-              <p>Summary of completed foundation and roadmap for Part 2</p>
+              <h2>Unified Project Status &amp; Next Steps</h2>
+              <p>Summary of Parts 1-3 and Bonuses B1-B5</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -2223,15 +4455,14 @@ html, body {
                 <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 What Works Today
               </span>
-              <span class="card-badge badge-emerald">Part 1 Done</span>
+              <span class="card-badge badge-emerald">P1-P3 + B1-B5 Done</span>
             </div>
             <div class="card-content">
               <ul>
-                <li>Complete offline codebase indexing pipeline.</li>
-                <li>Accurate semantic AST chunking preserving line ranges and decorators.</li>
-                <li>ChromaDB vector persistence with SHA-256 incremental synchronization.</li>
-                <li>Real-time watcher with debounce and polling fallback.</li>
-                <li>FastAPI Overview Dashboard with live SSE feed.</li>
+                <li>Part 1: offline indexing, AST chunking, ChromaDB, real-time watcher.</li>
+                <li>Part 2: hybrid retrieval, local LLM grounding, REST API + SSE.</li>
+                <li>Part 3: autonomous patch loop with validation and 100% rollback.</li>
+                <li>Bonuses: reindex, auto git commit, crash watcher, dry-run, richer dashboard (scores, visual diff, live SSE).</li>
               </ul>
             </div>
           </div>
@@ -2257,21 +4488,14 @@ html, body {
             <div class="card-header">
               <span class="card-title">
                 <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                Next Milestones
+                Full Coverage
               </span>
-              <span class="card-badge badge-amber">Upcoming</span>
+              <span class="card-badge badge-amber">This Deck</span>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Part 2: Architect API &amp; RAG</strong>
-                  <br>&bull; Endpoints: <code>POST /context</code> and <code>POST /ask</code>
-                  <br>&bull; Local Ollama orchestration (<code>qwen2.5:3b</code>)
-                  <br>&bull; Hybrid retrieval &amp; Ask UI
-                </li>
-                <li><strong>Part 3: Patch Loop</strong>
-                  <br>&bull; Structured patch JSON generation
-                  <br>&bull; Validation &amp; atomic rollback
-                </li>
+                <li>Every P1, P2, P3 and BONUS slide is included in full detail in this unified deck.</li>
+                <li>Per-part decks remain as references: <a href="P1_PRESENTATION.html" target="_blank" style="color:var(--cyan);">P1</a> &middot; <a href="P2_PRESENTATION.html" target="_blank" style="color:var(--cyan);">P2</a> &middot; <a href="P3_PRESENTATION.html" target="_blank" style="color:var(--cyan);">P3</a> &middot; <a href="BONUS_PRESENTATION.html" target="_blank" style="color:var(--cyan);">BONUS</a></li>
               </ul>
             </div>
           </div>
@@ -2295,7 +4519,7 @@ html, body {
         <button class="nav-btn" id="btnPrev" title="Previous slide (Left Arrow)">
           <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
-        <span class="slide-counter" id="slideCounter">01 / 12</span>
+        <span class="slide-counter" id="slideCounter">01 / 55</span>
         <button class="nav-btn" id="btnNext" title="Next slide (Right Arrow / Space)">
           <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>

@@ -1030,6 +1030,7 @@ html, body {
 
 /* Compact full-file listing: must come after .code-line so it wins */
 .code-box-fit {
+  white-space: normal; /* rows are divs; HTML newlines must not add lines */
   font-size: 8.8px;
   line-height: 1.1;
   max-height: none;
@@ -1237,7 +1238,7 @@ html, body {
             <span class="ioc-badge">Repository Audit</span>
             <div class="slide-title-group">
               <h2>Current Repository Structure</h2>
-              <p>Verified on-disk files  only Part 1 and demo application exist</p>
+              <p>Part 1 in detail; the rest of the repository at a glance</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1251,21 +1252,25 @@ html, body {
             <div>&boxvr;&boxh;&boxh; <span class="tree-folder">p1/</span> <span class="tree-note">&larr; Part 1 Implementation</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">index.py</span> <span class="tree-note">(CLI entrypoint, args, runner)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">indexer.py</span> <span class="tree-note">(CodebaseIndexer, hash sync, filters)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">chunker.py</span> <span class="tree-note">(ASTChunker, FallbackChunker, CodeChunk)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">chunker.py</span> <span class="tree-note">(ASTChunker + regex/paragraph fallbacks)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">db.py</span> <span class="tree-note">(VectorDB, ChromaDB PersistentClient)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">watcher.py</span> <span class="tree-note">(CodebaseWatcher, debounce, polling)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard.py</span> <span class="tree-note">(FastAPI server, SSE live stream)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard.py</span> <span class="tree-note">(Overview tab, SSE live feed)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file-highlight">dashboard_files.py</span> <span class="tree-note">(Files tab + GET /file, shared)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">markers.py, dashboard_modal.py</span> <span class="tree-note">(shared with P2/P3)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-folder">tests/</span> <span class="tree-note">(offline tests, frozen demo copy)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">requirements.txt</span> <span class="tree-note">(chromadb, watchdog, fastapi...)</span></div>
             <div>&boxvr;&boxh;&boxh; <span class="tree-folder">demo_app/</span> <span class="tree-note">&larr; Target Codebase for Indexing</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">calculator.py</span> <span class="tree-note">(Calculator class with arithmetic methods)</span></div>
             <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">formatter.py</span> <span class="tree-note">(ResultFormatter, currency/percentage)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">main.py</span> <span class="tree-note">(calculate_tax, main / run_demo)</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">presentation/</span> <span class="tree-note">&larr; Slide deck</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">PRESENTATION.html</span> <span class="tree-note">(English)</span></div>
-            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">PRESENTATION_HU.html</span> <span class="tree-note">(Hungarian)</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Makefile</span> <span class="tree-note">(setup, p1, clean, fclean &rarr; /tmp/ioc)</span></div>
-            <div>&boxvr;&boxh;&boxh; <span class="tree-file">README.md</span> <span class="tree-note">(Description, Instructions, Resources)</span></div>
-            <div>&boxur;&boxh;&boxh; <span class="tree-file">.gitignore</span> <span class="tree-note">(Ignores .chroma_db, weights, caches)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxvr;&boxh;&boxh; <span class="tree-file">main.py</span> <span class="tree-note">(calculate_tax, run_demo, main)</span></div>
+            <div>&boxv;&nbsp;&nbsp; &boxur;&boxh;&boxh; <span class="tree-file">ioc.config.yml</span> <span class="tree-note">(validation command, Part 3)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">p2/ p3/ bonus/</span> <span class="tree-note">&larr; Parts 2, 3 and bonus (own decks)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-folder">presentation/</span> <span class="tree-note">&larr; P1, P2, P3, BONUS, unified (EN/HU)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Dockerfile, docker-compose.yml</span> <span class="tree-note">(make up / make down)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">Makefile</span> <span class="tree-note">(setup, p1-p3, bonus, gates &rarr; /tmp/ioc)</span></div>
+            <div>&boxvr;&boxh;&boxh; <span class="tree-file">README.md</span> <span class="tree-note">(how to start, API, quality gates)</span></div>
+            <div>&boxur;&boxh;&boxh; <span class="tree-file">.gitignore</span> <span class="tree-note">(ChromaDB, weights, caches)</span></div>
           </div>
 
           <div class="card glow-cyan">
@@ -1279,16 +1284,16 @@ html, body {
             <div class="card-content">
               <ul style="gap: 12px;">
                 <li>
-                  <strong>Implemented Modules:</strong> All Part 1 core components (<code>chunker.py</code>, <code>db.py</code>, <code>indexer.py</code>, <code>watcher.py</code>, <code>dashboard.py</code>, <code>index.py</code>) are present and functional.
+                  <strong>Implemented Modules:</strong> All Part 1 core components (<code>chunker.py</code>, <code>db.py</code>, <code>indexer.py</code>, <code>watcher.py</code>, <code>dashboard.py</code>, <code>dashboard_files.py</code>, <code>index.py</code>) are present and functional.
                 </li>
                 <li>
                   <strong>Target Demo App:</strong> A modular 3-file Python target application (<code>demo_app/</code>) is included to exercise AST chunking and vector storage.
                 </li>
                 <li>
-                  <strong>Not Yet Implemented:</strong> <code>p2/</code> (Architect API / RAG) and <code>p3/</code> (Patch Loop) do NOT exist yet.
+                  <strong>Out of Scope Here:</strong> <code>p2/</code> (Architect API / RAG), <code>p3/</code> (Patch Loop) and <code>bonus/</code> are covered by their own decks.
                 </li>
                 <li>
-                  <strong>Packaging Note:</strong> Root <code>Makefile</code> and <code>README.md</code> are present (<code>make setup</code> / <code>make p1</code>). <code>Dockerfile</code> is not introduced yet.
+                  <strong>Packaging Note:</strong> Root <code>Makefile</code> and <code>README.md</code> are present (<code>make setup</code> / <code>make p1</code>); <code>Dockerfile</code> + <code>docker-compose.yml</code> run the whole suite (<code>make up</code> / <code>make down</code>).
                 </li>
               </ul>
             </div>
@@ -1351,7 +1356,7 @@ html, body {
             <div class="flow-node">
               <span class="node-num">Step 05</span>
               <span class="node-title">Persistent Vector DB</span>
-              <span class="node-file">.chroma_db/</span>
+              <span class="node-file">/tmp/ioc/chroma_db</span>
               <span class="node-desc">ChromaDB stores documents, embeddings &amp; metadata</span>
             </div>
             <span class="flow-arrow">&rarr;</span>
@@ -1416,7 +1421,7 @@ html, body {
                 <li><strong>Decorator Safety:</strong> <code>_get_start_line_with_decorators()</code> groups <code>@staticmethod</code> or decorators with their function.</li>
                 <li><strong>Symbol Hierarchy:</strong> Detects classes and treats each method as a separate, self-contained chunk (e.g. <code>Calculator.add</code>).</li>
                 <li><strong>Exact Line Ranges:</strong> Attaches 1-indexed <code>start_line</code> and <code>end_line</code> for pinpoint line accuracy.</li>
-                <li><strong>Fallback:</strong> Regex double-newline <code>FallbackChunker</code> for non-Python or syntax-broken files.</li>
+                <li><strong>Fallbacks:</strong> <code>RegexPythonChunker</code> (def/class headers at any indentation) for Python that does not parse; <code>FallbackChunker</code> (blank-line blocks) for other files.</li>
               </ul>
             </div>
           </div>
@@ -1512,7 +1517,7 @@ html, body {
 
               <div class="chunk-item-card">
                 <div class="chunk-item-title">
-                  <span>2. Calculator (Lines 9&ndash;10)</span>
+                  <span>2. Calculator (Lines 9&ndash;11)</span>
                   <span class="badge-dim card-badge">class</span>
                 </div>
                 <div class="chunk-item-desc">Class declaration &amp; precision docstring.</div>
@@ -1568,7 +1573,7 @@ html, body {
             <div class="card-content" style="display:flex; flex-direction:column; gap:10px;">
               <div>
                 <div style="font-size:11px; color:var(--text-dim); margin-bottom:3px; font-family:var(--font-mono);">1. INPUT: Raw Chunk Text</div>
-                <div class="code-box" style="padding:6px 10px; font-size:11px;">"def add(self, a, b): return round(a + b, self.precision)"</div>
+                <div class="code-box" style="padding:6px 10px; font-size:11px;">"def add(self, a: float, b: float) -&gt; float: ..." (the whole 3-line chunk)</div>
               </div>
 
               <div style="text-align:center; color:var(--cyan); font-size:14px; margin:-4px 0;">&darr; <em>Tokenize &amp; 6-Layer Transformer</em></div>
@@ -1576,12 +1581,12 @@ html, body {
               <div>
                 <div style="font-size:11px; color:var(--text-dim); margin-bottom:3px; font-family:var(--font-mono);">2. OUTPUT: 384-Dimensional Dense Vector</div>
                 <div class="vector-stream">
-                  <span class="vec-dim">d0: +0.0412</span>
-                  <span class="vec-dim">d1: -0.0189</span>
-                  <span class="vec-dim">d2: +0.0831</span>
+                  <span class="vec-dim">d0: -0.0049</span>
+                  <span class="vec-dim">d1: +0.0152</span>
+                  <span class="vec-dim">d2: -0.0812</span>
                   <span class="vec-dim">d3: -0.0054</span>
                   <span class="vec-dots">&bull;&bull;&bull;</span>
-                  <span class="vec-dim">d383: +0.0719</span>
+                  <span class="vec-dim">d383: +0.0109</span>
                 </div>
               </div>
 
@@ -1603,7 +1608,7 @@ html, body {
               <div class="cluster-group" style="border-color: rgba(56, 189, 248, 0.4);">
                 <div class="cluster-title">
                   <span style="color:var(--cyan);">Cluster 1: Arithmetic Operations</span>
-                  <span style="color:var(--text-dim);">Cosine distance &lt; 0.20</span>
+                  <span style="color:var(--text-dim);">Cosine distance 0.19&ndash;0.30</span>
                 </div>
                 <div class="cluster-pills">
                   <span class="point-pill math">Calculator.add</span>
@@ -1616,7 +1621,7 @@ html, body {
               <div class="cluster-group" style="border-color: rgba(168, 85, 247, 0.4);">
                 <div class="cluster-title">
                   <span style="color:#c084fc;">Cluster 2: Formatting &amp; Output</span>
-                  <span style="color:var(--text-dim);">Cosine distance &lt; 0.22</span>
+                  <span style="color:var(--text-dim);">Cosine distance 0.27&ndash;0.57</span>
                 </div>
                 <div class="cluster-pills">
                   <span class="point-pill format">format_currency</span>
@@ -1650,7 +1655,7 @@ html, body {
             <span class="ioc-badge">Database Storage</span>
             <div class="slide-title-group">
               <h2>Inside ChromaDB: Persistent Tables &amp; HNSW Index</h2>
-              <p>How vectors, source text, and metadata are persisted inside .chroma_db/</p>
+              <p>How vectors, source text, and metadata are persisted (make: /tmp/ioc/chroma_db)</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1679,34 +1684,34 @@ html, body {
                 </thead>
                 <tbody>
                   <tr>
-                    <td style="color:var(--cyan);"><code>calc.py:add:16</code></td>
-                    <td><code>def add(self, a, b):...</code></td>
-                    <td><code>{"symbol":"add", "lines":"16-18"}</code></td>
+                    <td style="color:var(--cyan);"><code>calculator.py:Calculator.add:16</code></td>
+                    <td><code>def add(self, a: float, b: float)...</code></td>
+                    <td><code>{"symbol_type":"method", "start_line":16, "end_line":18}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                   <tr>
-                    <td style="color:var(--cyan);"><code>calc.py:div:28</code></td>
-                    <td><code>def divide(self, a, b):...</code></td>
-                    <td><code>{"symbol":"divide", "lines":"28-32"}</code></td>
+                    <td style="color:var(--cyan);"><code>calculator.py:Calculator.divide:28</code></td>
+                    <td><code>def divide(self, a: float, b: float)...</code></td>
+                    <td><code>{"symbol_type":"method", "start_line":28, "end_line":32}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                   <tr>
-                    <td style="#c084fc;"><code>form.py:curr:10</code></td>
-                    <td><code>def format_currency:...</code></td>
-                    <td><code>{"symbol":"currency", "lines":"10-13"}</code></td>
+                    <td style="color:#c084fc;"><code>formatter.py:format_currency:10</code></td>
+                    <td><code>def format_currency(value: float, ...</code></td>
+                    <td><code>{"symbol_type":"function", "start_line":10, "end_line":12}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                   <tr>
-                    <td style="color:var(--emerald);"><code>main.py:tax:17</code></td>
-                    <td><code>def calculate_tax:...</code></td>
-                    <td><code>{"symbol":"calculate_tax", "lines":"17-21"}</code></td>
+                    <td style="color:var(--emerald);"><code>main.py:calculate_tax:20</code></td>
+                    <td><code>def calculate_tax(amount: float, ...</code></td>
+                    <td><code>{"symbol_type":"function", "start_line":20, "end_line":23}</code></td>
                     <td><span class="badge-cyan card-badge">[384d]</span></td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
-              Every record links its unique chunk ID to its raw source text, rich JSON line metadata, and high-dimensional vector.
+              Every record links its chunk ID (file:symbol:first line) to its source text, its metadata (file_path, symbol_name, symbol_type, start_line, end_line, content_hash) and its 384-d vector.
             </div>
           </div>
 
@@ -1728,7 +1733,7 @@ html, body {
                   </div>
                 </li>
                 <li><strong>Logarithmic Traversal:</strong> HNSW hops across high-layer expressways in \(O(\log N)\) time instead of scanning all records.</li>
-                <li><strong>Local Filesystem:</strong> Persisted in <code>.chroma_db/</code>. 100% offline.</li>
+                <li><strong>Local Filesystem:</strong> persisted in <code>--db-dir</code> (default <code>.chroma_db/</code>; <code>make</code> uses <code>/tmp/ioc/chroma_db</code>). 100% offline.</li>
               </ul>
             </div>
           </div>
@@ -1766,7 +1771,7 @@ html, body {
               <ul>
                 <li>Indexer encounters <code>calculator.py</code>.</li>
                 <li><code>should_ignore_path()</code> checks ignore rules (skips <code>.git</code>, <code>venv</code>, <code>.chroma_db</code>).</li>
-                <li><code>is_binary_file()</code> scans first 1024 bytes for <code>\x00</code> null bytes.</li>
+                <li><code>is_binary_file()</code> sniffs the first 1024 bytes; a <code>\x00</code> anywhere in the text also makes the file binary.</li>
               </ul>
             </div>
           </div>
@@ -1816,7 +1821,7 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li>Old file vectors purged: <code>delete_file_chunks()</code>.</li>
+                <li>Per chunk: vanished ids deleted, new or changed chunks re-embedded, unchanged ones kept.</li>
                 <li>Inserts document text, embeddings &amp; line metadata.</li>
                 <li>Saves new SHA-256 hash in <code>index_state.json</code>.</li>
               </ul>
@@ -1873,8 +1878,8 @@ html, body {
             <div class="card-content">
               <ul>
                 <li>Disk hash &ne; <code>index_state.json</code> hash.</li>
-                <li><strong>Step 1:</strong> <code>delete_file_chunks(path)</code> wipes old vectors for this file only.</li>
-                <li><strong>Step 2:</strong> Re-chunks &amp; <code>upsert_chunks()</code> embeds fresh vectors.</li>
+                <li><strong>Step 1:</strong> re-chunk the file; compare each chunk's hash, lines and name with what ChromaDB holds.</li>
+                <li><strong>Step 2:</strong> <code>upsert_chunks()</code> only for changed chunks: live, "1 chunk(s) re-embedded, 7 unchanged".</li>
                 <li><strong>Step 3:</strong> Updates new hash in state file.</li>
               </ul>
             </div>
@@ -1891,7 +1896,7 @@ html, body {
             <div class="card-content">
               <ul>
                 <li>File was tracked but now absent from disk.</li>
-                <li><strong>Action:</strong> <code>delete_file_chunks(path)</code> purges all chunk IDs from ChromaDB.</li>
+                <li><strong>Action:</strong> <code>delete_file_chunks(path)</code> purges all its chunk IDs; every scan also reconciles with what ChromaDB holds.</li>
                 <li>Purges key from <code>index_state.json</code>.</li>
                 <li><strong>Result:</strong> Zero dead vectors or phantom symbols.</li>
               </ul>
@@ -2016,7 +2021,7 @@ html, body {
             <div class="card-content">
               <ul>
                 <li><strong>The Danger:</strong> If the vector database folder is watched, ChromaDB writes trigger the watcher, causing an infinite indexing loop!</li>
-                <li><strong>The Defense:</strong> <code>should_ignore_path()</code> explicitly excludes <code>.chroma</code>, <code>.chroma_db</code>, and the configured DB path.</li>
+                <li><strong>The Defense:</strong> <code>should_ignore_path()</code> excludes <code>.chroma</code> and <code>.chroma_db</code> by name; <code>CodebaseIndexer.is_ignored()</code> also excludes the configured store by its real location.</li>
               </ul>
             </div>
           </div>
@@ -2032,7 +2037,7 @@ html, body {
             <div class="card-content">
               <ul>
                 <li><strong>Extension filter:</strong> <code>.pyc</code>, <code>.so</code>, <code>.dll</code>, <code>.exe</code>, <code>.png</code>, <code>.jpg</code>, <code>.pdf</code>, <code>.zip</code>, <code>.safetensors</code>, <code>.gguf</code>.</li>
-                <li><strong>Null-byte detection:</strong> <code>is_binary_file()</code> scans first 1024 bytes for <code>\x00</code> to prevent parsing non-text binaries.</li>
+                <li><strong>Null-byte detection:</strong> <code>is_binary_file()</code> sniffs the first 1024 bytes, and a <code>\x00</code> anywhere in the text marks the file binary too.</li>
               </ul>
             </div>
           </div>
@@ -2068,9 +2073,9 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li><code>GET /api/status</code>: Returns total chunks, file count, embedding model, and watcher state.</li>
-                <li><code>GET /api/files</code>: Returns sorted list of all indexed files and chunk tallies.</li>
-                <li><code>GET /api/file?path=...</code>: Returns detailed chunk boundaries and symbol data.</li>
+                <li><code>GET /status</code>: total chunks, file count, target path, models, watcher state (also under <code>/api/</code>).</li>
+                <li><code>GET /files</code>: sorted list of all indexed files and chunk tallies.</li>
+                <li><code>GET /file?path=...</code>: the file plus its indexed chunks; 403 for excluded or outside paths.</li>
                 <li><code>GET /api/activity</code>: Returns recent watcher activity snapshot.</li>
                 <li><code>GET /events</code>: <strong>Server-Sent Events (SSE)</strong> real-time event stream.</li>
                 <li><code>GET /</code>: Embedded offline dark-mode UI (Figure VI.1 from Subject).</li>
@@ -2088,10 +2093,10 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Live Metric Cards:</strong> Indexed Chunk Count, Source Files Count, Embedding Model (<code>all-MiniLM-L6-v2</code>), LLM Model (<code>qwen2.5:3b</code>).</li>
+                <li><strong>Live Metric Cards:</strong> Indexed Chunks (and files), Target Path, Vector Store, Embedding Model (<code>all-MiniLM-L6-v2</code>), LLM Model (<code>qwen2.5:3b</code>).</li>
                 <li><strong>File Breakdown Table:</strong> Path, chunk count, and synchronization status.</li>
                 <li><strong>Live Watcher Feed:</strong> Real-time event log with color badges for <code>MODIFIED</code>, <code>DELETED</code>, <code>POLL_SYNC</code>, <code>WATCHER_START</code>.</li>
-                <li><strong>Phase Boundaries:</strong> P1 Overview tab active; P2 (Ask &amp; Retrieve) and P3 (Patch Loop) tabs are visibly disabled.</li>
+                <li><strong>Phase Boundaries:</strong> Overview and Files tabs active (Figures VI.1 and VI.2); Ask &amp; Retrieve and Patch Loop are visibly disabled.</li>
               </ul>
             </div>
           </div>
@@ -2143,7 +2148,7 @@ html, body {
                 <td>ChromaDB PersistentClient storage</td>
                 <td><code>p1/db.py</code></td>
                 <td><span class="status-tag done">&check; Implemented</span></td>
-                <td>Cosine distance, persistent to <code>.chroma_db</code></td>
+                <td>Cosine distance, persisted (<code>/tmp/ioc/chroma_db</code> via make)</td>
               </tr>
               <tr>
                 <td>Incremental reindexing (SHA-256)</td>
@@ -2155,7 +2160,7 @@ html, body {
                 <td>Deletion handling (vector removal)</td>
                 <td><code>p1/indexer.py</code></td>
                 <td><span class="status-tag done">&check; Implemented</span></td>
-                <td><code>delete_file_chunks</code> removes orphaned vectors</td>
+                <td>Deleted files purged; every scan reconciles with ChromaDB</td>
               </tr>
               <tr>
                 <td>Exclusion rules &amp; DB self-exclusion</td>
@@ -2190,8 +2195,8 @@ html, body {
               <tr>
                 <td>Docker environment</td>
                 <td>Repository root</td>
-                <td><span class="status-tag not-done">&cross; Not Yet Done</span></td>
-                <td>Planned for integration phase</td>
+                <td><span class="status-tag done">&check; Implemented</span></td>
+                <td><code>Dockerfile</code> + <code>docker-compose.yml</code>: <code>make up</code> / <code>make down</code></td>
               </tr>
             </tbody>
           </table>
@@ -2257,20 +2262,20 @@ html, body {
             <div class="card-header">
               <span class="card-title">
                 <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                Next Milestones
+                Built on This Foundation
               </span>
-              <span class="card-badge badge-amber">Upcoming</span>
+              <span class="card-badge badge-amber">Own Decks</span>
             </div>
             <div class="card-content">
               <ul>
                 <li><strong>Part 2: Architect API &amp; RAG</strong>
-                  <br>&bull; Endpoints: <code>POST /context</code> and <code>POST /ask</code>
+                  <br>&bull; <code>POST /context</code> and <code>POST /ask</code>, SSE <code>/events</code>
                   <br>&bull; Local Ollama orchestration (<code>qwen2.5:3b</code>)
                   <br>&bull; Hybrid retrieval &amp; Ask UI
                 </li>
                 <li><strong>Part 3: Patch Loop</strong>
                   <br>&bull; Structured patch JSON generation
-                  <br>&bull; Validation &amp; atomic rollback
+                  <br>&bull; Validation &amp; verified rollback (bonus: B1&ndash;B5)
                 </li>
               </ul>
             </div>

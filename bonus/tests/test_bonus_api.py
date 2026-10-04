@@ -12,7 +12,7 @@ from bonus.api import create_bonus_api
 from bonus.dashboard import setup_bonus_dashboard
 from p1.db import VectorDB
 from p1.indexer import CodebaseIndexer
-from p1.tests.support import FakeLLM, copy_demo_app, inline_script_error, read, tree_state
+from p1.tests.support import FakeLLM, copy_demo_app, inline_script_error, read, run_page_script, tree_state
 from p2.retriever import Retriever
 from p3.generator import mask_code
 from p3.loop import PatchLoopEngine
@@ -49,6 +49,12 @@ class BonusApiTest(unittest.TestCase):
         self.assertNotIn("formatter.py", data["file_breakdown"])
         self.assertEqual(self.db.get_file_chunks("formatter.py")["ids"], [])
 
+    def test_incremental_reindex_says_so(self) -> None:
+        # ?full=false used to answer "On-demand full reindex completed".
+        data = self.client.post("/reindex", params={"full": "false"}).json()
+        self.assertEqual((data["status"], data["full"]), ("success", False))
+        self.assertNotIn("full reindex", data["message"])
+
     def test_page_has_the_richer_dashboard_features(self) -> None:
         # Chapter VII: per-chunk relevance score, a visual diff of the proposed
         # patch, and live validation status through SSE.
@@ -81,6 +87,27 @@ class BonusApiTest(unittest.TestCase):
         self.assertEqual(data["git_commit"]["message"], "feat(calculator): add square method")
         diff = data["attempts"][0]["diffs"][0]
         self.assertGreater(diff["additions"], 0)  # diffed against the pre-run original
+
+    def test_diff_cards_escape_the_operation_the_model_wrote(self) -> None:
+        # A refused attempt's op is whatever the model emitted; it is diffed and
+        # shown like any other and must render as text, in a run and a dry run.
+        bad = {"path": "calculator.py", "op": "<img src=x onerror=alert(1)>", "additions": 1,
+               "deletions": 0, "html_diff": ""}
+        html = self.client.get("/").text
+        for result in (
+            {"status": "failed", "attempts_count": 1, "rollback_verified": True,
+             "attempts": [{"attempt": 1, "status": "sanity_failed", "patch": {"summary": "x"},
+                           "diffs": [bad]}]},
+            {"dry_run": True, "sanity_passed": False, "sanity_errors": ["refused"], "diffs": [bad],
+             "patch": {"summary": "x", "files": []}, "message": "Dry-run complete"},
+        ):
+            run = run_page_script(html, f"renderBonusResult({json.dumps(result)})")
+            if run is None:
+                self.skipTest("node is not installed")
+            self.assertIsNone(run["error"])
+            shown = run["dom"]["patch-attempts-container"]["innerHTML"]
+            self.assertIn("calculator.py", shown)
+            self.assertNotIn("<img", shown)
 
     def test_page_script_parses_and_auto_commit_is_opt_in(self) -> None:
         html = self.client.get("/").text

@@ -241,14 +241,21 @@ def chunk_label(chunk: Dict[str, Any]) -> str:
 
 
 def format_inventory(inventory: Optional[Dict[str, Any]], limit: int = 150) -> str:
-    """One line per file listing every real symbol the index knows about."""
+    """
+    One line per file listing every real symbol the index knows about, with
+    its line range. Given names only, the model cited "divide ... lines 14-16"
+    (it is 28-32) whenever retrieval had not put that symbol's chunk in the prompt.
+    """
     if not inventory:
         return ""
     lines: List[str] = []
     shown = 0
     for fpath in inventory.get("all_files", []):
         entries = inventory.get("by_file", {}).get(fpath, [])
-        names = [f"{e['symbol_type']} {e['symbol_name']}" for e in entries][: max(0, limit - shown)]
+        names = [
+            f"{e['symbol_type']} {e['symbol_name']} (lines {e['start_line']}-{e['end_line']})"
+            for e in entries
+        ][: max(0, limit - shown)]
         shown += len(names)
         lines.append(f"- {fpath}: " + (", ".join(names) if names else "no functions or classes"))
     return "\n".join(lines)

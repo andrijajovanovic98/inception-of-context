@@ -156,6 +156,18 @@ MODAL_JS = """
             return showDialog(message, { kind: kind || 'info', title: title, showCancel: false });
         }
 
+        // An API error's "detail" as text. FastAPI reports a refused request
+        // (422, e.g. a top-k above the limit) as a list of {loc, msg}, which
+        // String() rendered as "[object Object]".
+        function iocDetail(detail) {
+            if (Array.isArray(detail)) {
+                return detail.map(function(d) {
+                    return d && d.msg ? (d.loc || []).slice(-1).join('') + ': ' + d.msg : JSON.stringify(d);
+                }).join('; ');
+            }
+            return detail === undefined || detail === null ? '' : String(detail);
+        }
+
         function showConfirm(message, title) {
             return showDialog(message, {
                 kind: 'warn', title: title || 'Confirm', showCancel: true,

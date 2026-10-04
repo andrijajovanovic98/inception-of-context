@@ -1,11 +1,11 @@
 """
 Bonus HTTP API for Inception-of-Context (IoC) Chapter VII.
-Extends Part 3 API with:
-  - POST /reindex       - On-demand full re-index as specified in Chapter VII
-  - POST /patch/run     - Enhanced with dry_run and auto_commit options + visual diffs
-  - GET  /diff          - Inspect diff between candidate patch and disk state
-  - POST/GET/DELETE /bonus/crash-watch - Docker SDK crash watcher: follow a
-                          service's logs and run the patch loop when it crashes
+Extends Part 3 API with (bonus numbers follow the subject's list):
+  - POST /reindex          - B1: on-demand full re-index
+  - POST /bonus/patch/run  - B2 auto_commit and B4 dry_run options, with a visual
+                             diff per attempt (B5, rendered by bonus/dashboard.py)
+  - POST/GET/DELETE /bonus/crash-watch - B3: Docker SDK crash watcher: follow a
+                             service's logs and run the patch loop when it crashes
 """
 
 import asyncio
@@ -120,7 +120,10 @@ def create_bonus_api(
 
             return {
                 "status": "success",
-                "message": "On-demand full reindex completed successfully",
+                "message": (
+                    "On-demand full reindex completed successfully" if force
+                    else "Incremental sync completed successfully"
+                ),
                 "full": force,
                 "indexed_files": summary.get("indexed_files", 0),
                 "total_files": summary.get("total_files", 0),
@@ -139,7 +142,7 @@ def create_bonus_api(
         return await _handle_reindex(force=full)
 
     # -------------------------------------------------------------------------
-    # BONUS 2 & 3: Enhanced POST /patch/run with Dry-Run and Auto-Commit
+    # BONUS 2 & 4: POST /bonus/patch/run with Auto-Commit and Dry-Run
     # -------------------------------------------------------------------------
     @app.post("/bonus/patch/run")
     async def bonus_patch_run(payload: BonusPatchRunRequest) -> Dict[str, Any]:
@@ -293,7 +296,7 @@ def create_bonus_api(
         return res_dict
 
     # -------------------------------------------------------------------------
-    # BONUS 4: Docker SDK crash watcher
+    # BONUS 3: Docker SDK crash watcher
     # Subject: "Docker SDK integration: watch a target service's logs and
     # trigger the patch loop on crash."
     # -------------------------------------------------------------------------

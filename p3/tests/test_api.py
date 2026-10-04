@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from p1.db import VectorDB
 from p1.indexer import CodebaseIndexer
-from p1.tests.support import FakeLLM, copy_demo_app, inline_script_error, read, tree_state
+from p1.tests.support import FakeLLM, copy_demo_app, inline_script_error, read, run_page_script, tree_state
 from p2.retriever import Retriever
 from p3.api import create_patch_api
 from p3.dashboard import setup_p3_dashboard
@@ -75,6 +75,34 @@ class PatchApiTest(unittest.TestCase):
         error = inline_script_error(html)
         if error is not None:
             self.assertEqual(error, "")
+
+    def test_patch_tab_renders_a_run_whose_refused_attempt_was_malformed(self) -> None:
+        # The sanity checker refuses "op": null and a dict "content" (both seen
+        # from small models); the tab threw on them and reported a GREEN run
+        # as "Patch loop execution failed", without its attempts or final patch.
+        good = {"path": "calculator.py", "op": "modify", "content": "X = 1\n"}
+        result = {
+            "status": "success", "attempts_count": 2, "final_patch": {"summary": "ok", "files": [good]},
+            "attempts": [
+                {"attempt": 1, "status": "sanity_failed", "sanity_passed": False,
+                 "sanity_errors": ["refused"],
+                 "patch": {"summary": ["not", "a", "string"], "files": [
+                     {"path": "calculator.py", "op": None, "content": "X = 1\n"},
+                     {"path": "main.py", "op": "<img src=x onerror=alert(1)>", "content": {"add": "..."}}]}},
+                {"attempt": 2, "status": "success", "sanity_passed": True, "sanity_errors": [],
+                 "patch": {"summary": "ok", "files": [good]}, "validation_command": "true",
+                 "validation_exit_code": 0, "validation_output": ""},
+            ],
+        }
+        run = run_page_script(self.client.get("/").text, f"renderPatchLoopResult({json.dumps(result)})")
+        if run is None:
+            self.skipTest("node is not installed")
+        self.assertIsNone(run["error"])
+        self.assertEqual(run["dom"]["patch-status-badge"]["innerText"], "GREEN (PASSED)")
+        shown = run["dom"]["patch-attempts-container"]["innerHTML"]
+        self.assertEqual(shown.count('class="attempt-card"'), 2)
+        self.assertIn("Final patch (applied)", shown)
+        self.assertNotIn("<img", shown)
 
 
 if __name__ == "__main__":

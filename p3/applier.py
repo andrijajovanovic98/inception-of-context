@@ -401,7 +401,9 @@ class PatchApplier:
     def commit(self) -> None:
         """Called when validation passes. Discards pre-call snapshot and finalizes patch."""
         self.snapshot = {}
-        self.created_dirs = []
+        # created_dirs is kept until the next begin_run(): rollback_last_run()
+        # undoes a GREEN run too, and clearing the list here left a directory
+        # the run had created behind while the rollback reported no mismatch.
         self.cleanup_all_ioc_tmps()
 
     def _remove_created_dirs(self) -> None:

@@ -6,6 +6,7 @@ before touching the disk and provides explicit feedback for the retry loop.
 """
 
 import ast
+import builtins
 import difflib
 import io
 import os
@@ -118,6 +119,15 @@ def describe_syntax_error(content: str, err: SyntaxError) -> str:
     return "<line unavailable>"
 
 
+def body_without_docstring(node: Any) -> List[Any]:
+    """The statements of a function or class body, its docstring left out."""
+    statements = list(node.body)
+    if statements and isinstance(statements[0], ast.Expr) and isinstance(statements[0].value, ast.Constant):
+        if isinstance(statements[0].value.value, str):
+            statements = statements[1:]
+    return statements
+
+
 def is_stub_function(node: Any) -> bool:
     """
     Check if a Python AST function or async function body is only a stub.
@@ -131,10 +141,7 @@ def is_stub_function(node: Any) -> bool:
         return True
 
     # Ignore leading docstring if present
-    statements = list(body)
-    if statements and isinstance(statements[0], ast.Expr) and isinstance(statements[0].value, ast.Constant):
-        if isinstance(statements[0].value.value, str):
-            statements = statements[1:]
+    statements = body_without_docstring(node)
 
     # Empty body after removing docstring
     if not statements:
@@ -178,6 +185,251 @@ def stub_functions(tree: ast.AST) -> List[Any]:
         node for node in ast.walk(tree)
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and is_stub_function(node)
     ]
+
+
+# What a comment or docstring says of code that is not written yet. A function
+# that only returns a constant can be real code (`def supports_negative(self):
+# return True`); marked like this it is "not implemented" in another spelling.
+_PLACEHOLDER_RE = re.compile(
+    r"\b(?:placeholder|stub(?:bed)?|todo|fixme|dummy|for now|not (?:yet )?implemented|"
+    r"implement (?:me|this|later)|(?:actual|real) (?:logic|implementation))\b",
+    re.IGNORECASE,
+)
+
+
+def returned_literal(node: Any) -> Tuple[bool, Any]:
+    """(True, value) when a function's whole body, docstring aside, is `return <literal>`."""
+    if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return False, None
+    statements = body_without_docstring(node)
+    if len(statements) != 1 or not isinstance(statements[0], ast.Return) or statements[0].value is None:
+        return False, None
+    try:
+        return True, ast.literal_eval(statements[0].value)
+    except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
+        return False, None
+
+
+def comments_by_row(content: str) -> Dict[int, str]:
+    """{row: text} of every comment in the source."""
+    found: Dict[int, str] = {}
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(content).readline):
+            if tok.type == tokenize.COMMENT:
+                found[tok.start[0]] = tok.string
+    except (tokenize.TokenError, IndentationError, SyntaxError):
+        pass
+    return found
+
+
+def placeholder_note(node: Any, comments: Dict[int, str]) -> Optional[str]:
+    """
+    The note that marks a function returning only a constant as a
+    placeholder, else None. Seen live, on attempt 3 of a run that then
+    reported GREEN: `return True  # Placeholder for actual logic`.
+    """
+    if not returned_literal(node)[0]:
+        return None
+    rows = range(node.lineno, (node.end_lineno or node.lineno) + 1)
+    notes = [comments[row] for row in rows if row in comments]
+    notes.append(ast.get_docstring(node, clean=False) or "")
+    return next((note.strip() for note in notes if _PLACEHOLDER_RE.search(note)), None)
+
+
+def plain_text(text: str) -> str:
+    """Feedback goes back into the prompt of a model that must not emit raw double quotes or backticks."""
+    return text.replace('"', "'").replace("`", "'")
+
+
+# ({module function: value}, {method or property: (value, is_property)}, class names)
+_Consts = Tuple[Dict[str, Any], Dict[str, Any], Set[str]]
+# (known, value, why)
+_Static = Tuple[bool, Any, str]
+
+
+def _constant_callables(tree: ast.AST) -> _Consts:
+    """
+    The functions whose every definition in the module returns the same
+    literal, as _Consts. A name defined once with real logic (a subclass
+    override) is not constant.
+    """
+    module_level = {id(n) for n in getattr(tree, "body", [])}
+    values: Dict[Tuple[bool, str], List[Tuple[bool, Any, bool]]] = {}
+    classes: Set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef):
+            classes.add(node.name)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            # Calling an async function yields a coroutine, whatever it returns.
+            literal, value = returned_literal(node) if isinstance(node, ast.FunctionDef) else (False, None)
+            is_property = any(isinstance(d, ast.Name) and d.id == "property" for d in node.decorator_list)
+            values.setdefault((id(node) in module_level, node.name), []).append((literal, value, is_property))
+    functions: Dict[str, Any] = {}
+    methods: Dict[str, Any] = {}
+    for (top, name), found in values.items():
+        first = found[0]
+        if all(lit for lit, _, _ in found) and all((v, p) == first[1:] for _, v, p in found):
+            if top and not first[2]:
+                functions[name] = first[1]
+            elif not top:
+                methods[name] = (first[1], first[2])
+    return functions, methods, classes
+
+
+def _static_value(expr: Any, consts: _Consts) -> _Static:
+    """
+    (known, value, why) of a condition whose value the code itself fixes: a
+    literal, or a call of a function of this module that only returns one
+    (`self._precision_enabled()`), through not / and / or / == / is.
+    Module-level names (`DEBUG = False`) are configuration and stay unknown.
+    """
+    unknown: Tuple[bool, Any, str] = (False, None, "")
+    if isinstance(expr, ast.UnaryOp) and isinstance(expr.op, ast.Not):
+        known, value, why = _static_value(expr.operand, consts)
+        return (True, not value, why) if known else unknown
+    if isinstance(expr, ast.BoolOp):
+        # Only the truth value is known: `x or True` is x or True.
+        parts = [_static_value(v, consts) for v in expr.values]
+        deciding = isinstance(expr.op, ast.Or)  # True decides an `or`, False an `and`
+        for known, value, why in parts:
+            if known and bool(value) == deciding:
+                return True, deciding, why
+        if all(known for known, _, _ in parts):
+            return True, not deciding, next((why for _, _, why in parts if why), "")
+        return unknown
+    if isinstance(expr, ast.Compare) and len(expr.ops) == 1:
+        left, right = _static_atom(expr.left, consts), _static_atom(expr.comparators[0], consts)
+        op = expr.ops[0]
+        if not (left[0] and right[0]):
+            return unknown
+        why = left[2] or right[2]
+        if isinstance(op, (ast.Eq, ast.NotEq)):
+            return True, (left[1] == right[1]) == isinstance(op, ast.Eq), why
+        singletons = (None, True, False)
+        if isinstance(op, (ast.Is, ast.IsNot)) and left[1] in singletons and right[1] in singletons:
+            same = any(left[1] is s and right[1] is s for s in singletons)
+            return True, same == isinstance(op, ast.Is), why
+        return unknown
+    return _static_atom(expr, consts)
+
+
+def _static_atom(expr: Any, consts: _Consts) -> _Static:
+    """(known, value, why) of a literal, or of a call of a function of this module that only returns one."""
+    functions, methods, classes = consts
+    unknown: Tuple[bool, Any, str] = (False, None, "")
+    if isinstance(expr, ast.Constant):
+        return True, expr.value, ""
+    called = isinstance(expr, ast.Call)
+    target = expr.func if called else expr
+    if called and isinstance(target, ast.Name) and target.id in functions:
+        return True, functions[target.id], f"{target.id}() always returns {functions[target.id]!r}"
+    if (
+        isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name)
+        and (target.value.id in ("self", "cls") or target.value.id in classes)
+        and target.attr in methods
+    ):
+        value, is_property = methods[target.attr]
+        if called and not is_property:
+            return True, value, f"{target.attr}() always returns {value!r}"
+        if not called and is_property and target.value.id == "self":
+            return True, value, f"the property {target.attr} always returns {value!r}"
+    return unknown
+
+
+def _exception_name(expr: Any) -> Optional[str]:
+    target = expr.func if isinstance(expr, ast.Call) else expr
+    if isinstance(target, ast.Name):
+        return target.id
+    if isinstance(target, ast.Attribute):
+        return target.attr
+    return None
+
+
+def _catches(handler: Any, raised: str) -> bool:
+    """Whether this except clause catches an exception of this name."""
+    if handler.type is None:
+        return True
+    raised_cls = getattr(builtins, raised, None)
+    # SystemExit, KeyboardInterrupt, GeneratorExit: not caught by `except Exception`.
+    beyond_exception = isinstance(raised_cls, type) and not issubclass(raised_cls, Exception)
+    for caught in handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]:
+        name = _exception_name(caught)
+        if name is None:
+            continue
+        if name in (raised, "BaseException"):
+            return True
+        if name == "Exception" and not beyond_exception:
+            return True
+        caught_cls = getattr(builtins, name, None)
+        if (
+            isinstance(raised_cls, type) and isinstance(caught_cls, type)
+            and issubclass(caught_cls, BaseException) and issubclass(raised_cls, caught_cls)
+        ):
+            return True
+    return False
+
+
+def dead_code(tree: ast.AST) -> List[Tuple[Any, str]]:
+    """
+    (key, description) of each piece of code that can never run, as the code
+    itself decides: a branch behind a condition with a fixed value, a
+    statement after return / raise / break / continue, a raise caught by an
+    except of its own try that does not raise again. Validation cannot see
+    any of them: asked to make add raise an error that main.py does not
+    survive, the model put the raise behind `if not self._precision_enabled():`
+    with a helper that returns True, and the run reported GREEN.
+    """
+    consts = _constant_callables(tree)
+    found: List[Tuple[Any, str]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.If, ast.While)):
+            known, value, why = _static_value(node.test, consts)
+            because = f", because {why}" if why else ""
+            kind = "if" if isinstance(node, ast.If) else "while"
+            if known and not value:
+                found.append((
+                    ("never", ast.dump(node), why),
+                    f"line {node.body[0].lineno}: the {kind} body never runs, its condition on line "
+                    f"{node.lineno} is always false{because}",
+                ))
+            elif known and isinstance(node, ast.If) and node.orelse:
+                found.append((
+                    ("always", ast.dump(node), why),
+                    f"line {node.orelse[0].lineno}: the else branch never runs, the condition on line "
+                    f"{node.lineno} is always true{because}",
+                ))
+        for name in ("body", "orelse", "finalbody"):
+            block = getattr(node, name, None)
+            if not isinstance(block, list):
+                continue
+            for stmt, after in zip(block, block[1:]):
+                if not isinstance(stmt, (ast.Return, ast.Raise, ast.Break, ast.Continue)):
+                    continue
+                # `return` then `yield`: the idiom for an empty generator.
+                if not (isinstance(after, ast.Expr) and isinstance(after.value, (ast.Yield, ast.YieldFrom))):
+                    word = type(stmt).__name__.lower()
+                    found.append((
+                        ("unreachable", ast.dump(stmt), ast.dump(after)),
+                        f"line {after.lineno} is never reached, it follows the {word} on line {stmt.lineno}",
+                    ))
+                break
+        if isinstance(node, ast.Try):
+            for stmt in node.body:
+                raised = _exception_name(stmt.exc) if isinstance(stmt, ast.Raise) and stmt.exc else None
+                handler = next((h for h in node.handlers if raised and _catches(h, raised)), None)
+                if handler is not None and not any(isinstance(n, ast.Raise) for n in ast.walk(handler)):
+                    found.append((
+                        ("caught", ast.dump(node)),
+                        f"line {stmt.lineno}: the {raised} never leaves the function, the except on "
+                        f"line {handler.lineno} of the same try catches it",
+                    ))
+    return found
+
+
+def added_dead_code(old_tree: Optional[ast.AST], new_tree: ast.AST) -> List[str]:
+    """dead_code() of the patched file that the current file does not have already."""
+    before = {key for key, _ in dead_code(old_tree)} if old_tree is not None else set()
+    return [text for key, text in dead_code(new_tree) if key not in before]
 
 
 def _is_main_guard(node: ast.AST) -> bool:
@@ -243,6 +495,67 @@ def unrequested_removals(old_tree: ast.AST, new_tree: ast.AST, intent: str) -> L
         if not requested and not removal_asked:
             missing.append(label)
     return missing
+
+
+def _functions(tree: ast.AST) -> Dict[str, Any]:
+    """{qualified name: node} of every function and method, nested ones included."""
+    found: Dict[str, Any] = {}
+
+    def visit(body: List[Any], prefix: str) -> None:
+        for node in body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                if not isinstance(node, ast.ClassDef):
+                    found.setdefault(prefix + node.name, node)
+                visit(node.body, f"{prefix}{node.name}.")
+
+    visit(getattr(tree, "body", []), "")
+    return found
+
+
+def _raise_paths(body: List[Any], path: Tuple[Any, ...], found: Dict[Any, Tuple[int, str]]) -> None:
+    """Each raise of a function body, keyed by the raise and the conditions that lead to it."""
+    for stmt in body:
+        if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue  # a nested definition has checks of its own
+        if isinstance(stmt, ast.Raise):
+            found.setdefault((path, ast.dump(stmt)), (stmt.lineno, ast.unparse(stmt)))
+        elif isinstance(stmt, (ast.If, ast.While)):
+            test = ast.dump(stmt.test)
+            _raise_paths(stmt.body, path + ((test, True),), found)
+            _raise_paths(stmt.orelse, path + ((test, False),), found)
+        else:  # for, with, try, match: the same conditions hold inside
+            for name in ("body", "orelse", "finalbody"):
+                block = getattr(stmt, name, None)
+                if isinstance(block, list):
+                    _raise_paths(block, path, found)
+            for holder in list(getattr(stmt, "handlers", [])) + list(getattr(stmt, "cases", [])):
+                _raise_paths(holder.body, path, found)
+
+
+def dropped_checks(old_tree: ast.AST, new_tree: ast.AST, intent: str) -> List[str]:
+    """
+    Error checks - a raise and the conditions that lead to it - lost by a
+    function the intent does not name, unless it asks for removals. Asked
+    to make add raise, the model also replaced divide's `if b == 0: raise
+    ValueError(...)` with a check of its own, and the run went GREEN:
+    validation never divides by zero, so it cannot see a check disappear.
+    """
+    if _REMOVAL_RE.search(intent):
+        return []
+    after_functions = _functions(new_tree)
+    lost: List[str] = []
+    for name, old in _functions(old_tree).items():
+        new = after_functions.get(name)
+        if new is None or _named(name.rpartition(".")[2], intent):
+            continue  # a removed definition is unrequested_removals' business
+        before: Dict[Any, Tuple[int, str]] = {}
+        after: Dict[Any, Tuple[int, str]] = {}
+        _raise_paths(old.body, (), before)
+        _raise_paths(new.body, (), after)
+        lost.extend(
+            f"{name}() line {line}: {source}" for key, (line, source) in before.items() if key not in after
+        )
+    return lost
 
 
 def parse_rename(intent: str) -> Optional[Tuple[str, str]]:
@@ -600,26 +913,52 @@ class SanityChecker:
                     )
                     continue
 
-                # A stub the file ALREADY had, unchanged, is not one this patch
-                # defines; flagging it would make that file impossible to patch.
-                preexisting: Set[str] = set()
+                old_tree: Optional[ast.AST] = None
                 if existing_content is not None:
                     try:
-                        preexisting = {
-                            ast.dump(n) for n in stub_functions(ast.parse(existing_content))
-                        }
+                        old_tree = ast.parse(existing_content)
                     except (SyntaxError, ValueError):
                         pass
-                for node in stub_functions(tree):
+                # A stub the file ALREADY had, unchanged, is not one this patch
+                # defines; flagging it would make that file impossible to patch.
+                preexisting: Set[str] = {
+                    ast.dump(n) for n in ast.walk(old_tree)
+                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                } if old_tree is not None else set()
+                comments = comments_by_row(content)
+                for node in ast.walk(tree):
+                    if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        continue
                     if ast.dump(node) in preexisting:
                         continue
-                    fail(
-                        "4",
-                        f"Rule 4 Violation: Function '{node.name}' in '{canonical}' "
-                        f"(line {node.lineno}) is only a stub body "
-                        f"(pass, ..., return None or raise NotImplementedError). "
-                        f"Implementation is required.",
-                    )
+                    if is_stub_function(node):
+                        fail(
+                            "4",
+                            f"Rule 4 Violation: Function '{node.name}' in '{canonical}' "
+                            f"(line {node.lineno}) is only a stub body "
+                            f"(pass, ..., return None or raise NotImplementedError). "
+                            f"Implementation is required.",
+                        )
+                        continue
+                    note = placeholder_note(node, comments)
+                    if note is not None:
+                        fail(
+                            "4",
+                            f"Rule 4 Violation: Function '{node.name}' in '{canonical}' "
+                            f"(line {node.lineno}) only returns a constant and is marked as a "
+                            f"placeholder ({plain_text(note)}). Implementation is required.",
+                        )
+
+                # Code that can never run. Validation cannot see it, so the
+                # requested behaviour put there went green without ever running.
+                never_runs = added_dead_code(old_tree, tree)
+                if never_runs:
+                    fail(None, plain_text(
+                        f"Patch adds code to '{canonical}' that never runs: {'; '.join(never_runs[:3])}. "
+                        f"Write the requested behaviour so that it actually runs: not behind a condition "
+                        f"that never holds, not after a return or raise, not inside a try whose except "
+                        f"swallows it."
+                    ))
                 if op == "modify" and existing_content is not None:
                     modified_py.append((canonical, existing_content, content))
 
@@ -649,9 +988,10 @@ class SanityChecker:
         # nothing, exited 0, and the loop reported GREEN.
         for canonical, before, after in modified_py:
             try:
-                removed = unrequested_removals(ast.parse(before), ast.parse(after), intent)
+                before_tree, after_tree = ast.parse(before), ast.parse(after)
             except (SyntaxError, ValueError):
                 continue
+            removed = unrequested_removals(before_tree, after_tree, intent)
             if removed:
                 fail(
                     None,
@@ -659,6 +999,14 @@ class SanityChecker:
                     f"does not ask for. Keep every definition you were not asked to change - "
                     f"copy it verbatim - or name it in the intent to remove it.",
                 )
+            # The same for the error checks inside the definitions it keeps.
+            lost = dropped_checks(before_tree, after_tree, intent)
+            if lost:
+                fail(None, plain_text(
+                    f"Patch removes or changes error checks in '{canonical}' that the intent does not ask "
+                    f"about: {'; '.join(lost[:3])}. Keep every check of a function you were not asked to "
+                    f"change exactly as it is, condition included."
+                ))
 
         # A rename replaces uses of the old name; it never puts the new name
         # where the old one was not.

@@ -569,7 +569,7 @@ def setup_bonus_dashboard(
             }});
             const data = await res.json();
             if (!res.ok) {{
-                showAlert(data.detail || ('HTTP ' + res.status), 'error', 'Crash watcher');
+                showAlert(iocDetail(data.detail) || ('HTTP ' + res.status), 'error', 'Crash watcher');
                 return;
             }}
             renderCrashWatch(data);
@@ -678,7 +678,7 @@ def setup_bonus_dashboard(
 
                 if (!res.ok) {{
                     const err = await res.json();
-                    throw new Error(err.detail || 'Execution failed');
+                    throw new Error(iocDetail(err.detail) || 'Execution failed');
                 }}
 
                 const result = await res.json();
@@ -721,7 +721,8 @@ def setup_bonus_dashboard(
                         <div class="chunk-card">
                             <div class="chunk-header">
                                 <span style="font-family:monospace; font-weight:700;
-                                    color:var(--accent);">${{escapeHtml(d.path)}} (${{d.op}})</span>
+                                    color:var(--accent);">${{escapeHtml(d.path)}}
+                                    (${{escapeHtml(d.op)}})</span>
                                 <span style="font-size:12px;
                                     color:var(--text-muted);"><span
                                     style="color:var(--accent-green)">+${{d.additions}}</span>
@@ -802,7 +803,8 @@ def setup_bonus_dashboard(
                         <div class="chunk-card" style="margin-bottom:10px;">
                             <div class="chunk-header">
                                 <span style="font-family:monospace; font-weight:700;
-                                    color:var(--accent);">${{escapeHtml(d.path)}} (${{d.op}})</span>
+                                    color:var(--accent);">${{escapeHtml(d.path)}}
+                                    (${{escapeHtml(d.op)}})</span>
                                 <span style="font-size:12px;
                                     color:var(--text-muted);"><span
                                     style="color:var(--accent-green)">+${{d.additions}}</span>
@@ -850,11 +852,11 @@ def setup_bonus_dashboard(
                     ? '<div class="feedback-note" style="margin-top:6px;">Kept to the rename: '
                       + patchObj.kept_to_rename.map(n => escapeHtml(n)).join('; ') + '</div>'
                     : '';
-                // A module docstring the model dropped was put back - listed, not hidden.
+                // Docstrings the model dropped or rewrote were put back - listed, not hidden.
                 const keptHtml = keptHtml0 + ((patchObj.restored_docstrings || []).length
-                    ? '<div class="feedback-note" style="margin-top:6px;">Restored the module docstring '
-                      + 'the model dropped: ' + patchObj.restored_docstrings.map(
-                          p => '<code>' + escapeHtml(p) + '</code>').join(', ') + '</div>'
+                    ? '<div class="feedback-note" style="margin-top:6px;">Restored docstrings the model '
+                      + 'dropped or rewrote: ' + patchObj.restored_docstrings.map(
+                          n => escapeHtml(n)).join('; ') + '</div>'
                     : '');
                 html += `
                 <div class="attempt-card">
@@ -898,7 +900,7 @@ def setup_bonus_dashboard(
             try {{
                 const res = await fetch('/patch/rollback', {{ method: 'POST' }});
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+                if (!res.ok) throw new Error(iocDetail(data.detail) || ('HTTP ' + res.status));
                 const changed = (data.restored || []).concat(data.removed || []);
                 const clean = !(data.mismatches || []).length;
                 await showAlert(
@@ -946,7 +948,7 @@ def setup_bonus_dashboard(
                     body: JSON.stringify({{ query: query, k: k }})
                 }});
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+                if (!res.ok) throw new Error(iocDetail(data.detail) || ('HTTP ' + res.status));
                 document.getElementById('answer-box').style.display = retrieveOnly ? 'none' : 'block';
                 document.getElementById('answer-text').innerText = data.answer || '';
                 const srcBadge = document.getElementById('answer-source');
@@ -980,9 +982,11 @@ def setup_bonus_dashboard(
             `).join('');
         }}
 
+        // String() first: model output reaches this, and .replace on a
+        // non-string threw and blanked the result.
         function escapeHtml(text) {{
-            return (text || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g,
-                "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+            return String(text === undefined || text === null ? '' : text).replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }}
 
 

@@ -755,7 +755,7 @@ html, body {
           <p class="hero-desc">
             In Part 2, we build a robust FastAPI REST service over the Part 1 index.
             The Retrieval-Augmented Generation pipeline combines ChromaDB dense semantic vectors with BM25Okapi sparse lexical scoring,
-            reinforced by AST symbol pre-resolution to completely eradicate hallucinations.
+            and answers the two question shapes the subject grades straight from the index, so the model cannot invent symbols there.
           </p>
           <div class="hero-specs">
             <div class="spec-item">
@@ -801,8 +801,8 @@ html, body {
             <div class="card-content">
               <ul>
                 <li><strong>REST Endpoints:</strong> An API interface allowing clients to inspect and retrieve repository index state.</li>
-                <li><strong>Mandatory Endpoints:</strong> <code>/status</code>, <code>/files</code>, <code>/file</code>, <code>/chunks</code>, <code>/context</code>, <code>/ask</code>, <code>/events</code>.</li>
-                <li><strong>Static Delivery:</strong> Integrated static serving of the single-page web dashboard.</li>
+                <li><strong>Baseline Endpoints:</strong> <code>/status</code>, <code>/files</code>, <code>/file</code>, <code>/chunks</code>, <code>/context</code>, <code>/ask</code>, <code>/events</code> (the surface the subject suggests).</li>
+                <li><strong>Ask &amp; Retrieve Tab:</strong> intent and top-k on the form; retrieval alone, or retrieval plus a grounded answer.</li>
               </ul>
             </div>
           </div>
@@ -814,8 +814,8 @@ html, body {
             <div class="card-content">
               <ul>
                 <li><strong>Context Retrieval:</strong> <code>POST /context</code> returns the most relevant code chunks for any intent.</li>
-                <li><strong>Zero Hallucinations:</strong> Symbol questions ("is there a function called X?") must be answered from indexed facts.</li>
-                <li><strong>Hybrid Strategy:</strong> Dense (ChromaDB) + Sparse (BM25) re-ranking for optimal precision.</li>
+                <li><strong>Truthful Answers:</strong> on "is there a function called X?" and "what functions exist in this file?", <code>/ask</code> must not hallucinate symbols that are not in the index.</li>
+                <li><strong>Hybrid Strategy:</strong> ChromaDB stays the canonical store; an in-memory BM25 index re-ranks for exact identifiers.</li>
               </ul>
             </div>
           </div>
@@ -826,7 +826,7 @@ html, body {
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Strict Rule:</strong> Remote LLM APIs (OpenAI, Claude, Gemini) are strictly forbidden (0 XP).</li>
+                <li><strong>Strict Rule:</strong> any call to a remote LLM service is forbidden and results in a grade of zero.</li>
                 <li><strong>Model Class:</strong> ~3B parameter class local model (e.g. <code>qwen2.5:3b</code> or <code>qwen2.5-coder:3b</code>).</li>
                 <li><strong>Grounded Answer:</strong> The local model must strictly formulate responses from retrieved code context.</li>
               </ul>
@@ -855,7 +855,7 @@ html, body {
               <span class="node-num">Step 1</span>
               <span class="node-title">Request & Symbol Detection</span>
               <span class="node-file">p2/api.py</span>
-              <span class="node-desc">Receive POST /ask or /context. Check in-memory AST symbol inventory for exact matches.</span>
+              <span class="node-desc">POST /ask: the two graded question shapes are matched against the in-memory symbol inventory; a pure fact question is answered from the index.</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
@@ -867,9 +867,9 @@ html, body {
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
               <span class="node-num">Step 3</span>
-              <span class="node-title">RRF Score Fusion</span>
+              <span class="node-title">Score Fusion</span>
               <span class="node-file">p2/retriever.py</span>
-              <span class="node-desc">Combine reciprocal ranks with k=60 and select Top-K verified code chunks.</span>
+              <span class="node-desc">0.5 &times; dense + 0.5 &times; BM25 (scaled by its maximum), plus a boost when the query names a symbol or a file; the top-k are kept.</span>
             </div>
           </div>
           <div class="flow-row">
@@ -877,7 +877,7 @@ html, body {
               <span class="node-num">Step 4</span>
               <span class="node-title">Prompt Assembly</span>
               <span class="node-file">p2/llm.py</span>
-              <span class="node-desc">Assemble strict system prompt containing verified source chunks and anti-hallucination bounds.</span>
+              <span class="node-desc">Verified fact first, then every indexed symbol with its line range, the ranked chunks and the question.</span>
             </div>
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
@@ -889,9 +889,9 @@ html, body {
             <div class="flow-arrow">-&gt;</div>
             <div class="flow-node">
               <span class="node-num">Step 6</span>
-              <span class="node-title">Response & SSE Broadcast</span>
-              <span class="node-file">Dashboard UI</span>
-              <span class="node-desc">Deliver grounded response, render audit chunks, and broadcast real-time event.</span>
+              <span class="node-title">Answer & Index Check</span>
+              <span class="node-file">p2/llm.py</span>
+              <span class="node-desc">Return the answer, its source (index, model+index or model) and the chunks; names found nowhere in the code are flagged.</span>
             </div>
           </div>
         </div>
@@ -920,14 +920,14 @@ html, body {
             <div class="card-content">
               <ul>
                 <li><strong>How It Works:</strong> Maps text into 384-dimensional vector space; computes cosine distance.</li>
-                <li><strong>Strengths:</strong> Understands user intent and synonyms (e.g. "addition function" -&gt; finds <code>add</code>).</li>
-                <li><strong>Weakness in Code:</strong> Vulnerable to false positives on exact identifier names, method names, and acronyms.</li>
+                <li><strong>Strengths:</strong> paraphrased intent: "how is a value formatted as currency?" ranks <code>format_currency</code> first (0.88).</li>
+                <li><strong>Weakness in Code:</strong> weaker on exact identifier matches: "where is X used?" can miss the caller entirely (subject VI.2).</li>
               </ul>
               <div class="code-box" style="margin-top: 10px;">
-results = collection.query(
-    query_texts=[query],
-    n_results=top_k * 2
-)</div>
+candidate_count = max(target_k * 3, min(total_count, 15))
+chroma_res = self.db.query(query_text=query,
+                           n_results=candidate_count)
+dense = max(0.0, min(1.0, 1.0 - float(dist)))</div>
             </div>
           </div>
           <div class="card glow-emerald">
@@ -938,12 +938,15 @@ results = collection.query(
             <div class="card-content">
               <ul>
                 <li><strong>How It Works:</strong> TF-IDF variant measuring exact term frequency and inverse document frequency.</li>
-                <li><strong>Strengths:</strong> Flawlessly matches exact identifiers like <code>format_result</code> or <code>CalculatorError</code>.</li>
-                <li><strong>Weakness:</strong> Incapable of semantic understanding when terms do not explicitly overlap.</li>
+                <li><strong>Strengths:</strong> exact identifiers: "where is multiply used?" also ranks the caller <code>calculate_tax</code> in <code>main.py</code>.</li>
+                <li><strong>Weakness:</strong> no semantics: a light stemmer folds inflections ("divides" meets <code>divide</code>), but a synonym never matches.</li>
               </ul>
               <div class="code-box" style="margin-top: 10px;">
-tokenized_query = query.lower().split()
-bm25_scores = bm25.get_scores(tokenized_query)</div>
+query_tokens = tokenize_code(query)  # format_currency -&gt;
+                                    # format_currency, format, currency
+                                    # divides -&gt; divid, like divide
+raw_bm25 = bm25.get_scores(query_tokens)
+bm25 = score / max(raw_bm25)        # scaled to [0, 1]</div>
             </div>
           </div>
         </div>
@@ -955,8 +958,8 @@ bm25_scores = bm25.get_scores(tokenized_query)</div>
           <div class="slide-header-left">
             <span class="ioc-badge">Part 2</span>
             <div class="slide-title-group">
-              <h2>Symbol Pre-Resolution: Eliminating Hallucinations</h2>
-              <p>Guaranteeing 100% factual accuracy for code symbol existence questions</p>
+              <h2>Symbol Pre-Resolution: Truthful Answers</h2>
+              <p>The two question shapes the subject grades are answered from the index, not by the model</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -971,8 +974,8 @@ bm25_scores = bm25.get_scores(tokenized_query)</div>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Subject Mandate:</strong> "The /ask system must avoid hallucinating code symbols. Questions such as 'is there a function called X?' must be answered based on known indexed information."</li>
-                <li>If a 3B model is simply prompted "Is there a power() function?", it may plausibly guess "Yes, in calculator.py" even when it does not exist!</li>
+                <li><strong>Subject (VI.2):</strong> "is there a function called X?" and "what functions exist in this file?" are easy for a small model to get wrong; on those, <code>/ask</code> must not hallucinate symbols that are not in the index.</li>
+                <li>Measured before the fix: asked for the functions of <code>main.py</code>, the 3B model answered <code>&lt;entrypoint&gt;</code>, the indexer's name for the <code>__main__</code> block.</li>
                 <li>Purely generative token predictors favor probability over ground-truth negatives.</li>
               </ul>
             </div>
@@ -984,26 +987,26 @@ bm25_scores = bm25.get_scores(tokenized_query)</div>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>1. Pattern Interception:</strong> Detect symbol inquiries using regex patterns (e.g. <code>is there a function called X?</code>).</li>
-                <li><strong>2. AST Symbol Table:</strong> Query the indexed symbol table extracted during AST chunking (functions, classes, methods).</li>
-                <li><strong>3. Fact Injection:</strong> If a user asks for <code>power</code> and it does not exist, inject an explicit factual negative constraint: <em>"The requested symbol DOES NOT exist in the codebase."</em></li>
+                <li><strong>1. Question Shapes:</strong> <code>resolve_symbol_query()</code> recognises both shapes in their natural variants: backticks, <code>Class.method</code>, "does X exist", "which functions are in &lt;file&gt;", Hungarian.</li>
+                <li><strong>2. Symbol Inventory:</strong> functions, methods and classes of the indexed AST chunks with their line ranges; module blocks are not symbols.</li>
+                <li><strong>3. The Index Answers:</strong> a question that is only that fact never reaches the model (<code>answer_source: "index"</code>); for broader questions the verified fact leads and names found nowhere in the code are flagged.</li>
               </ul>
               <div class="callout-box" style="margin-top: 8px;">
-                <strong>Defense Tip:</strong> This two-layer safeguard guarantees that the 3B model never hallucinates non-existent functions during evaluation!
+                <strong>Defense Tip:</strong> ask "is there a function called sqrt?": the badge reads "Answered from the index (model not consulted)".
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- SLIDE 6: Reciprocal Rank Fusion (RRF) -->
-      <section class="slide" data-title="RRF & Score Fusion">
+      <!-- SLIDE 6: Hybrid Score Fusion -->
+      <section class="slide" data-title="Hybrid Score Fusion">
         <div class="slide-header">
           <div class="slide-header-left">
             <span class="ioc-badge">Part 2</span>
             <div class="slide-title-group">
-              <h2>Reciprocal Rank Fusion (RRF) Algorithm</h2>
-              <p>Mathematically merging disparate score distributions into an optimal ranking</p>
+              <h2>Hybrid Score Fusion: Dense + BM25</h2>
+              <p>How p2/retriever.py turns two score scales into one similarity score per chunk</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1018,14 +1021,17 @@ bm25_scores = bm25.get_scores(tokenized_query)</div>
             </div>
             <div class="card-content">
               <p style="margin-bottom: 10px;">
-                Cosine similarities (0 to 1) and BM25 scores (unbounded positive reals) cannot be directly added without calibration. RRF normalizes across ranks:
+                Cosine similarity is already in [0, 1]; BM25 is unbounded, so it is first divided by the best BM25 score of the query. Then a weighted sum:
               </p>
               <div class="code-box" style="font-size: 13px; text-align: center; padding: 14px;">
-RRF_Score(d) = SUM [ 1 / ( k + rank_i(d) ) ]
-k = 60 (standard smoothing constant)</div>
+score = 0.5 &times; dense + 0.5 &times; bm25 / max(bm25)
+      + 0.25 if the query names the symbol
+      + 0.15 if the query names the file
+score = min(score, 1.0)</div>
               <ul style="margin-top: 10px;">
-                <li>Chunks ranking near the top in both systems receive the highest cumulative RRF score.</li>
-                <li>Documents appearing in only one list are appropriately smoothed, preventing outlier skew.</li>
+                <li>Candidates: the dense hits plus the best BM25 hits, max(3 &times; k, 15) of each on the demo index.</li>
+                <li>Equal scores are ordered by file and line, so a query always ranks the same way.</li>
+                <li>ChromaDB stays the canonical store: the BM25 corpus is rebuilt from its documents after every index change.</li>
               </ul>
             </div>
           </div>
@@ -1036,18 +1042,22 @@ k = 60 (standard smoothing constant)</div>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%;">
-<span class="token-kw">def</span> <span class="token-fn">hybrid_retrieve</span>(query: str, top_k: int = <span class="token-num">4</span>):
-    dense_hits = chroma_client.query(query, n=top_k*<span class="token-num">2</span>)
-    sparse_scores = bm25.get_scores(query.split())
-    
-    rrf_scores = {}
-    <span class="token-kw">for</span> rank, doc_id <span class="token-kw">in</span> enumerate(dense_hits):
-        rrf_scores[doc_id] = rrf_scores.get(doc_id, <span class="token-num">0</span>) + <span class="token-num">1.0</span> / (<span class="token-num">60</span> + rank)
-        
-    <span class="token-kw">for</span> rank, (doc_id, _) <span class="token-kw">in</span> enumerate(sorted_bm25):
-        rrf_scores[doc_id] = rrf_scores.get(doc_id, <span class="token-num">0</span>) + <span class="token-num">1.0</span> / (<span class="token-num">60</span> + rank)
-        
-    <span class="token-kw">return</span> sorted(rrf_scores.items(), key=<span class="token-kw">lambda</span> x: x[<span class="token-num">1</span>], reverse=<span class="token-kw">True</span>)[:top_k]</div>
+<span class="token-comm"># Retriever.retrieve(query, k=3, alpha=0.5), abridged</span>
+combined_score = (alpha * d_score) + ((<span class="token-num">1.0</span> - alpha) * b_score)
+
+boost = <span class="token-num">0.0</span>
+<span class="token-kw">if</span> symbol_name <span class="token-kw">and</span> (symbol_name <span class="token-kw">in</span> query_words
+                    <span class="token-kw">or</span> short_sym <span class="token-kw">in</span> query_words):
+    boost += <span class="token-num">0.25</span>
+<span class="token-kw">if</span> file_stem <span class="token-kw">and</span> file_stem <span class="token-kw">in</span> query_words:
+    boost += <span class="token-num">0.15</span>
+
+final_score = min(<span class="token-num">1.0</span>, combined_score + boost)
+
+<span class="token-comm"># ties break on location: a stable ranking</span>
+scored_candidates.sort(key=<span class="token-kw">lambda</span> x: (-x[<span class="token-num">0</span>],
+    str(x[<span class="token-num">1</span>][<span class="token-str">"file_path"</span>]),
+    int(x[<span class="token-num">1</span>][<span class="token-str">"start_line"</span>] <span class="token-kw">or</span> <span class="token-num">0</span>)))</div>
             </div>
           </div>
         </div>
@@ -1076,7 +1086,7 @@ k = 60 (standard smoothing constant)</div>
             <div class="card-content">
               <ul>
                 <li><strong>3B Parameter Footprint:</strong> Runs smoothly on modern CPUs without requiring dedicated high-end GPUs.</li>
-                <li><strong>High Code Reasoning:</strong> Outstanding benchmarks for Python syntax analysis and structured JSON adherence.</li>
+                <li><strong>Instruct Model:</strong> the subject suggests <code>qwen2.5:3b</code> for <code>/ask</code>; one model is enough to pass, so it drives the patch loop too.</li>
                 <li><strong>Subject Reference:</strong> The subject explicitly references models in the ~3B parameter class.</li>
               </ul>
             </div>
@@ -1090,7 +1100,8 @@ k = 60 (standard smoothing constant)</div>
               <ul>
                 <li>Communicates directly via HTTP POST: <code>http://127.0.0.1:11435/api/generate</code>.</li>
                 <li>Zero external heavy SDKs: cleanly handled with native asynchronous <code>httpx</code> requests.</li>
-                <li>Supports both blocking JSON generation and chunked token streaming for real-time SSE.</li>
+                <li>Non-streaming calls (<code>"stream": false</code>), temperature 0.1, one fixed <code>num_ctx</code> of 8192 for every request.</li>
+                <li>Falls back to the standard <code>:11434</code> only when <code>:11435</code> refuses the connection, and says so on stderr.</li>
               </ul>
             </div>
           </div>
@@ -1101,7 +1112,7 @@ k = 60 (standard smoothing constant)</div>
             </div>
             <div class="card-content">
               <ul>
-                <li>Runs inside containerized boundaries communicating strictly over local loopback.</li>
+                <li>Ollama runs on the host; the app (also inside the <code>make up</code> container) reaches it over loopback only.</li>
                 <li>No API tokens, no subscriptions, zero external internet dependencies.</li>
                 <li>Verifiable during defense by disconnecting network interfaces or auditing traffic.</li>
               </ul>
@@ -1117,7 +1128,7 @@ k = 60 (standard smoothing constant)</div>
             <span class="ioc-badge">Part 2</span>
             <div class="slide-title-group">
               <h2>Prompt Engineering & Strict Context Grounding</h2>
-              <p>How the system enforces grounding so the LLM acts exclusively as an architect over real code</p>
+              <p>The real prompt of p2/llm.py: verified facts and the complete symbol list come before any retrieved chunk</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1132,38 +1143,49 @@ k = 60 (standard smoothing constant)</div>
             </div>
             <div class="card-content">
               <div class="code-box" style="font-size: 11px; height: 100%;">
-SYSTEM_PROMPT = """
-You are a specialized software architect assistant.
-Answer EXCLUSIVELY based on the provided CODE CHUNKS (Context).
+GROUNDED_SYSTEM_PROMPT = """You are an expert AI software
+architect and codebase assistant for this project. [...]
 
-STRICT CONSTRAINTS:
-1. If asked about a symbol (function, class, method) that is NOT
-   present in the context, explicitly respond:
-   "The requested symbol is not present in the indexed codebase."
-2. Never invent or hallucinate non-existent functions or parameters.
-3. Reference exact source file names and line ranges in explanations.
-"""</div>
+CRITICAL NON-NEGOTIABLE RULES:
+1. Be truthful, concise, and grounded in the provided code
+   context.
+2. Under NO circumstances should you hallucinate, invent, or
+   assume functions, methods, classes, or files that do not
+   appear in the context or verified facts.
+3. If a symbol or function does not exist in the codebase,
+   you MUST explicitly and clearly state that it does not exist.
+4. Reference file paths and line numbers when citing code.
+5. Do not include unnecessary conversational filler; focus on
+   technical precision."""</div>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Context Injection Preceding User Query</span>
+              <span class="card-title">build_rag_prompt(): Sections in Order</span>
               <span class="card-badge badge-emerald">User Prompt</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="font-size: 11px; height: 100%;">
-USER_PROMPT = f"""
---- BEGIN RELEVANT CODE CHUNKS ---
-[SOURCE 1]: {chunk_1.file_path} ({chunk_1.type} {chunk_1.name}, L{chunk_1.start_line}-L{chunk_1.end_line})
-{chunk_1.code}
+=== VERIFIED CODEBASE GROUND TRUTH (AST ANALYSIS) ===
+{fact, when the question matched a graded shape}
+Treat the above verified facts as absolute truth.
 
-[SOURCE 2]: {chunk_2.file_path} ({chunk_2.type} {chunk_2.name}, L{chunk_2.start_line}-L{chunk_2.end_line})
-{chunk_2.code}
---- END RELEVANT CODE CHUNKS ---
+=== EVERY INDEXED SYMBOL (COMPLETE LIST) ===
+- calculator.py: class Calculator (lines 9-36),
+  method Calculator.divide (lines 28-32), ...
+No other function, method or class exists in this codebase.
 
-USER QUESTION: {user_query}
-GROUNDED ANSWER:
-"""</div>
+=== RETRIEVED CODEBASE CONTEXT CHUNKS ===
+--- [Chunk 1] File: calculator.py | method Calculator.divide
+    (Lines 28-32) | Relevance: 0.6825 ---
+{chunk source}
+
+=== USER QUESTION ===
+{question}
+
+=== INSTRUCTIONS FOR YOUR ANSWER ===
+Only mention functions, methods and classes that appear in
+the complete symbol list. [...]</div>
             </div>
           </div>
         </div>
@@ -1176,7 +1198,7 @@ GROUNDED ANSWER:
             <span class="ioc-badge">Part 2</span>
             <div class="slide-title-group">
               <h2>FastAPI REST API Endpoints Overview</h2>
-              <p>Interfaces exposed by p2/api.py and their architectural responsibilities</p>
+              <p>Interfaces exposed by p2/api.py; each one is also served under /api/...</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1198,43 +1220,43 @@ GROUNDED ANSWER:
                 <td><code>/status</code></td>
                 <td><span class="card-badge badge-cyan">GET</span></td>
                 <td>Index state, total chunk count, active models, and watcher activity.</td>
-                <td><code>{"status":"ready", "chunks":12, "files":3}</code></td>
+                <td><code>{"status":"ready", "total_chunks":23, "total_files":4, "ollama_available":true, ...}</code></td>
               </tr>
               <tr>
                 <td><code>/files</code></td>
                 <td><span class="card-badge badge-cyan">GET</span></td>
-                <td>List of indexed files with individual chunk counts and sizes.</td>
-                <td><code>[{"path":"calculator.py", "chunks":5}]</code></td>
+                <td>Indexed files with their chunk counts.</td>
+                <td><code>{"total_files":4, "files":[{"path":"calculator.py", "chunk_count":8}, ...]}</code></td>
               </tr>
               <tr>
                 <td><code>/file</code></td>
                 <td><span class="card-badge badge-cyan">GET</span></td>
-                <td>Full raw source code of a specified file with AST chunk boundaries.</td>
-                <td><code>{"path":"main.py", "content":"...", "chunks":[...]}</code></td>
+                <td>File text plus its indexed chunks; 403 outside the target or for excluded paths.</td>
+                <td><code>{"file_path":"main.py", "content":"...", "chunks":[...], "in_sync":true}</code></td>
               </tr>
               <tr>
                 <td><code>/chunks</code></td>
                 <td><span class="card-badge badge-cyan">GET</span></td>
-                <td>Complete inventory of indexed AST chunks with filtering options.</td>
-                <td><code>[{"id":"...", "name":"add", "type":"function"}]</code></td>
+                <td>Indexed chunks in file/line order, paged with <code>?limit</code> (max 100) and <code>?offset</code>.</td>
+                <td><code>{"total_chunks":23, "limit":50, "offset":0, "chunks":[...]}</code></td>
               </tr>
               <tr>
                 <td><code>/context</code></td>
                 <td><span class="card-badge badge-amber">POST</span></td>
                 <td>Hybrid retrieval returning the most relevant code chunks for a query.</td>
-                <td><code>{"query":"...", "chunks":[...]}</code></td>
+                <td><code>{"query":"...", "k":3, "total_retrieved":3, "chunks":[{..., "similarity_score":0.8791}]}</code></td>
               </tr>
               <tr>
                 <td><code>/ask</code></td>
                 <td><span class="card-badge badge-emerald">POST</span></td>
-                <td>Full RAG loop: hybrid retrieval, local LLM generation, grounded answer.</td>
-                <td><code>{"answer":"...", "retrieved_chunks":[...]}</code></td>
+                <td>Retrieve, then generate; the two graded question shapes are answered from the index.</td>
+                <td><code>{"answer":"...", "answer_source":"index", "retrieved_chunks":[...]}</code></td>
               </tr>
               <tr>
                 <td><code>/events</code></td>
                 <td><span class="card-badge badge-indigo">GET</span></td>
                 <td>Server-Sent Events (SSE) stream for real-time dashboard updates.</td>
-                <td><code>event: index_update\ndata: {...}\n\n</code></td>
+                <td><code>data: {"action":"MODIFIED", "path":"calculator.py", ...}</code></td>
               </tr>
             </tbody>
           </table>
@@ -1248,7 +1270,7 @@ GROUNDED ANSWER:
             <span class="ioc-badge">Part 2</span>
             <div class="slide-title-group">
               <h2>Walkthrough: POST /context</h2>
-              <p>Structured code chunk retrieval backing the RAG system</p>
+              <p>A real call against demo_app: the top-k chunks with their similarity score</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1262,13 +1284,13 @@ GROUNDED ANSWER:
               <span class="card-badge badge-cyan">Input</span>
             </div>
             <div class="card-content">
-              <div class="code-box" style="height: 100%;">
+              <div class="code-box">
 {
-  <span class="token-str">"query"</span>: <span class="token-str">"how is calculation result formatting handled?"</span>,
-  <span class="token-str">"top_k"</span>: <span class="token-num">2</span>
+  <span class="token-str">"query"</span>: <span class="token-str">"how is a value formatted as currency?"</span>,
+  <span class="token-str">"k"</span>: <span class="token-num">2</span>
 }</div>
               <p style="margin-top: 12px; font-size: 11.5px; color: var(--text-muted);">
-                Accepts user query intent along with an optional <code>top_k</code> parameter (default: 4).
+                <code>k</code> is optional: default 3, at most 20 (422 above); an empty query gets a 400.
               </p>
             </div>
           </div>
@@ -1280,18 +1302,22 @@ GROUNDED ANSWER:
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
 {
-  <span class="token-str">"query"</span>: <span class="token-str">"how is calculation result formatting handled?"</span>,
+  <span class="token-str">"query"</span>: <span class="token-str">"how is a value formatted as currency?"</span>,
+  <span class="token-str">"k"</span>: <span class="token-num">2</span>,
+  <span class="token-str">"total_retrieved"</span>: <span class="token-num">2</span>,
   <span class="token-str">"chunks"</span>: [
     {
-      <span class="token-str">"id"</span>: <span class="token-str">"formatter.py:format_result:1:18"</span>,
+      <span class="token-str">"chunk_id"</span>: <span class="token-str">"formatter.py:format_currency:10"</span>,
       <span class="token-str">"file_path"</span>: <span class="token-str">"formatter.py"</span>,
-      <span class="token-str">"name"</span>: <span class="token-str">"format_result"</span>,
-      <span class="token-str">"type"</span>: <span class="token-str">"function"</span>,
-      <span class="token-str">"start_line"</span>: <span class="token-num">1</span>,
-      <span class="token-str">"end_line"</span>: <span class="token-num">18</span>,
-      <span class="token-str">"score"</span>: <span class="token-num">0.894</span>,
-      <span class="token-str">"content"</span>: <span class="token-str">"def format_result(val, fmt=\"json\"): ..."</span>
-    }
+      <span class="token-str">"symbol_name"</span>: <span class="token-str">"format_currency"</span>,
+      <span class="token-str">"symbol_type"</span>: <span class="token-str">"function"</span>,
+      <span class="token-str">"start_line"</span>: <span class="token-num">10</span>,
+      <span class="token-str">"end_line"</span>: <span class="token-num">12</span>,
+      <span class="token-str">"content"</span>: <span class="token-str">"def format_currency(value: float, ..."</span>,
+      <span class="token-str">"similarity_score"</span>: <span class="token-num">0.8791</span>
+    },
+    { <span class="token-str">"chunk_id"</span>: <span class="token-str">"formatter.py:format_percentage:15"</span>, ...,
+      <span class="token-str">"similarity_score"</span>: <span class="token-num">0.5348</span> }
   ]
 }</div>
             </div>
@@ -1305,8 +1331,8 @@ GROUNDED ANSWER:
           <div class="slide-header-left">
             <span class="ioc-badge">Part 2</span>
             <div class="slide-title-group">
-              <h2>Walkthrough: POST /ask (Full Grounded RAG)</h2>
-              <p>Grounded answer and retrieved audit context in a single atomic invocation</p>
+              <h2>Walkthrough: POST /ask</h2>
+              <p>A real call: a graded question shape, answered from the index</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1320,15 +1346,15 @@ GROUNDED ANSWER:
               <span class="card-badge badge-cyan">Request</span>
             </div>
             <div class="card-content">
-              <div class="code-box" style="height: 100%;">
+              <div class="code-box">
 {
-  <span class="token-str">"question"</span>: <span class="token-str">"What operations are supported by Calculator?"</span>,
-  <span class="token-str">"top_k"</span>: <span class="token-num">3</span>
+  <span class="token-str">"query"</span>: <span class="token-str">"what methods does the Calculator class have?"</span>,
+  <span class="token-str">"k"</span>: <span class="token-num">3</span>
 }</div>
               <ul style="margin-top: 12px;">
-                <li>The endpoint automatically executes the hybrid retriever.</li>
-                <li>Gathers methods from <code>calculator.py</code> (add, subtract, multiply, divide).</li>
-                <li>Passes verified chunks to local <code>qwen2.5:3b</code> within grounded prompt bounds.</li>
+                <li>The question matches a graded shape (the members of a class), so <code>resolve_symbol_query()</code> answers it from the index.</li>
+                <li>The model is not called: <code>answer_source</code> is <code>"index"</code>, and the dashboard badge says so.</li>
+                <li>Broader questions go to <code>qwen2.5:3b</code> with the verified fact first; the answer is then checked against the index.</li>
               </ul>
             </div>
           </div>
@@ -1340,14 +1366,17 @@ GROUNDED ANSWER:
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
 {
-  <span class="token-str">"question"</span>: <span class="token-str">"What operations are supported by Calculator?"</span>,
-  <span class="token-str">"answer"</span>: <span class="token-str">"The Calculator class in calculator.py supports four arithmetic operations: add, subtract, multiply, and divide (which includes zero-division validation)."</span>,
+  <span class="token-str">"query"</span>: <span class="token-str">"what methods does the Calculator class have?"</span>,
+  <span class="token-str">"answer"</span>: <span class="token-str">"Class `Calculator` (calculator.py, lines 9-36)
+     defines 6 method(s): __init__ (lines 12-14),
+     add (lines 16-18), subtract (lines 20-22),
+     multiply (lines 24-26), divide (lines 28-32),
+     power (lines 34-36)."</span>,
+  <span class="token-str">"answer_source"</span>: <span class="token-str">"index"</span>,
   <span class="token-str">"model"</span>: <span class="token-str">"qwen2.5:3b"</span>,
-  <span class="token-str">"duration_ms"</span>: <span class="token-num">482</span>,
-  <span class="token-str">"retrieved_chunks"</span>: [
-    <span class="token-str">"calculator.py:Calculator.add:10:14"</span>,
-    <span class="token-str">"calculator.py:Calculator.divide:25:30"</span>
-  ]
+  <span class="token-str">"retrieved_chunks"</span>: [ <span class="token-comm">/* 3 ranked chunks */</span> ],
+  <span class="token-str">"pre_resolved"</span>: { <span class="token-str">"query_type"</span>: <span class="token-str">"class_members"</span>, <span class="token-str">"pure"</span>: <span class="token-kw">true</span>, ... },
+  <span class="token-str">"index_check"</span>: { <span class="token-str">"unknown_identifiers"</span>: [] }
 }</div>
             </div>
           </div>
@@ -1384,22 +1413,22 @@ GROUNDED ANSWER:
           </div>
           <div class="card glow-indigo">
             <div class="card-header">
-              <span class="card-title">System Event Types</span>
+              <span class="card-title">The Real Stream (captured)</span>
               <span class="card-badge badge-indigo">Event Stream</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%;">
-<span class="token-comm"># 1. Index update event (when a file changes on disk)</span>
-event: index_updated
-data: {"file": "calculator.py", "action": "modified", "chunks": 5}
+<span class="token-comm"># GET /events: one JSON object per "data:" line</span>
+data: {"action": "CONNECTED", "details": "SSE stream connected"}
+: keep-alive
+data: {"timestamp": "2026-10-04 00:15:35",
+       "action": "MODIFIED", "path": "calculator.py",
+       "details": "1 chunk(s) re-embedded, 7 unchanged, 0 removed"}
 
-<span class="token-comm"># 2. RAG query audit event (search logging)</span>
-event: query_executed
-data: {"query": "addition", "top_k": 3, "duration_ms": 120}
-
-<span class="token-comm"># 3. System heartbeat event</span>
-event: heartbeat
-data: {"status": "healthy", "timestamp": 1718000000}</div>
+<span class="token-comm"># actions: WATCHER_START, CREATED, MODIFIED, DELETED,</span>
+<span class="token-comm">#   POLL_SYNC, ERROR; Part 3 adds PATCH_ATTEMPT,</span>
+<span class="token-comm">#   PATCH_SANITY, PATCH_APPLY, PATCH_VALIDATION, ...</span>
+<span class="token-comm"># an idle stream sends ": keep-alive" every 0.5 s</span></div>
             </div>
           </div>
         </div>
@@ -1412,7 +1441,7 @@ data: {"status": "healthy", "timestamp": 1718000000}</div>
             <span class="ioc-badge">Part 2</span>
             <div class="slide-title-group">
               <h2>Files Browser & Chunk Gutter Indicators</h2>
-              <p>Visualizing source code with AST boundary markers directly in the dashboard</p>
+              <p>Subject Figure VI.2: every chunk boundary lines up with a definition</p>
             </div>
           </div>
           <div class="slide-header-right">
@@ -1422,35 +1451,39 @@ data: {"status": "healthy", "timestamp": 1718000000}</div>
         <div class="grid-2" style="margin-top: 14px;">
           <div class="card glow-cyan">
             <div class="card-header">
-              <span class="card-title">AST Markers in Line Gutter</span>
+              <span class="card-title">Chunk Markers in the Gutter</span>
               <span class="card-badge badge-cyan">Visual Design</span>
             </div>
             <div class="card-content">
               <p style="margin-bottom: 10px;">
-                Selecting a file in the Files tab highlights AST code units directly beside line numbers:
+                Selecting a file shows it whole, with a &#9654; in the gutter on the first line of every indexed chunk:
               </p>
               <ul>
-                <li><strong>Class Scope:</strong> Purple badge and border indicator (<code>class Calculator</code>).</li>
-                <li><strong>Function / Method:</strong> Cyan arrow badge (<code>def add()</code>).</li>
-                <li><strong>Interactive Inspector:</strong> Clicking any marker displays the chunk hash and embedding metadata during peer evaluation.</li>
+                <li><strong>Chunk Label:</strong> above each chunk: its number, type and name, line range and the first 10 hex digits of its SHA-256.</li>
+                <li><strong>From the Index:</strong> backed by <code>GET /file</code>, which returns what ChromaDB holds, not a fresh parse; "re-indexing&hellip;" shows while the watcher catches up.</li>
+                <li><strong>Shared:</strong> the same tab (<code>p1/dashboard_files.py</code>) is in every dashboard, Part 1 to bonus.</li>
               </ul>
             </div>
           </div>
           <div class="card glow-emerald">
             <div class="card-header">
-              <span class="card-title">Code View Presentation</span>
-              <span class="card-badge badge-emerald">Mock View</span>
+              <span class="card-title">calculator.py in the Files Tab</span>
+              <span class="card-badge badge-emerald">Real View</span>
             </div>
             <div class="card-content">
               <div class="code-box" style="height: 100%; font-size: 11px;">
-<span class="token-num">1</span>  <span class="token-kw">class</span> <span class="token-cls">Calculator</span>:  <span style="color: #a78bfa;">[AST CLASS: Calculator]</span>
-<span class="token-num">2</span>      <span class="token-str">"""Calculator class for basic math operations."""</span>
-<span class="token-num">3</span>      
-<span class="token-num">4</span>      <span class="token-kw">def</span> <span class="token-fn">add</span>(self, a: float, b: float) -> float:  <span style="color: var(--cyan);">[AST FN: add]</span>
-<span class="token-num">5</span>          <span class="token-kw">return</span> a + b
-<span class="token-num">6</span>          
-<span class="token-num">7</span>      <span class="token-kw">def</span> <span class="token-fn">subtract</span>(self, a: float, b: float) -> float:  <span style="color: var(--cyan);">[AST FN: subtract]</span>
-<span class="token-num">8</span>          <span class="token-kw">return</span> a - b</div>
+<span style="color: var(--cyan);">chunk #3 &middot; method Calculator.__init__ &middot; lines 12-14 &middot; 166eb04999</span>
+&#9654; <span class="token-num">12</span>     <span class="token-kw">def</span> <span class="token-fn">__init__</span>(self, precision: int = 2) -&gt; None:
+  <span class="token-num">13</span>         <span class="token-str">"""Initialize the calculator with a rounding precision."""</span>
+  <span class="token-num">14</span>         self.precision = precision
+  <span class="token-num">15</span>
+<span style="color: var(--cyan);">chunk #4 &middot; method Calculator.add &middot; lines 16-18 &middot; 754be3851e</span>
+&#9654; <span class="token-num">16</span>     <span class="token-kw">def</span> <span class="token-fn">add</span>(self, a: float, b: float) -&gt; float:
+  <span class="token-num">17</span>         <span class="token-str">"""Return the sum of two numbers rounded to precision."""</span>
+  <span class="token-num">18</span>         <span class="token-kw">return</span> round(a + b, self.precision)
+  <span class="token-num">19</span>
+<span style="color: var(--cyan);">chunk #5 &middot; method Calculator.subtract &middot; lines 20-22 &middot; 2f0dc8637e</span>
+&#9654; <span class="token-num">20</span>     <span class="token-kw">def</span> <span class="token-fn">subtract</span>(self, a: float, b: float) -&gt; float:</div>
             </div>
           </div>
         </div>
@@ -1491,7 +1524,7 @@ data: {"status": "healthy", "timestamp": 1718000000}</div>
                 <td>POST /context for relevant code chunks</td>
                 <td><code>p2/retriever.py</code> (Hybrid search)</td>
                 <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
-                <td><code>curl -X POST /context -d '{"query":"add"}'</code></td>
+                <td><code>curl -X POST http://127.0.0.1:8000/context -H 'Content-Type: application/json' -d '{"query":"where is multiply used?","k":3}'</code></td>
               </tr>
               <tr>
                 <td>POST /ask Retrieval-Augmented Generation</td>
@@ -1507,9 +1540,21 @@ data: {"status": "healthy", "timestamp": 1718000000}</div>
               </tr>
               <tr>
                 <td>Prohibit code symbol hallucinations</td>
-                <td>AST symbol pre-resolution before prompt</td>
+                <td>The index answers the graded shapes (<code>p2/retriever.py</code>)</td>
                 <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
-                <td>Query "Is there a power() function?"</td>
+                <td>Ask "is there a function called sqrt?" and "what functions exist in this file?"</td>
+              </tr>
+              <tr>
+                <td>BM25 re-ranker over the Chroma documents</td>
+                <td><code>rank_bm25</code> in <code>p2/retriever.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td>"where is multiply used?" also ranks the caller <code>calculate_tax</code></td>
+              </tr>
+              <tr>
+                <td>File events over SSE (<code>GET /events</code>)</td>
+                <td><code>p2/api.py</code></td>
+                <td><span class="card-badge badge-emerald">[OK] PASSED</span></td>
+                <td><code>curl -N http://127.0.0.1:8000/events</code>, then edit a file</td>
               </tr>
               <tr>
                 <td>Ask &amp; Retrieve user dashboard</td>
@@ -1545,7 +1590,7 @@ data: {"status": "healthy", "timestamp": 1718000000}</div>
             <div class="card-content">
               <ul>
                 <li><strong>Answer:</strong> Dense cosine search struggles on exact identifiers and short variable names, while BM25 lacks semantic intuition.</li>
-                <li>Combining both via Reciprocal Rank Fusion guarantees both semantic understanding and identifier precision.</li>
+                <li>The score is 0.5 &times; dense + 0.5 &times; BM25 (scaled by its maximum) plus name boosts: "where is multiply used?" also finds the caller <code>calculate_tax</code>.</li>
               </ul>
             </div>
           </div>
@@ -1557,7 +1602,7 @@ data: {"status": "healthy", "timestamp": 1718000000}</div>
             <div class="card-content">
               <ul>
                 <li><strong>Answer:</strong> Deterministic AST symbol pre-resolution.</li>
-                <li>When the user asks whether a function exists, the system verifies against indexed AST symbols and injects ground truth before model inference.</li>
+                <li>The two graded question shapes are answered from the index without the model; broader answers lead with the verified fact and flag names found nowhere in the code.</li>
               </ul>
             </div>
           </div>
@@ -1568,7 +1613,7 @@ data: {"status": "healthy", "timestamp": 1718000000}</div>
             </div>
             <div class="card-content">
               <ul>
-                <li><strong>Answer:</strong> Disconnect network access or inspect Docker network routing.</li>
+                <li><strong>Answer:</strong> pull the network cable: indexing, retrieval and answers keep working.</li>
                 <li>Ollama evaluates strictly on <code>127.0.0.1:11435</code>. Zero external cloud requests occur.</li>
               </ul>
             </div>

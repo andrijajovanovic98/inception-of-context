@@ -5,13 +5,16 @@ Handles robust JSON extraction, schema enforcement, and error-feedback retry pro
 """
 
 import ast
+import copy
 import difflib
+import io
 import itertools
 import json
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional, Set
+import tokenize
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -31,6 +34,7 @@ from p1.markers import (  # noqa: E402
 from p2.llm import OllamaClient  # noqa: E402
 from p3.sanity import (  # noqa: E402
     VALIDATION_CONFIG_NAME,
+    body_without_docstring,
     name_lines,
     parse_rename,
     name_columns,
@@ -363,6 +367,167 @@ def extract_json_patch(raw_text: str, target_dir: Optional[str] = None) -> Dict[
     raise ValueError(f"Could not parse a valid structured JSON patch from LLM output:\n{raw_text[:300]}...")
 
 
+# ---------------------------------------------------------------------------
+# Docstring restoration
+# ---------------------------------------------------------------------------
+# An intent that asks for documentation work may change docstrings.
+_DOCS_ASKED_RE = re.compile(r"docstring|\bdocument", re.IGNORECASE)
+
+
+def _docstring_expr(node: Any) -> Optional[Any]:
+    """The docstring statement of a module, class or function, if it has one."""
+    body = getattr(node, "body", None)
+    if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
+        if isinstance(body[0].value.value, str):
+            return body[0]
+    return None
+
+
+def _alone_on_its_lines(lines: List[str], node: Any) -> bool:
+    """Only indentation before the statement and at most a comment after it (offsets are UTF-8 bytes)."""
+    before = lines[node.lineno - 1].encode("utf-8")[: node.col_offset].decode("utf-8", "replace")
+    after = lines[node.end_lineno - 1].encode("utf-8")[node.end_col_offset:].decode("utf-8", "replace")
+    return not before.strip() and (not after.strip() or after.strip().startswith("#"))
+
+
+def _indent(line: str) -> str:
+    return line[: len(line) - len(line.lstrip(" \t"))]
+
+
+def _named_definitions(tree: ast.AST) -> Dict[str, Any]:
+    """{qualified name: node} of every class, function and method, nested ones included."""
+    found: Dict[str, Any] = {}
+
+    def visit(body: List[Any], prefix: str) -> None:
+        for node in body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                found.setdefault(prefix + node.name, node)
+                visit(node.body, f"{prefix}{node.name}.")
+
+    visit(getattr(tree, "body", []), "")
+    return found
+
+
+def _code_dump(node: Any) -> str:
+    """A definition with every docstring in it left out, positions ignored."""
+    clone = copy.deepcopy(node)
+    for inner in ast.walk(clone):
+        if isinstance(inner, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            inner.body = body_without_docstring(inner)
+    return ast.dump(clone)
+
+
+def _header_end_row(content: str, node: Any) -> Optional[int]:
+    """Row of the ':' that ends a def / class header, when the body starts on a later line."""
+    depth = 0
+    started = False
+    try:
+        tokens = tokenize.generate_tokens(io.StringIO(content).readline)
+        for tok in tokens:
+            if tok.start[0] < node.lineno:
+                continue
+            if not started:
+                started = tok.type == tokenize.NAME and tok.string in ("def", "class")
+                continue
+            if tok.type != tokenize.OP:
+                continue
+            if tok.string in ("(", "[", "{"):
+                depth += 1
+            elif tok.string in (")", "]", "}"):
+                depth -= 1
+            elif tok.string == ":" and depth == 0:
+                for after in tokens:
+                    if after.type != tokenize.COMMENT:
+                        return tok.start[0] if after.type == tokenize.NEWLINE else None
+                return None
+    except (tokenize.TokenError, IndentationError, SyntaxError):
+        return None
+    return None
+
+
+def _restore_module_docstring(
+    original: str, old_tree: ast.Module, content: str, new_tree: ast.Module
+) -> Optional[Tuple[str, str]]:
+    """(content, label) with the original module docstring back where the model dropped or rewrote it."""
+    old_doc = _docstring_expr(old_tree)
+    old_lines = split_lines(original)
+    if old_doc is None or not _alone_on_its_lines(old_lines, old_doc):
+        return None
+    docstring = "".join(old_lines[old_doc.lineno - 1: old_doc.end_lineno])
+    lines = split_lines(content)
+    new_doc = _docstring_expr(new_tree)
+    if new_doc is None:
+        head = 0  # a shebang or encoding line stays first
+        while head < len(lines) and re.match(r"#!|#.*coding[:=]", lines[head]):
+            head += 1
+        rest = "".join(lines[head:]).lstrip("\r\n")
+        candidate = "".join(lines[:head]) + docstring.rstrip("\r\n") + "\n"
+        candidate += "\n" + rest if rest else ""
+        label = "module docstring"
+    elif (
+        ast.get_docstring(new_tree, clean=False) != ast.get_docstring(old_tree, clean=False)
+        and _alone_on_its_lines(lines, new_doc)
+    ):
+        ending = "" if docstring.endswith("\n") else "\n"
+        before, after = "".join(lines[: new_doc.lineno - 1]), "".join(lines[new_doc.end_lineno:])
+        candidate = before + docstring + ending + after
+        label = "module docstring (rewritten)"
+    else:
+        return None
+    try:
+        if ast.get_docstring(ast.parse(candidate), clean=False) != ast.get_docstring(old_tree, clean=False):
+            return None
+    except (SyntaxError, ValueError):
+        return None
+    return candidate, label
+
+
+def _restore_one_definition_docstring(
+    original: str, old_tree: ast.AST, content: str, done: Set[str]
+) -> Optional[Tuple[str, str]]:
+    """
+    (content, label) with one more docstring put back - of a class, or of a
+    function whose code is unchanged - or None when no such docstring is
+    missing any more. `done` collects the names already looked at.
+    """
+    try:
+        new_defs = _named_definitions(ast.parse(content))
+    except (SyntaxError, ValueError):
+        return None
+    old_lines = split_lines(original)
+    for name, old in _named_definitions(old_tree).items():
+        new = new_defs.get(name)
+        old_doc = _docstring_expr(old)
+        if name in done or new is None or old_doc is None or _docstring_expr(new) is not None:
+            continue
+        done.add(name)
+        is_class = isinstance(old, ast.ClassDef)
+        if type(old) is not type(new) or (not is_class and _code_dump(old) != _code_dump(new)):
+            continue
+        row = _header_end_row(content, new)
+        if row is None or not _alone_on_its_lines(old_lines, old_doc):
+            continue
+        lines = split_lines(content)
+        first = new.body[0]
+        start = min([first.lineno] + [d.lineno for d in getattr(first, "decorator_list", [])])
+        indent, old_indent = _indent(lines[start - 1]), _indent(old_lines[old_doc.lineno - 1])
+        doc = [
+            indent + line[len(old_indent):] if line.startswith(old_indent) else line
+            for line in old_lines[old_doc.lineno - 1: old_doc.end_lineno]
+        ]
+        if not doc[-1].endswith("\n"):
+            doc[-1] += "\n"
+        candidate = "".join(lines[:row] + doc + lines[row:])
+        try:
+            back = _named_definitions(ast.parse(candidate)).get(name)
+        except (SyntaxError, ValueError):
+            continue
+        if back is None or ast.get_docstring(back) != ast.get_docstring(old):
+            continue
+        return candidate, f"class {name}" if is_class else f"{name}()"
+    return None
+
+
 class PatchGenerator:
     """
     Generates structured JSON patches using the local Ollama LLM.
@@ -646,21 +811,28 @@ class PatchGenerator:
 
         patch = extract_json_patch(raw_response, self.target_dir)
         patch = self.keep_to_rename(self.drop_unseen_edits(patch, intent, context_chunks), intent)
-        return self.restore_module_docstrings(patch, intent)
+        return self.restore_docstrings(patch, intent)
 
-    def restore_module_docstrings(self, patch: Dict[str, Any], intent: str) -> Dict[str, Any]:
+    def restore_docstrings(self, patch: Dict[str, Any], intent: str) -> Dict[str, Any]:
         """
-        Put back a module docstring the model dropped while the intent did not
-        touch docstrings.
-
-        Asked to fix a one-word typo in calculator.py, qwen2.5:3b returned the
-        file without its 4-line module docstring (live, crash-watcher demo);
-        the fix itself was right, and the loss is invisible to every
-        validation. The original docstring is re-inserted exactly, and the
-        file is listed under "restored_docstrings" - never hidden.
+        Put back docstrings the model dropped or rewrote although the intent
+        did not ask for documentation changes:
+          - the module docstring, dropped or rewritten. Asked to fix a one-word
+            typo, qwen2.5:3b returned calculator.py without its 4-line module
+            docstring (live, crash-watcher demo); asked to make add raise, it
+            replaced it with a copy of the class docstring;
+          - a class docstring it dropped;
+          - the docstring it dropped from a function or method whose code the
+            patch leaves unchanged (divide, in the same run): the docstring
+            still describes exactly that code. A function the patch changes
+            keeps whatever the model wrote - its old docstring may no longer
+            be true.
+        The original text goes back verbatim (re-indented only if the model
+        changed the indentation). Each file is listed under
+        "restored_docstrings" with what was restored - never hidden.
         """
         files = patch.get("files")
-        if not isinstance(files, list) or re.search(r"docstring", intent, re.IGNORECASE):
+        if not isinstance(files, list) or _DOCS_ASKED_RE.search(intent):
             return patch
         restored: List[str] = []
         for entry in files:
@@ -678,23 +850,21 @@ class PatchGenerator:
                 old_tree, new_tree = ast.parse(original), ast.parse(content)
             except (OSError, UnicodeDecodeError, SyntaxError, ValueError):
                 continue
-            if ast.get_docstring(old_tree, clean=False) is None or ast.get_docstring(new_tree, clean=False):
-                continue
-            node = old_tree.body[0]
-            docstring = "".join(split_lines(original)[node.lineno - 1: node.end_lineno])
-            lines = split_lines(content)
-            head = 0  # a shebang or encoding line stays first
-            while head < len(lines) and re.match(r"#!|#.*coding[:=]", lines[head]):
-                head += 1
-            rest = "".join(lines[head:]).lstrip("\r\n")
-            candidate = "".join(lines[:head]) + docstring.rstrip("\r\n") + "\n"
-            candidate += "\n" + rest if rest else ""
-            try:
-                ast.parse(candidate)
-            except (SyntaxError, ValueError):
-                continue
-            entry["content"] = candidate
-            restored.append(str(path))
+            what: List[str] = []
+            module = _restore_module_docstring(original, old_tree, content, new_tree)
+            if module is not None:
+                content, label = module
+                what.append(label)
+            done: Set[str] = set()
+            while True:
+                step = _restore_one_definition_docstring(original, old_tree, content, done)
+                if step is None:
+                    break
+                content, label = step
+                what.append(label)
+            if what:
+                entry["content"] = content
+                restored.append(f"{path}: {', '.join(what)}")
         if restored:
             patch["restored_docstrings"] = restored
         return patch
@@ -835,4 +1005,4 @@ class PatchGenerator:
         )
         patch = extract_json_patch(raw_response, self.target_dir)
         patch = self.keep_to_rename(self.drop_unseen_edits(patch, intent, context_chunks), intent)
-        return self.restore_module_docstrings(patch, intent)
+        return self.restore_docstrings(patch, intent)

@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 from p1.db import VectorDB
 from p1.indexer import CodebaseIndexer
 from p1.tests.support import copy_demo_app
-from p2.retriever import Retriever
+from p2.retriever import Retriever, stem_word
 
 
 class ResolverTest(unittest.TestCase):
@@ -120,6 +120,19 @@ class ResolverTest(unittest.TestCase):
         self.assertIn("calculate_tax", uses)  # BM25 finds the caller
         self.assertTrue(all(0.0 <= c["similarity_score"] <= 1.0 for c in top))
         self.assertEqual(top, self.retriever.retrieve("how does calculate_tax work?", k=3))
+
+    def test_inflected_words_meet_the_code(self) -> None:
+        # "divides" did not match `divide`, so the methods whose docstrings say
+        # "two numbers" (add, subtract, multiply) took the whole top three.
+        top = self.retriever.retrieve("is there a function that divides two numbers?", k=3)
+        self.assertEqual(top[0]["symbol_name"], "Calculator.divide")
+        top = self.retriever.retrieve("how are percentages formatted?", k=3)
+        self.assertEqual(top[0]["symbol_name"], "format_percentage")
+        for forms in (["divide", "divides", "divided", "dividing"], ["format", "formats", "formatted"],
+                      ["add", "adds", "added", "adding"], ["class", "classes"], ["entry", "entries"]):
+            self.assertEqual({stem_word(w) for w in forms}, {stem_word(forms[0])}, forms)
+        for kept in ["status", "this", "string", "speed", "calculate_tax", "e9"]:
+            self.assertEqual(stem_word(kept), kept)
 
 
 if __name__ == "__main__":
