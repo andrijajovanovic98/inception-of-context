@@ -230,9 +230,10 @@ make test-p1      # one part only (also test-p2, test-p3, test-bonus)
 make gates        # lint + test, fails on the first red gate
 ```
 
-The suite (stdlib `unittest`, nothing extra to install) needs `make setup`
-(it uses the real ChromaDB and embedding model) but not Ollama: every model
-call in it is a scripted fake. It runs against a frozen copy of the demo target
+The suite (stdlib `unittest`) uses the real ChromaDB and embedding model, and
+`make test` installs the Python packages and the embedding weights itself when
+they are missing (a fresh clone, or right after `make fclean`). It never needs
+Ollama: every model call in it is a scripted fake. It runs against a frozen copy of the demo target
 (`p1/tests/fixtures/demo_app`), so a live patch-loop session on `demo_app/`
 never changes its expectations. `TEST_ARGS="-k rollback"` narrows it.
 
