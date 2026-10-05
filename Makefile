@@ -28,6 +28,7 @@ REQ_BONUS    := bonus/requirements.txt
 LLM_MODEL    := qwen2.5:3b
 EMBED_MODEL  := all-MiniLM-L6-v2
 EMBED_CACHE  := $(HF_HOME)/hub/models--sentence-transformers--$(EMBED_MODEL)
+EMBED_FETCH  := $(PYTHON) -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('$(EMBED_MODEL)'); print('[+] embedding model ready')"
 PORT         := 8000
 TARGET       := demo_app
 LINT_DIRS    := p1 p2 p3 bonus demo_app
@@ -54,7 +55,7 @@ export OLLAMA_HOST
 
 .PHONY: all up down docker-restart docker-clean docker-fclean setup p1 p2 p3 p3-cli \
 	bonus stop clean fclean re help ensure-dirs ensure-venv ensure-deps ensure-ready \
-	ensure-ollama ensure-ollama-quick ensure-ollama-soft ensure-embed ensure-lint-tools \
+	ensure-ollama ensure-ollama-quick ensure-ollama-soft ensure-embed ensure-test-runtime ensure-lint-tools \
 	flake mypy lint test test-p1 test-p2 test-p3 test-bonus gates demo-service demo-service-stop
 
 all: setup
@@ -172,7 +173,7 @@ help:
 	@echo "make flake            - run flake8 on $(LINT_DIRS)"
 	@echo "make mypy             - run mypy on $(LINT_DIRS)"
 	@echo "make lint             - run flake8 + mypy on $(LINT_DIRS)"
-	@echo "make test             - offline regression suite (needs make setup, not Ollama)"
+	@echo "make test             - offline regression suite (installs packages + embeddings if missing; no Ollama)"
 	@echo "make test-p1 / test-p2 / test-p3 / test-bonus - one part's suite only"
 	@echo "make gates            - all quality gates: flake8 + mypy + test"
 	@echo "make stop             - stop IoC ollama (pid file + IoC orphans; safe for make)"
@@ -277,7 +278,17 @@ ensure-ollama-quick: ensure-dirs
 
 ensure-embed: ensure-deps
 	@echo "[*] Prefetching embedding model $(EMBED_MODEL) into $(HF_HOME)"
-	@$(PYTHON) -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('$(EMBED_MODEL)'); print('[+] embedding model ready')"
+	@$(EMBED_FETCH)
+
+# What the offline test suite needs, and only that: the Python packages and the
+# embedding weights, installed when missing. Never Ollama - every model call in
+# the suite is a scripted fake - so `make gates` works on a fresh clone or right
+# after fclean without the ollama binary or the model pull of make setup.
+ensure-test-runtime: ensure-deps
+	@if [ ! -d "$(EMBED_CACHE)" ]; then \
+		echo "[*] Fetching embedding model $(EMBED_MODEL) into $(HF_HOME)"; \
+		$(EMBED_FETCH); \
+	fi
 
 # ensure-lint-tools is part of setup because demo_app/ioc.config.yml uses
 # flake8 in its validation command: the patch loop must never fail for lack of
@@ -403,17 +414,17 @@ lint: flake mypy
 # ---------------------------------------------------------------------------
 
 # Offline regression suite: p1/tests, p2/tests, p3/tests, bonus/tests. Plain
-# stdlib unittest, so nothing extra is installed. It needs the runtime and the
-# embedding weights (ensure-ready checks both) but never Ollama: every model
-# call in it is a scripted fake. Targets are temp copies of demo_app, so the
-# real one is never touched. Narrow it with e.g. TEST_ARGS="-k rollback".
-test: ensure-ready
+# stdlib unittest on the real ChromaDB and embedding model, which
+# ensure-test-runtime installs when they are missing; never Ollama. Targets are
+# temp copies of demo_app, so the real one is never touched. Narrow it with
+# e.g. TEST_ARGS="-k rollback".
+test: ensure-test-runtime
 	@echo "[*] unittest → $(TEST_DIRS)"
 	@HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 $(PYTHON) -m unittest discover \
 		-s . -t . -p "test_*.py" $(TEST_ARGS)
 
 # One part's suite only: make test-p1 / test-p2 / test-p3 / test-bonus.
-test-p1 test-p2 test-p3 test-bonus: test-%: ensure-ready
+test-p1 test-p2 test-p3 test-bonus: test-%: ensure-test-runtime
 	@echo "[*] unittest → $*/tests"
 	@HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 $(PYTHON) -m unittest discover \
 		-s $*/tests -t . -p "test_*.py" $(TEST_ARGS)
