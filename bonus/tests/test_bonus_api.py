@@ -109,6 +109,30 @@ class BonusApiTest(unittest.TestCase):
             self.assertIn("calculator.py", shown)
             self.assertNotIn("<img", shown)
 
+    def test_a_refused_attempt_shows_why_and_an_unparsed_one_fails_no_rule(self) -> None:
+        # The bonus page (what `make up` serves) showed a refused attempt with
+        # every pill green and no reason, and an attempt whose patch did not
+        # parse with all seven rules red although none had run.
+        html = self.client.get("/").text
+        all_pass = {key: True for key in ("0", "1", "2", "3", "4", "5", "6")}
+        result = {"status": "failed", "attempts_count": 2, "rollback_verified": True, "attempts": [
+            {"attempt": 1, "status": "sanity_failed", "sanity_passed": False, "sanity_rules": all_pass,
+             "sanity_errors": ["Patch removes the if __name__ == '__main__' block from 'main.py'"],
+             "patch": {"summary": "s", "files": []}},
+            {"attempt": 2, "status": "generation_failed", "sanity_passed": False, "sanity_rules": {},
+             "sanity_errors": ["Failed to generate structured JSON patch: Could not parse"], "patch": None},
+        ]}
+        run = run_page_script(html, f"renderBonusResult({json.dumps(result)})")
+        if run is None:
+            self.skipTest("node is not installed")
+        self.assertIsNone(run["error"])
+        shown = run["dom"]["patch-attempts-container"]["innerHTML"]
+        self.assertIn("block from &#039;main.py&#039;", shown)
+        self.assertIn("Generation failed (Fed back to LLM)", shown)
+        second = shown[shown.index("Attempt #2"):]
+        self.assertNotIn("sanity-pill failed", second)
+        self.assertIn("Not reached", second)
+
     def test_page_script_parses_and_auto_commit_is_opt_in(self) -> None:
         html = self.client.get("/").text
         self.assertIn('id="check-auto-commit" style=', html)

@@ -99,16 +99,42 @@ def safe_join(base_dir: str, rel_path: str) -> Optional[str]:
     sibling "/x/demo_app_secrets/keys.py" also starts with it. commonpath
     compares whole path components, so it cannot be fooled that way, and an
     absolute rel_path is rejected rather than silently escaping the base.
+
+    The check is made on the real location too: every open() follows symbolic
+    links, so a link inside the target that points elsewhere ("vendorlib ->
+    /some/dir") let GET /file read, and a patch write, files outside it.
     """
     base = os.path.abspath(base_dir)
     candidate = os.path.abspath(os.path.join(base, rel_path))
     try:
         if os.path.commonpath([base, candidate]) != base:
             return None
+        real_base = os.path.realpath(base)
+        if os.path.commonpath([real_base, os.path.realpath(candidate)]) != real_base:
+            return None
     except ValueError:
         # Different drives / mount roots on the same call
         return None
     return candidate
+
+
+def link_on_path(base_dir: str, rel_path: str) -> Optional[str]:
+    """
+    The first component of rel_path below base_dir that is a symbolic link,
+    as a base-relative path, or None. Patches may not write through one:
+    os.replace() replaces the link itself with a regular file, and a rollback
+    that writes the bytes back cannot bring the link back.
+    """
+    base = os.path.abspath(base_dir)
+    current = base
+    rel = os.path.relpath(os.path.abspath(os.path.join(base, rel_path)), base)
+    for part in rel.split(os.sep):
+        if part in ("", ".", ".."):
+            continue
+        current = os.path.join(current, part)
+        if os.path.islink(current):
+            return os.path.relpath(current, base).replace("\\", "/")
+    return None
 
 
 @dataclass
@@ -225,6 +251,10 @@ class CodebaseIndexer:
     def is_ignored(self, rel_path: str) -> bool:
         """should_ignore_path() plus this indexer's own vector store location."""
         if should_ignore_path(rel_path):
+            return True
+        # A symbolic link whose real file lies outside the target is not part of
+        # it: indexed, its content was served by /file and fed to the prompts.
+        if safe_join(self.target_dir, rel_path) is None:
             return True
         if self.excluded_dirs:
             abs_path = os.path.abspath(os.path.join(self.target_dir, rel_path))

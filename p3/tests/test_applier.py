@@ -5,7 +5,7 @@ import stat
 import tempfile
 import unittest
 
-from p1.tests.support import copy_demo_app, read, tree_state
+from p1.tests.support import copy_demo_app, read, tree_state, write
 from p3.applier import PatchApplier
 
 
@@ -80,6 +80,38 @@ class ApplierTest(unittest.TestCase):
         outcome = self.applier.rollback_last_run()
         self.assertEqual((outcome["removed"], outcome["mismatches"]), (["newpkg/sub/helpers.py"], []))
         self.assertEqual(tree_state(self.target), before)  # newpkg/ and newpkg/sub/ gone too
+
+    def test_manual_rollback_never_discards_edits_made_after_the_run(self) -> None:
+        # Seen live: a helper typed in after a green run vanished on Manual
+        # Rollback, which answered "success": true, "1 file(s) reverted".
+        path = os.path.join(self.target, "formatter.py")
+        self.applier.apply({"files": [{"path": "formatter.py", "op": "modify", "content": "F = 1\n"}]})
+        self.applier.commit()
+        write(path, "F = 1\n\n\ndef mine():\n    return 'keep me'\n")
+        outcome = self.applier.rollback_last_run()
+        self.assertEqual((outcome["changed_since"], outcome["restored"]), (["formatter.py"], []))
+        self.assertIn("keep me", read(path))
+
+    def test_manual_rollback_after_a_red_run_touches_nothing(self) -> None:
+        # The red run was rolled back already; its pre-run bytes went back over
+        # whatever had been edited since.
+        path = os.path.join(self.target, "formatter.py")
+        self.applier.apply({"files": [{"path": "formatter.py", "op": "modify", "content": "F = 1\n"}]})
+        self.applier.rollback()
+        write(path, "edited by hand afterwards\n")
+        self.assertEqual(self.applier.rollback_last_run()["restored"], [])
+        self.assertEqual(read(path), "edited by hand afterwards\n")
+
+    def test_a_symbolic_link_is_never_replaced(self) -> None:
+        # os.replace() put a regular file where the link was; the rollback wrote
+        # the bytes back as a regular file and verify_restored() still said exact.
+        os.symlink("calculator.py", os.path.join(self.target, "alias.py"))
+        before = tree_state(self.target)
+        with self.assertRaises(IOError):
+            self.applier.apply({"files": [{"path": "alias.py", "op": "modify", "content": "X = 1\n"}]})
+        self.applier.rollback()
+        self.assertTrue(os.path.islink(os.path.join(self.target, "alias.py")))
+        self.assertEqual(tree_state(self.target), before)
 
     def test_modified_file_keeps_its_mode(self) -> None:
         path = os.path.join(self.target, "main.py")

@@ -114,6 +114,38 @@ class CrashWatcherTest(unittest.TestCase):
         self.assertIn("[ERROR] Unexpected failure: name 'precison' is not defined", intent)
         self.assertNotIn("Addition", intent)
 
+    def test_a_caught_error_is_located_in_the_target(self) -> None:
+        # main() catches the NameError and prints one line: nothing said where the
+        # name is used, and the model kept "fixing" main.py, which prints it.
+        from p3.sanity import QUOTED_LOG_END, request_text
+
+        path = os.path.join(self.target, "calculator.py")
+        write(path, read(path).replace("self.precision = precision", "self.precision = precison"))
+        log = ["[DemoApp] Addition = 200.0", "[ERROR] Unexpected failure: name 'precison' is not defined"]
+        intent = crash_intent("svc", 1, log, self.target)
+        hint = "calculator.py:14: self.precision = precison"
+        self.assertIn(hint, intent)
+        self.assertLess(intent.index(hint), intent.index(QUOTED_LOG_END))  # quoted evidence, not a request
+        self.assertNotIn(hint, request_text(intent))
+        self.assertNotIn('"', intent)
+
+    def test_words_in_the_quoted_log_are_not_requests(self) -> None:
+        # A traceback line `label = row.split(',')[3]` switched the removal guard
+        # off ("split" reads as "asked to split code up"): a patch that also
+        # dropped the unrelated Calculator.power passed every check.
+        from p3.sanity import SanityChecker
+
+        calc = read(os.path.join(self.target, "calculator.py"))
+        without_power = calc[: calc.index("    def power")].rstrip() + "\n"
+        no_power = {"summary": "s",
+                    "files": [{"path": "calculator.py", "op": "modify", "content": without_power}]}
+        for source in ("label = row.split(',')[3]", "os.remove(path)", "text.replace('-', '')"):
+            log = ["Traceback (most recent call last):", '  File "/srv/target/main.py", line 31, in run_demo',
+                   "    " + source, "IndexError: list index out of range"]
+            result = SanityChecker(self.target).check(no_power, crash_intent("svc", 1, log, self.target))
+            self.assertFalse(result.passed, source)
+            self.assertTrue(any("Calculator.power()" in e for e in result.errors), result.errors)
+
     def test_a_crash_runs_the_patch_loop_and_restarts_the_service(self) -> None:
         container = FakeContainer(CRASH_LOG, exit_code=1)
         watcher = self.watch(container)

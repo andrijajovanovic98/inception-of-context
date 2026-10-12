@@ -830,6 +830,13 @@ def setup_p3_dashboard(
             'apply_failed': '<span class="badge badge-red">Apply Failed</span>'
         }};
 
+        // What refused an attempt, by the stage it stopped at (all fed back to the model).
+        const STAGE_ERRORS = {{
+            'sanity_failed': 'Sanity Violations (Fed back to LLM):',
+            'generation_failed': 'Generation failed (Fed back to LLM):',
+            'apply_failed': 'Atomic apply failed (Fed back to LLM):'
+        }};
+
         // Order the Subject VI.3 rules are shown in. Labels come from the API
         // when present so they can never drift from the checker.
         const SANITY_RULE_ORDER = ['1', '2', '3', '0', '4', '5', '6'];
@@ -847,6 +854,11 @@ def setup_p3_dashboard(
             const rules = att.sanity_rules || {{}};
             const labels = att.sanity_rule_labels || {{}};
             const hasRules = Object.keys(rules).length > 0;
+            // No patch could be parsed: no rule ran, so none may show as failed.
+            if (!hasRules && att.status === 'generation_failed') {{
+                return '<div style="color:var(--text-muted); font-size:12px;">'
+                    + 'Not reached: the attempt produced no patch to check.</div>';
+            }}
             let pills = '';
             SANITY_RULE_ORDER.forEach(key => {{
                 // Older payloads carry no per-rule detail; fall back to the
@@ -913,7 +925,7 @@ def setup_p3_dashboard(
                 if (!sPassed && sErrors.length > 0) {{
                     sanityHtml += `
                         <div class="error-feedback-box" style="margin-top:10px; white-space:normal;">
-                            <strong>Sanity Violations (Fed back to LLM):</strong>
+                            <strong>${{STAGE_ERRORS[att.status] || STAGE_ERRORS.sanity_failed}}</strong>
                             <ul style="margin-left:18px; margin-top:4px;">
                                 ${{sErrors.map(e => `<li>${{escapeHtml(e)}}</li>`).join('')}}
                             </ul>
@@ -1057,7 +1069,7 @@ def setup_p3_dashboard(
                 await showAlert(
                     (changed.length
                         ? 'Reverted: ' + changed.join(', ')
-                        : 'Nothing to revert - the files already match their pre-run state.')
+                        : 'Nothing to revert: no applied patch is waiting to be undone.')
                     + (clean ? '' : '\\nStill different: ' + data.mismatches.join(', ')),
                     clean ? 'success' : 'error',
                     'Rollback'

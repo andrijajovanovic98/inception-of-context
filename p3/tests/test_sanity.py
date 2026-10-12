@@ -189,6 +189,23 @@ class SanityTest(unittest.TestCase):
         both = "rename add to plus and use plus in calculate_tax"
         self.assertTrue(self.checker.check({"files": [calc, self.modify(stray, "main.py")]}, both).passed)
 
+    def test_symbolic_links_are_never_written_through(self) -> None:
+        # A link to a directory outside the target let a patch create and modify
+        # files there; a link to a file was replaced by a regular file, which no
+        # rollback of its bytes can turn back into the link.
+        outside = tempfile.mkdtemp(dir=self.tmp.name)
+        write(os.path.join(outside, "util.py"), "def helper():\n    return 1\n")
+        os.symlink(outside, os.path.join(self.target, "vendorlib"))
+        os.symlink("calculator.py", os.path.join(self.target, "alias.py"))
+        for files in (
+            [{"path": "vendorlib/evil.py", "op": "create", "content": "X = 1\n"}],
+            [{"path": "vendorlib/util.py", "op": "modify", "content": "def helper():\n    return 2\n"}],
+            [{"path": "alias.py", "op": "modify", "content": self.good}],
+        ):
+            refused, errors = self.refusal(files)
+            self.assertTrue(refused, files)
+            self.assertTrue(any("symbolic link" in e or "outside the target" in e for e in errors), errors)
+
     def test_never_raises_on_garbage(self) -> None:
         garbage = [None, {}, {"files": None}, {"files": [None, 3]}, {"files": [{"path": None, "op": None}]}]
         for patch in garbage:
