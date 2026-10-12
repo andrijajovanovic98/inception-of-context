@@ -21,7 +21,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from p1.indexer import safe_join  # noqa: E402
+from p1.indexer import link_on_path, safe_join  # noqa: E402
 
 
 @dataclass
@@ -59,6 +59,9 @@ class PatchApplier:
         # Pre-run contents kept for the whole run so the bonus diff engine can
         # show what changed even after a patch has been committed to disk.
         self.run_originals: Dict[str, SnapshotEntry] = {}
+        # What a GREEN run left on disk, per file (None = no file). A manual
+        # rollback reverts a file only while it still holds exactly this.
+        self.committed: Dict[str, Optional[bytes]] = {}
         self.last_applied_files: List[str] = []
 
     # ------------------------------------------------------------------
@@ -74,6 +77,11 @@ class PatchApplier:
         if full_path is None:
             raise IOError(f"Refusing '{rel_path}': resolves outside the target directory")
         canonical = os.path.relpath(full_path, self.target_dir).replace("\\", "/")
+        # os.replace() would replace a link with a regular file: the snapshot
+        # holds bytes, so a rollback could never bring the link back.
+        link = link_on_path(self.target_dir, canonical)
+        if link is not None:
+            raise IOError(f"Refusing '{rel_path}': '{link}' is a symbolic link")
         return canonical, full_path
 
     # ------------------------------------------------------------------
@@ -92,6 +100,7 @@ class PatchApplier:
         self.snapshot = {}
         self.created_dirs = []
         self.run_originals = {}
+        self.committed = {}
         self.last_applied_files = []
 
     def original_contents(self) -> Dict[str, str]:
@@ -377,6 +386,28 @@ class PatchApplier:
                 "restored": sorted(self.run_originals.keys()),
                 "removed": [],
                 "mismatches": self.verify_restored(),
+                "changed_since": [],
+            }
+
+        if not self.committed:
+            # No green run to undo: a red run was rolled back already, and putting
+            # its pre-run bytes back now could only overwrite later edits.
+            return {"scope": "none", "restored": [], "removed": [], "mismatches": [], "changed_since": []}
+
+        # A file that holds neither what the run left nor its pre-run bytes was
+        # edited after the run. Reverting it would silently discard that work
+        # (seen: a helper typed in after a green run vanished, "success": true),
+        # so nothing is reverted until the user deals with it.
+        changed_since = sorted(
+            rel_path for rel_path, entry in self.run_originals.items()
+            if self._current_bytes(entry.full_path) not in (
+                self.committed.get(rel_path), entry.content if entry.existed else None,
+            )
+        )
+        if changed_since:
+            return {
+                "scope": "last_run_originals", "restored": [], "removed": [],
+                "mismatches": [], "changed_since": changed_since,
             }
 
         restored: List[str] = []
@@ -391,16 +422,32 @@ class PatchApplier:
 
         self.cleanup_all_ioc_tmps()
         self._remove_created_dirs()
+        mismatches = self.verify_restored()
+        if not mismatches:
+            self.committed = {}  # undone: nothing is left to revert
         return {
             "scope": "last_run_originals",
             "restored": sorted(restored),
             "removed": sorted(removed),
-            "mismatches": self.verify_restored(),
+            "mismatches": mismatches,
+            "changed_since": [],
         }
+
+    @staticmethod
+    def _current_bytes(full_path: str) -> Optional[bytes]:
+        """The file's bytes now, or None when there is no file."""
+        try:
+            with open(full_path, "rb") as f:
+                return f.read()
+        except OSError:
+            return None
 
     def commit(self) -> None:
         """Called when validation passes. Discards pre-call snapshot and finalizes patch."""
         self.snapshot = {}
+        self.committed = {
+            rel_path: self._current_bytes(entry.full_path) for rel_path, entry in self.run_originals.items()
+        }
         # created_dirs is kept until the next begin_run(): rollback_last_run()
         # undoes a GREEN run too, and clearing the list here left a directory
         # the run had created behind while the rollback reported no mismatch.

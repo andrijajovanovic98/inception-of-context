@@ -20,7 +20,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from p1.indexer import safe_join, should_ignore_path  # noqa: E402
+from p1.indexer import link_on_path, safe_join, should_ignore_path  # noqa: E402
 from p1.markers import ALL_MARKERS  # noqa: E402
 
 # Derived from the single source of truth in p1/markers.py, which BOTH prompt
@@ -63,6 +63,22 @@ _REMOVAL_RE = re.compile(
     re.IGNORECASE,
 )
 _MAIN_GUARD_RE = re.compile(r"__main__|entry[\s-]?point|main guard", re.IGNORECASE)
+
+# A crash-watcher intent (bonus/crash_watcher.py) quotes the service's log
+# between these two lines. The log is evidence, not a request: a traceback
+# line `row.split(',')[3]` asked for no removal, yet "split" switched the
+# removal guard off and a patch dropping an unrelated method passed.
+QUOTED_LOG_START = "The end of its log:"
+QUOTED_LOG_END = "Fix the code so that this error no longer happens"
+_QUOTED_LOG_RE = re.compile(
+    re.escape(QUOTED_LOG_START) + r".*?(?=" + re.escape(QUOTED_LOG_END) + r"|\Z)", re.DOTALL
+)
+
+
+def request_text(intent: str) -> str:
+    """What the intent itself asks for: the intent without a log it quotes."""
+    return _QUOTED_LOG_RE.sub(QUOTED_LOG_START + "\n", intent or "")
+
 
 # "rename [the method] add[()] [method] to plus", dotted names allowed.
 _KIND = r"(?:method|function|class|attribute|variable|constant|field)"
@@ -479,13 +495,13 @@ def unrequested_removals(old_tree: ast.AST, new_tree: ast.AST, intent: str) -> L
     """
     before = definitions(old_tree)
     after = definitions(new_tree)
-    removal_asked = _REMOVAL_RE.search(intent) is not None
+    removal_asked = _REMOVAL_RE.search(request_text(intent)) is not None
     missing: List[str] = []
     for qualified, label in before.items():
         if qualified in after:
             continue
         if qualified == MAIN_GUARD:
-            if not _MAIN_GUARD_RE.search(intent):
+            if not _MAIN_GUARD_RE.search(request_text(intent)):
                 missing.append(label)
             continue
         owner, _, member = qualified.rpartition(".")
@@ -540,7 +556,7 @@ def dropped_checks(old_tree: ast.AST, new_tree: ast.AST, intent: str) -> List[st
     ValueError(...)` with a check of its own, and the run went GREEN:
     validation never divides by zero, so it cannot see a check disappear.
     """
-    if _REMOVAL_RE.search(intent):
+    if _REMOVAL_RE.search(request_text(intent)):
         return []
     after_functions = _functions(new_tree)
     lost: List[str] = []
@@ -564,7 +580,8 @@ def parse_rename(intent: str) -> Optional[Tuple[str, str]]:
     ("rename the method add to plus and update every caller"), else None.
     File renames are not symbol renames.
     """
-    match = _RENAME_RE.search(intent or "")
+    asked = request_text(intent)
+    match = _RENAME_RE.search(asked)
     if not match:
         return None
     raw_old, raw_new = (g.rstrip(".") for g in match.groups())
@@ -573,7 +590,7 @@ def parse_rename(intent: str) -> Optional[Tuple[str, str]]:
     old, new = raw_old.split(".")[-1], raw_new.split(".")[-1]
     if not old or not new or old == new:
         return None
-    if _OTHER_WORK_RE.search(intent[: match.start()] + " " + intent[match.end():]):
+    if _OTHER_WORK_RE.search(asked[: match.start()] + " " + asked[match.end():]):
         return None
     return old, new
 
@@ -701,6 +718,19 @@ class SanityChecker:
             fail(None, "Patch contains an empty 'files' list; nothing to apply")
             return result()
 
+        # Set by the generator when the patch ONLY edits existing files the model
+        # was not shown in full and the intent does not name: the prompt's scope.
+        unseen = patch.get("unseen_edits")
+        if isinstance(unseen, list) and unseen:
+            editable = [str(p) for p in patch.get("editable") or []]
+            fail(
+                None,
+                f"Patch only edits {', '.join(map(str, unseen))}, which the intent does not name and "
+                f"you were not shown in full. "
+                + (f"The existing files you may edit: {', '.join(editable)}." if editable
+                   else "Create the files the intent asks for instead."),
+            )
+
         # ---------------------------------------------------------------------
         # RULE 6: Touches more than three files at once
         # ---------------------------------------------------------------------
@@ -780,6 +810,17 @@ class SanityChecker:
 
             if canonical == "." or os.path.isdir(full_path):
                 fail(None, f"Path '{rel_path}' is a directory, not a file.")
+                continue
+
+            # Writing through a symbolic link replaces the link with a regular
+            # file, and no rollback of the bytes can bring the link back.
+            link = link_on_path(self.target_dir, canonical)
+            if link is not None:
+                fail(
+                    None,
+                    f"Path '{canonical}' goes through the symbolic link '{link}'; patches may only "
+                    f"touch regular files of the project.",
+                )
                 continue
 
             # Only files the indexer itself would consider source may be

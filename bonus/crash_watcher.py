@@ -24,6 +24,9 @@ from collections import deque
 from dataclasses import asdict, dataclass
 from typing import Any, Callable, Deque, Dict, List, Optional
 
+from p1.indexer import should_ignore_path
+from p3.sanity import QUOTED_LOG_END, QUOTED_LOG_START
+
 # Lines of the service log kept for the dashboard, and taken into the intent.
 LOG_BUFFER_LINES = 200
 CRASH_LOG_TAIL = 40
@@ -35,6 +38,39 @@ HEALTHY_AFTER_S = 15.0
 _TRACEBACK_RE = re.compile(r"Traceback \(most recent call last\):")
 _FRAME_RE = re.compile(r'File "([^"]+)", line (\d+)(?:, in (\S+))?')
 _ERROR_LINE_RE = re.compile(r"error|exception|fatal|failed|panic|abort", re.IGNORECASE)
+# Errors that name the identifier at fault. When the app caught the exception
+# and printed one line, nothing in the log says where the name is used: the
+# model was shown main.py (where the error is printed) and kept "fixing" it.
+_NAMED_ERROR_RES = (
+    re.compile(r"name '([A-Za-z_]\w*)' is not defined"),
+    re.compile(r"has no attribute '([A-Za-z_]\w*)'"),
+    re.compile(r"cannot import name '([A-Za-z_]\w*)'"),
+)
+MAX_USES_SHOWN = 5
+
+
+def _uses_in_target(names: List[str], target_dir: str) -> List[str]:
+    """`file:line: code` for each line of the target's Python files using one of `names`."""
+    pattern = re.compile(r"\b(" + "|".join(map(re.escape, names)) + r")\b")
+    found: List[str] = []
+    for root, dirs, files in os.walk(target_dir):
+        dirs[:] = sorted(
+            d for d in dirs if not should_ignore_path(os.path.relpath(os.path.join(root, d), target_dir))
+        )
+        for name in sorted(files):
+            rel = os.path.relpath(os.path.join(root, name), target_dir).replace("\\", "/")
+            if not name.endswith(".py") or should_ignore_path(rel):
+                continue
+            try:
+                with open(os.path.join(root, name), "r", encoding="utf-8", errors="replace") as f:
+                    lines = f.read().splitlines()
+            except OSError:
+                continue
+            found.extend(
+                f"{rel}:{no}: {line.strip()}" for no, line in enumerate(lines, 1)
+                if pattern.search(line) and not line.lstrip().startswith("#")
+            )
+    return found[:MAX_USES_SHOWN]
 
 
 def docker_client() -> Any:
@@ -91,10 +127,17 @@ def crash_intent(container: str, exit_code: int, log_lines: List[str],
             rendered.append(f"  at {where}")
         else:
             rendered.append("  " + line.strip().replace('"', "'"))
+    names = sorted({m.group(1) for line in rendered for rx in _NAMED_ERROR_RES for m in rx.finditer(line)})
+    uses = _uses_in_target(names, target_dir) if names and target_dir else []
+    if uses:
+        rendered.append(f"  where the code uses {', '.join(names)}:")
+        rendered.extend("    " + use.replace('"', "'") for use in uses)
+    # The markers fence the quoted log: the sanity guards judge what the intent
+    # asks for without it ("row.split(...)" in a traceback is not a request).
     return (
-        f"The service {container} crashed (exit code {exit_code}). The end of its log:\n"
+        f"The service {container} crashed (exit code {exit_code}). {QUOTED_LOG_START}\n"
         + "\n".join(rendered)
-        + "\nFix the code so that this error no longer happens, keeping everything else as it is."
+        + f"\n{QUOTED_LOG_END}, keeping everything else as it is."
     )
 
 

@@ -20,7 +20,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from p1.indexer import safe_join, should_ignore_path  # noqa: E402
+from p1.indexer import link_on_path, safe_join, should_ignore_path  # noqa: E402
 from p1.markers import (  # noqa: E402
     PATCH_CONTEXT_HEADER,
     PATCH_EXISTING_PREFIX,
@@ -39,6 +39,7 @@ from p3.sanity import (  # noqa: E402
     parse_rename,
     name_columns,
     rename_at,
+    request_text,
     split_lines,
 )
 
@@ -543,7 +544,7 @@ class PatchGenerator:
         self.target_dir = os.path.abspath(target_dir)
 
     def _target_files(self) -> List[str]:
-        """Target-relative source files the indexer would also consider."""
+        """Target-relative source files the indexer would also consider and a patch may touch."""
         found: List[str] = []
         for root, dirs, files in os.walk(self.target_dir):
             dirs[:] = sorted(
@@ -552,7 +553,8 @@ class PatchGenerator:
             )
             for name in sorted(files):
                 rel = os.path.relpath(os.path.join(root, name), self.target_dir).replace("\\", "/")
-                if not should_ignore_path(rel):
+                # A symbolic link is never offered: the sanity check refuses it.
+                if not should_ignore_path(rel) and link_on_path(self.target_dir, rel) is None:
                     found.append(rel)
         return found
 
@@ -832,7 +834,7 @@ class PatchGenerator:
         "restored_docstrings" with what was restored - never hidden.
         """
         files = patch.get("files")
-        if not isinstance(files, list) or _DOCS_ASKED_RE.search(intent):
+        if not isinstance(files, list) or _DOCS_ASKED_RE.search(request_text(intent)):
             return patch
         restored: List[str] = []
         for entry in files:
@@ -957,7 +959,10 @@ class PatchGenerator:
         and rule 5 refused the whole patch three times although its utils.py
         was right. Such entries can only be wrong, so they are dropped - and
         listed under "dropped_unrequested", never hidden. A patch made only of
-        such entries is left alone for the sanity checker to refuse.
+        such entries is kept as written and marked "unseen_edits" (with the
+        files it may edit): the sanity checker refuses it. Unmarked, it went
+        GREEN - asked for a square method in calculator.py, a patch that only
+        changed formatter.py was applied and reported a success.
         """
         files = patch.get("files")
         if not isinstance(files, list):
@@ -978,6 +983,9 @@ class PatchGenerator:
         if dropped and keep:
             patch["files"] = keep
             patch["dropped_unrequested"] = dropped
+        elif dropped:
+            patch["unseen_edits"] = dropped
+            patch["editable"] = sorted(shown)
         return patch
 
     def generate_patch_sync(

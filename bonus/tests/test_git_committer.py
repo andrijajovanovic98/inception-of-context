@@ -73,6 +73,24 @@ class GitCommitterTest(unittest.TestCase):
         msg = asyncio.run(generate_commit_message(chatty, "add square", "Add square", ["calculator.py"]))
         self.assertEqual(msg, "feat(calculator): add square method")
 
+    def test_commit_message_keeps_the_conventional_form(self) -> None:
+        # qwen2.5:3b answered the square intent's summary with the description
+        # alone, 8 times of 8; the README promises a Conventional Commit.
+        for intent, answer, expected in [
+            ("add a square method to Calculator", "add square method to Calculator class",
+             "feat(calculator): add square method to Calculator class"),
+            ("The service svc crashed (exit code 1). The end of its log:\n  NameError",
+             "Fix the typo in __init__", "fix(calculator): fix the typo in __init__"),
+            ("rename add to plus", "refactor(calculator): rename add to plus",
+             "refactor(calculator): rename add to plus"),
+        ]:
+            msg = asyncio.run(generate_commit_message(FakeLLM([answer]), intent, "s", ["/a/b/calculator.py"]))
+            self.assertEqual(msg, expected)
+        long = "fix(service/ioc-demo-service): Fix crash due to undefined variable precison in init"
+        msg = asyncio.run(generate_commit_message(FakeLLM([long]), "fix it", "s", ["calculator.py"]))
+        self.assertLessEqual(len(msg), 72)
+        self.assertTrue(long.startswith(msg) and long[len(msg)] == " ", msg)  # cut at a word boundary
+
 
 if __name__ == "__main__":
     unittest.main()

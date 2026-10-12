@@ -11,6 +11,31 @@ from typing import Any, Dict, List, Optional
 
 from p2.llm import OllamaClient
 
+_CONVENTIONAL_RE = re.compile(r"^(feat|fix|refactor|test|docs|chore)(\([^)]*\))?!?: \S")
+MAX_SUBJECT = 72
+
+
+def _commit_type(intent: str) -> str:
+    """The Conventional Commit type an intent asks for."""
+    lowered = intent.lower()
+    if re.search(r"\b(fix|bug|crash|error|typo)", lowered):
+        return "fix"
+    if re.search(r"\b(renam|refactor|mov|extract|simplif)", lowered):
+        return "refactor"
+    if re.search(r"docstring|\bdocument", lowered):
+        return "docs"
+    if re.search(r"\btest", lowered):
+        return "test"
+    return "feat"
+
+
+def _shorten(text: str, limit: int = MAX_SUBJECT) -> str:
+    """At most `limit` characters, cut at a word boundary rather than mid-word."""
+    if len(text) <= limit:
+        return text
+    cut = text[:limit].rsplit(" ", 1)[0]
+    return cut.rstrip(" ,;:-") or text[:limit]
+
 
 async def generate_commit_message(
     llm_client: OllamaClient,
@@ -41,6 +66,7 @@ async def generate_commit_message(
         "Commit message:"
     )
 
+    scope = os.path.splitext(names[0])[0] if names else "codebase"
     try:
         response = await llm_client.generate(prompt=prompt, system="Output only the git commit message line.")
         lines = [ln.strip() for ln in response.strip().splitlines() if ln.strip()]
@@ -49,14 +75,20 @@ async def generate_commit_message(
         # The client reports an unreachable or failing Ollama as a bracketed
         # string; that must never become a commit message.
         if msg and not msg.startswith(("[Local LLM", "[Ollama Error")):
-            return msg[:72]
+            if not _CONVENTIONAL_RE.match(msg):
+                # Asked for "<type>(<scope>): ...", qwen2.5:3b often answers with
+                # the description alone (8 of 8 for the square intent's patch
+                # summary). The description stays the model's; type and scope
+                # are added so the message keeps the documented form.
+                msg = f"{_commit_type(intent)}({scope}): {msg[:1].lower()}{msg[1:]}"
+            return _shorten(msg)
     except Exception:
         pass
 
     # Fallback message
-    scope = os.path.splitext(names[0])[0] if names else "codebase"
     clean_intent = intent.lower().replace("add ", "").replace("fix ", "").strip()
-    return f"feat({scope}): {clean_intent[:50]}"
+    first_line = clean_intent.splitlines()[0] if clean_intent else "patch"
+    return _shorten(f"{_commit_type(intent)}({scope}): {first_line}")
 
 
 def _git(target_dir: str, args: List[str], timeout: float = 10.0) -> "subprocess.CompletedProcess[str]":

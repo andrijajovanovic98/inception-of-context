@@ -223,6 +223,19 @@ def create_patch_api(
         # nothing. rollback_last_run() reverts the last run's files to their
         # pre-run bytes, which is what this endpoint promises.
         outcome = engine.applier.rollback_last_run()
+        if outcome.get("changed_since"):
+            # Edited by hand after the run: reverting would discard that work.
+            names = ", ".join(outcome["changed_since"])
+            _broadcast_event(
+                "PATCH_ROLLBACK", "manual", f"Manual rollback refused: edited since the run: {names}"
+            )
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Nothing was rolled back: {names} changed after the last run. Reverting would "
+                    f"discard those edits; undo them first, or revert the file by hand."
+                ),
+            )
         touched = len(outcome["restored"]) + len(outcome["removed"])
         rollback_status = f"{touched} file(s) reverted" if touched else "nothing to revert"
         _broadcast_event("PATCH_ROLLBACK", "manual", f"Manual rollback: {rollback_status}")

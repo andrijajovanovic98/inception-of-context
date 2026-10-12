@@ -70,6 +70,24 @@ class P1DashboardTest(unittest.TestCase):
         ]:
             self.assertEqual(self.client.get("/file", params={"path": path}).status_code, code, path)
 
+    def test_file_never_reads_outside_the_target_through_a_link(self) -> None:
+        # A symbolic link in the target to a file elsewhere was indexed and served;
+        # one to a directory elsewhere served every file in it, indexed or not.
+        outside = tempfile.mkdtemp(dir=self.tmp.name)
+        write(os.path.join(outside, "creds.py"), "API_KEY = 'outside the target'\n")
+        os.symlink(os.path.join(outside, "creds.py"), os.path.join(self.target, "settings.py"))
+        os.symlink(outside, os.path.join(self.target, "vendorlib"))
+        try:
+            self.indexer.index_all()
+            self.assertNotIn("settings.py", self.db.get_stats()["files"])
+            for path in ("settings.py", "vendorlib/creds.py"):
+                res = self.client.get("/file", params={"path": path})
+                self.assertEqual(res.status_code, 403, path)
+                self.assertNotIn("API_KEY", res.text)
+        finally:
+            os.remove(os.path.join(self.target, "settings.py"))
+            os.remove(os.path.join(self.target, "vendorlib"))
+
     def test_file_names_are_escaped_in_the_page(self) -> None:
         name = "x<img src=y onerror=alert(1)>.py"
         write(os.path.join(self.target, name), "def evil():\n    return 1\n")

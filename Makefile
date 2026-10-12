@@ -416,17 +416,19 @@ lint: flake mypy
 # Offline regression suite: p1/tests, p2/tests, p3/tests, bonus/tests. Plain
 # stdlib unittest on the real ChromaDB and embedding model, which
 # ensure-test-runtime installs when they are missing; never Ollama. Targets are
-# temp copies of demo_app, so the real one is never touched. Narrow it with
+# temp copies of demo_app, so the real one is never touched: discovery imports
+# demo_app as a package, and without PYTHONDONTWRITEBYTECODE that wrote
+# demo_app/__pycache__/ into the real target. Narrow it with
 # e.g. TEST_ARGS="-k rollback".
 test: ensure-test-runtime
 	@echo "[*] unittest → $(TEST_DIRS)"
-	@HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 $(PYTHON) -m unittest discover \
+	@HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover \
 		-s . -t . -p "test_*.py" $(TEST_ARGS)
 
 # One part's suite only: make test-p1 / test-p2 / test-p3 / test-bonus.
 test-p1 test-p2 test-p3 test-bonus: test-%: ensure-test-runtime
 	@echo "[*] unittest → $*/tests"
-	@HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 $(PYTHON) -m unittest discover \
+	@HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover \
 		-s $*/tests -t . -p "test_*.py" $(TEST_ARGS)
 
 # Every quality gate, in order: style (flake8), types (mypy), behaviour (unittest).

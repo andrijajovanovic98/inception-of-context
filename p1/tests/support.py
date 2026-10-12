@@ -135,13 +135,23 @@ def write(path: str, text: str) -> None:
 
 
 def tree_state(root: str) -> Dict[str, Any]:
-    """Bytes and mode of every file plus the directory set: the 'exact state' of a tree."""
+    """
+    Bytes and mode of every file, the directory set and every symbolic link
+    with its destination: the 'exact state' of a tree. Links are recorded as
+    links: following them, a link replaced by a regular file with the same
+    bytes looked unchanged.
+    """
     state: Dict[str, Any] = {}
     for current, dirs, files in os.walk(root):
         for d in dirs:
-            state[os.path.relpath(os.path.join(current, d), root) + "/"] = "dir"
+            path = os.path.join(current, d)
+            link = ("link", os.readlink(path)) if os.path.islink(path) else "dir"
+            state[os.path.relpath(path, root) + "/"] = link
         for name in files:
             path = os.path.join(current, name)
+            if os.path.islink(path):
+                state[os.path.relpath(path, root)] = ("link", os.readlink(path))
+                continue
             with open(path, "rb") as f:
                 state[os.path.relpath(path, root)] = (f.read(), stat.S_IMODE(os.stat(path).st_mode))
     return state

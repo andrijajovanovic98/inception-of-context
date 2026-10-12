@@ -61,6 +61,18 @@ class PatchApiTest(unittest.TestCase):
         )
         self.assertEqual(tree_state(self.target), before)
 
+    def test_rollback_refuses_to_discard_edits_made_after_the_run(self) -> None:
+        run = self.client.post("/patch/run", json={"intent": "add a square method"}).json()
+        self.assertEqual(run["status"], "success")
+        path = os.path.join(self.target, "calculator.py")
+        edited = read(path) + "\n\ndef mine() -> str:\n    return 'keep me'\n"
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(edited)
+        res = self.client.post("/patch/rollback")
+        self.assertEqual(res.status_code, 409)
+        self.assertIn("calculator.py", res.json()["detail"])
+        self.assertEqual(read(path), edited)
+
     def test_config_and_validation_command(self) -> None:
         config = self.client.get("/patch/config").json()
         self.assertTrue(config["exists"])
@@ -103,6 +115,21 @@ class PatchApiTest(unittest.TestCase):
         self.assertEqual(shown.count('class="attempt-card"'), 2)
         self.assertIn("Final patch (applied)", shown)
         self.assertNotIn("<img", shown)
+
+    def test_an_attempt_without_a_parseable_patch_fails_no_rule(self) -> None:
+        # All seven rule pills were painted red for a generation failure, when
+        # no rule had run at all.
+        result = {"status": "failed", "attempts_count": 1, "rollback_verified": True, "attempts": [
+            {"attempt": 1, "status": "generation_failed", "sanity_passed": False, "sanity_rules": {},
+             "sanity_errors": ["Failed to generate structured JSON patch: Could not parse"], "patch": None}]}
+        run = run_page_script(self.client.get("/").text, f"renderPatchLoopResult({json.dumps(result)})")
+        if run is None:
+            self.skipTest("node is not installed")
+        self.assertIsNone(run["error"])
+        shown = run["dom"]["patch-attempts-container"]["innerHTML"]
+        self.assertNotIn("sanity-pill failed", shown)
+        self.assertIn("Not reached", shown)
+        self.assertIn("Generation failed (Fed back to LLM)", shown)
 
 
 if __name__ == "__main__":

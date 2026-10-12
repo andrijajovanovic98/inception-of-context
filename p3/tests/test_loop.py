@@ -3,13 +3,15 @@
 import asyncio
 import json
 import os
+import shutil
 import tempfile
 import time
 import unittest
 from typing import Any, Dict, List, Optional
+from unittest import mock
 
 import p3.loop as loop_module
-from p1.tests.support import FakeLLM, copy_demo_app, read, tree_state
+from p1.tests.support import PROJECT_ROOT, FakeLLM, copy_demo_app, read, tree_state
 from p3.generator import mask_code
 from p3.loop import PatchLoopEngine, PatchLoopResult
 
@@ -41,8 +43,10 @@ class LoopTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def run_loop(self, responses: List[str], max_attempts: int = 3,
-                 cancel_after: Optional[float] = None, intent: str = "scripted intent") -> PatchLoopResult:
+    # The default intent names the files the scripted patches edit: a patch that
+    # only edits files the intent does not name (and no retrieval showed) is refused.
+    def run_loop(self, responses: List[str], max_attempts: int = 3, cancel_after: Optional[float] = None,
+                 intent: str = "scripted change to calculator.py and main.py") -> PatchLoopResult:
         self.llm = FakeLLM(responses)
         engine = PatchLoopEngine(self.target, llm_client=self.llm, max_attempts=max_attempts)
 
@@ -56,10 +60,15 @@ class LoopTest(unittest.TestCase):
         return asyncio.run(go())
 
     def test_red_attempt_feeds_back_and_second_attempt_goes_green(self) -> None:
-        result = self.run_loop([
-            patch([{"path": "main.py", "op": "modify", "content": self.broken_main}]),
-            patch([{"path": "calculator.py", "op": "modify", "content": self.square}]),
-        ])
+        # `make test` sets PYTHONDONTWRITEBYTECODE; the loop must keep bytecode out
+        # of the target on its own, so the variable is cleared for this run.
+        with mock.patch.dict(os.environ):
+            os.environ.pop("PYTHONDONTWRITEBYTECODE", None)
+            os.environ.pop("PYTHONPYCACHEPREFIX", None)
+            result = self.run_loop([
+                patch([{"path": "main.py", "op": "modify", "content": self.broken_main}]),
+                patch([{"path": "calculator.py", "op": "modify", "content": self.square}]),
+            ])
         self.assertEqual(result.status, "success")
         self.assertEqual([a["status"] for a in result.attempts], ["validation_failed", "success"])
         self.assertIn("undefined_name", self.llm.prompts[1])  # the error log went back to the model
@@ -106,6 +115,46 @@ class LoopTest(unittest.TestCase):
                                max_attempts=1)
         self.assertEqual(result.status, "failed")
         self.assertEqual(result.attempts[0]["validation_exit_code"], 1)
+        self.assertEqual(tree_state(self.target), self.before)
+
+    def test_a_target_with_another_name_is_validated_against_itself(self) -> None:
+        # The server's PYTHONPATH carries the IoC checkout (the Makefile exports
+        # it), which holds the real demo_app. For a copy named anything else - or
+        # one made next to a demo_app, as `cp -r demo_app demo_copy` in the
+        # checkout does - `from demo_app.calculator import ...` imported that
+        # one: a patch that broke the target went green, a correct rename red.
+        on_path = [PROJECT_ROOT] + [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep) if p]
+        for name in ("app", "demo_copy"):
+            target = os.path.join(self.tmp.name, name)  # next to self.target, a demo_app
+            shutil.copytree(self.target, target)
+            broken = self.calc.replace("return round(a + b, self.precision)",
+                                       "raise RuntimeError('add is broken')")
+            rename = patch([
+                {"path": "calculator.py", "op": "modify",
+                 "content": self.calc.replace("def add(", "def plus(")},
+                {"path": "main.py", "op": "modify", "content": self.main.replace("calc.add(", "calc.plus(")},
+            ])
+            breaking = patch([{"path": "calculator.py", "op": "modify", "content": broken}])
+            with mock.patch.dict(os.environ, {"PYTHONPATH": os.pathsep.join(on_path)}):
+                red = asyncio.run(PatchLoopEngine(target, llm_client=FakeLLM([breaking]), max_attempts=1)
+                                  .run("make the add method raise RuntimeError"))
+                green = asyncio.run(PatchLoopEngine(target, llm_client=FakeLLM([rename]), max_attempts=1)
+                                    .run(RENAME))
+            self.assertEqual(red.status, "failed", name)
+            self.assertNotIn("add is broken", read(os.path.join(target, "calculator.py")))
+            self.assertEqual(green.status, "success", (name, green.attempts[0].get("validation_output")))
+
+    def test_a_patch_that_only_edits_files_outside_its_scope_is_refused(self) -> None:
+        # Asked for a square method in calculator.py, a patch that changed only
+        # formatter.py - never shown in full, not named - went GREEN.
+        fmt = read(os.path.join(self.target, "formatter.py"))
+        shout = fmt + "\n\ndef shout(text: str) -> str:\n    return text.upper()\n"
+        only_unseen = patch([{"path": "formatter.py", "op": "modify", "content": shout}])
+        result = self.run_loop([only_unseen], max_attempts=1,
+                               intent="add a square method to the Calculator class in calculator.py")
+        self.assertEqual(result.attempts[0]["status"], "sanity_failed")
+        errors = " ".join(result.attempts[0]["sanity_errors"])
+        self.assertIn("The existing files you may edit: calculator.py", errors)
         self.assertEqual(tree_state(self.target), self.before)
 
     def test_feedback_points_at_code_still_using_a_renamed_name(self) -> None:

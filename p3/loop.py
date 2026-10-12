@@ -274,13 +274,20 @@ class PatchLoopEngine:
         env = dict(os.environ)
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         env["PYTHONPYCACHEPREFIX"] = os.path.join(tempfile.gettempdir(), "ioc-pycache")
-        # The target's own parent comes first on the import path. The server's
-        # PYTHONPATH starts with the IoC checkout, so for any target outside it
-        # `from demo_app.calculator import ...` in the validation command would
-        # import the REPOSITORY's demo_app instead of the files being patched,
-        # and a runtime break in the target validated green.
+        # The validation imports the TARGET's code and nothing of IoC's. The
+        # server's PYTHONPATH starts with the IoC checkout (the Makefile exports
+        # it), so `from demo_app.calculator import ...` resolved to the
+        # REPOSITORY's demo_app: a patch that broke the target validated green
+        # and a correct rename failed. Putting the target's parent first only
+        # helped a target named demo_app; a copy named anything else, or made
+        # inside the checkout (whose parent holds the real demo_app), still
+        # imported the repository's. The checkout is left out, and so is the
+        # parent: Python puts the script's own directory first by itself.
+        # Tool paths (site-packages, where flake8 lives) are kept.
         inherited = [p for p in env.get("PYTHONPATH", "").split(os.pathsep) if p]
-        env["PYTHONPATH"] = os.pathsep.join([os.path.dirname(self.target_dir)] + inherited)
+        env["PYTHONPATH"] = os.pathsep.join(
+            p for p in inherited if os.path.realpath(p) != os.path.realpath(PROJECT_ROOT)
+        )
         return env
 
     def _run_validation_blocking(self, command: str) -> Tuple[bool, str, int, str]:
